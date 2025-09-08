@@ -1,0 +1,21 @@
+# Archivo de ejemplo de variables de entorno
+# Copia este archivo como .env y configura tus valores
+
+# Entorno de ejecución
+FLASK_ENV=development
+
+# Clave secreta (IMPORTANTE: Cambiar en producción)
+SECRET_KEY=tu-clave-secreta-muy-segura-aqui-min-32-caracteres
+
+# Base de datos
+DATABASE_URL=sqlite:///alcaldias.db
+
+# Configuración opcional de email
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=tu-email@gmail.com
+MAIL_PASSWORD=tu-app-password
+
+# Configuración de logs
+LOG_LEVEL=INFO

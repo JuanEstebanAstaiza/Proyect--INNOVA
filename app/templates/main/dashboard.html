@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-tachometer-alt text-primary"></i> Dashboard
+        </h1>
+        <p class="text-muted">Bienvenido al Sistema de Gestión de Planes de Desarrollo Municipal</p>
+    </div>
+</div>
+
+<!-- Información del Usuario -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-circle"></i> Información de Usuario
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Nombre:</strong> {{ current_user.get_full_name() }}</p>
+                        <p><strong>Cargo:</strong> {{ current_user.position }}</p>
+                        <p><strong>Usuario:</strong> {{ current_user.username }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Alcaldía:</strong> {{ current_user.municipality }}</p>
+                        <p><strong>Departamento:</strong> {{ current_user.department }}</p>
+                        {% if current_user.municipality_code %}
+                        <p><strong>Código:</strong> {{ current_user.municipality_code }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas del Sistema -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Planes Activos</h6>
+                        <h2 class="mb-0">--</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clipboard-check fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Objetivos</h6>
+                        <h2 class="mb-0">--</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-bullseye fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Indicadores</h6>
+                        <h2 class="mb-0">--</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-danger text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Alertas</h6>
+                        <h2 class="mb-0">--</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Accesos Rápidos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket"></i> Accesos Rápidos
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                            <span>Crear Plan</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-list fa-2x mb-2"></i>
+                            <span>Ver Planes</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                            <span>Reportes</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-outline-warning btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-cog fa-2x mb-2"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Próximas Actividades -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt"></i> Próximas Actividades
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Información:</strong> Las funcionalidades de planes de desarrollo estarán disponibles próximamente.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

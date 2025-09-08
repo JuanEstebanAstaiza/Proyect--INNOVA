@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-edit"></i> Perfil de Usuario
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Información Personal</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Nombre:</strong></td>
+                                <td>{{ current_user.first_name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Apellido:</strong></td>
+                                <td>{{ current_user.last_name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Usuario:</strong></td>
+                                <td>{{ current_user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ current_user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cargo:</strong></td>
+                                <td>{{ current_user.position }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Información de la Alcaldía</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Alcaldía:</strong></td>
+                                <td>{{ current_user.municipality }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Departamento:</strong></td>
+                                <td>{{ current_user.department }}</td>
+                            </tr>
+                            {% if current_user.municipality_code %}
+                            <tr>
+                                <td><strong>Código:</strong></td>
+                                <td>{{ current_user.municipality_code }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td><strong>Rol:</strong></td>
+                                <td>
+                                    {% if current_user.role == 'admin' %}
+                                        <span class="badge bg-danger">Administrador</span>
+                                    {% elif current_user.role == 'editor' %}
+                                        <span class="badge bg-warning">Editor</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Visualizador</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Estado de la Cuenta</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Estado:</strong></td>
+                                <td>
+                                    {% if current_user.is_active %}
+                                        <span class="badge bg-success">Activa</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactiva</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fecha de Registro:</strong></td>
+                                <td>{{ current_user.created_at.strftime('%d/%m/%Y %H:%M') if current_user.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% if current_user.last_login %}
+                            <tr>
+                                <td><strong>Último Acceso:</strong></td>
+                                <td>{{ current_user.last_login.strftime('%d/%m/%Y %H:%M') }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" disabled>
+                    <i class="fas fa-edit"></i> Editar Perfil (Próximamente)
+                </button>
+                <button class="btn btn-secondary" disabled>
+                    <i class="fas fa-key"></i> Cambiar Contraseña (Próximamente)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

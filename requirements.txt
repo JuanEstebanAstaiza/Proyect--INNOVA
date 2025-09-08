@@ -1,0 +1,30 @@
+# Dependencias principales de Flask
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Flask-Login==0.6.3
+Flask-WTF==1.1.1
+
+# Dependencias de seguridad
+Werkzeug==2.3.7
+WTForms==3.0.1
+
+# Base de datos
+SQLAlchemy==2.0.23
+
+# Para deployment en servidor
+gunicorn==21.2.0
+gevent==23.9.1
+
+# Utilidades
+python-dotenv==1.0.0
+email-validator==2.1.0
+
+# Para desarrollo
+flask-debugtoolbar==0.13.1
+
+# Opcional: Para generar reportes PDF
+reportlab==4.0.7
+
+# Opcional: Para importar datos desde Excel
+openpyxl==3.1.2
+pandas==2.1.3
