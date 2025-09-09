@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-user-cog me-2"></i>Asignación de Roles
+                    </h1>
+                    <p class="text-muted mt-1">Gestiona qué roles tienen asignados los usuarios del sistema</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('admin.roles') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-user-tag me-2"></i>Gestionar Roles
+                    </a>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-users me-2"></i>Gestionar Usuarios
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y búsqueda -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="searchInput" class="form-label">Buscar Usuario</label>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Nombre, apellido o usuario...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="roleFilter" class="form-label">Filtrar por Rol</label>
+                            <select class="form-select" id="roleFilter">
+                                <option value="">Todos los roles</option>
+                                {% for role in roles %}
+                                <option value="{{ role.id }}">{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="statusFilter" class="form-label">Estado</label>
+                            <select class="form-select" id="statusFilter">
+                                <option value="">Todos</option>
+                                <option value="with_roles">Con roles</option>
+                                <option value="without_roles">Sin roles</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-primary me-2" onclick="clearFilters()">
+                                <i class="fas fa-times me-1"></i>Limpiar
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-plus me-1"></i>Asignar Rol
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% for role in roles %}
+                                    <li><a class="dropdown-item" href="#" onclick="showQuickAssignModal({{ role.id }}, '{{ role.name }}')">
+                                        <i class="fas fa-user-plus me-2"></i>{{ role.name }}
+                                    </a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Usuarios Grid -->
+    <div class="row" id="usersGrid">
+        {% for user_data in user_roles_data %}
+        <div class="col-lg-6 col-xl-4 mb-4 user-card" data-user-id="{{ user_data.user.id }}">
+            <div class="card shadow h-100">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <div class="avatar-circle me-3" style="width: 40px; height: 40px; background-color: #007bff; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                            {{ user_data.user.first_name[0] }}{{ user_data.user.last_name[0] }}
+                        </div>
+                        <div>
+                            <h6 class="mb-0">{{ user_data.user.get_full_name() }}</h6>
+                            <small class="text-muted">@{{ user_data.user.username }}</small>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="assignRoleToUser({{ user_data.user.id }}, '{{ user_data.user.get_full_name() }}')">
+                                <i class="fas fa-plus me-2"></i>Asignar Rol
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.row_permissions') }}">
+                                <i class="fas fa-table me-2"></i>Permisos de Fila
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <!-- Información del usuario -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Municipio</small>
+                            <p class="mb-0">{{ user_data.user.municipality }}</p>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Cargo</small>
+                            <p class="mb-0">{{ user_data.user.position or 'No especificado' }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Roles asignados -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">
+                                <i class="fas fa-tags me-2"></i>Roles Asignados ({{ user_data.roles|length }})
+                            </h6>
+                            {% if user_data.roles %}
+                            <button class="btn btn-sm btn-outline-danger" onclick="showBulkRemoveModal({{ user_data.user.id }}, '{{ user_data.user.get_full_name() }}')">
+                                <i class="fas fa-times me-1"></i>Quitar Todos
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        {% if user_data.roles %}
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for user_role in user_data.roles %}
+                            <div class="badge-container">
+                                <span class="badge" style="background-color: {{ user_role.role.color }}; color: white;">
+                                    {{ user_role.role.name }}
+                                    <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 10px;"
+                                            onclick="removeRoleFromUser({{ user_data.user.id }}, {{ user_role.role.id }}, '{{ user_role.role.name }}', '{{ user_data.user.get_full_name() }}')"
+                                            title="Remover rol">
+                                    </button>
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-user-times text-muted fa-2x mb-2"></i>
+                            <p class="text-muted small mb-0">Sin roles asignados</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Permisos de fila -->
+                    {% set row_permissions = user_data.user.row_permissions %}
+                    {% if row_permissions %}
+                    <div class="mb-3">
+                        <h6 class="mb-2">
+                            <i class="fas fa-table me-2"></i>Permisos de Fila ({{ row_permissions|length }})
+                        </h6>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for permission in row_permissions[:3] %}
+                            <span class="badge bg-info small" title="{{ permission.indicador.nombre }}">
+                                {{ permission.indicador.nombre[:20] }}{% if permission.indicador.nombre|length > 20 %}...{% endif %}
+                            </span>
+                            {% endfor %}
+                            {% if row_permissions|length > 3 %}
+                            <span class="badge bg-secondary small">+{{ row_permissions|length - 3 }} más</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            {% if user_data.user.is_active %}
+                            <i class="fas fa-circle text-success me-1"></i>Activo
+                            {% else %}
+                            <i class="fas fa-circle text-danger me-1"></i>Inactivo
+                            {% endif %}
+                        </small>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary" onclick="assignRoleToUser({{ user_data.user.id }}, '{{ user_data.user.get_full_name() }}')">
+                                <i class="fas fa-plus me-1"></i>Rol
+                            </button>
+                            <a href="{{ url_for('admin.row_permissions') }}" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-table me-1"></i>Fila
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not user_roles_data %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay usuarios activos</h5>
+                    <p class="text-muted mb-4">No se encontraron usuarios activos en el sistema</p>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-2"></i>Gestionar Usuarios
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal para asignar rol -->
+<div class="modal fade" id="assignRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Asignar Rol
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="assignRoleForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="assignRoleSelect" class="form-label">Seleccionar Rol</label>
+                        <select class="form-select" id="assignRoleSelect" name="role_id" required>
+                            <option value="">-- Seleccionar rol --</option>
+                            {% for role in roles %}
+                            <option value="{{ role.id }}">{{ role.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assignNotes" class="form-label">Notas (opcional)</label>
+                        <textarea class="form-control" id="assignNotes" name="notes" rows="2" placeholder="Motivo de la asignación..."></textarea>
+                    </div>
+                    <div id="userInfo" class="alert alert-info">
+                        <i class="fas fa-user me-2"></i>
+                        Asignando rol a: <strong id="assignUserName"></strong>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Asignar Rol
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para asignación rápida -->
+<div class="modal fade" id="quickAssignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Asignación Rápida
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="quickAssignForm" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Rol:</strong> <span id="quickAssignRoleName"></span><br>
+                        <strong>Descripción:</strong> <span id="quickAssignRoleDesc"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quickAssignUserSelect" class="form-label">Seleccionar Usuario</label>
+                        <select class="form-select" id="quickAssignUserSelect" name="user_id" required>
+                            <option value="">-- Seleccionar usuario --</option>
+                            {% for user_data in user_roles_data %}
+                            <option value="{{ user_data.user.id }}">{{ user_data.user.get_full_name() }} (@{{ user_data.user.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quickAssignNotes" class="form-label">Notas (opcional)</label>
+                        <textarea class="form-control" id="quickAssignNotes" name="notes" rows="2" placeholder="Motivo de la asignación..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>Asignar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para quitar todos los roles -->
+<div class="modal fade" id="bulkRemoveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-times me-2"></i>Quitar Todos los Roles
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Advertencia:</strong> Esta acción removerá todos los roles asignados al usuario.
+                </div>
+                <p>¿Estás seguro de que deseas quitar todos los roles de <strong id="bulkRemoveUserName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger" onclick="bulkRemoveRoles()">
+                    <i class="fas fa-times me-2"></i>Quitar Todos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variables globales
+let currentUserId = null;
+let currentRoleId = null;
+
+// Función para asignar rol a usuario
+function assignRoleToUser(userId, userName) {
+    currentUserId = userId;
+    document.getElementById('assignUserName').textContent = userName;
+    document.getElementById('assignRoleForm').action = `{{ url_for('admin.assign_role_to_user', user_id=0) }}`.replace('0', userId);
+
+    // Limpiar formulario
+    document.getElementById('assignRoleSelect').value = '';
+    document.getElementById('assignNotes').value = '';
+
+    new bootstrap.Modal(document.getElementById('assignRoleModal')).show();
+}
+
+// Función para mostrar modal de asignación rápida
+function showQuickAssignModal(roleId, roleName) {
+    currentRoleId = roleId;
+    document.getElementById('quickAssignRoleName').textContent = roleName;
+
+    // Buscar descripción del rol
+    const roles = {{ roles|tojson }};
+    const role = roles.find(r => r.id === roleId);
+    document.getElementById('quickAssignRoleDesc').textContent = role ? role.description || 'Sin descripción' : '';
+
+    document.getElementById('quickAssignForm').action = `{{ url_for('admin.assign_role_to_user', user_id=0) }}`.replace('0', '0'); // Se reemplazará con el user_id seleccionado
+    document.getElementById('quickAssignUserSelect').value = '';
+    document.getElementById('quickAssignNotes').value = '';
+
+    new bootstrap.Modal(document.getElementById('quickAssignModal')).show();
+}
+
+// Función para quitar rol de usuario
+function removeRoleFromUser(userId, roleId, roleName, userName) {
+    if (confirm(`¿Estás seguro de que deseas quitar el rol "${roleName}" de ${userName}?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url_for('admin.remove_role_from_user', user_id=0, role_id=0) }}`.replace('0', userId).replace('0', roleId);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Función para mostrar modal de quitar todos los roles
+function showBulkRemoveModal(userId, userName) {
+    currentUserId = userId;
+    document.getElementById('bulkRemoveUserName').textContent = userName;
+    new bootstrap.Modal(document.getElementById('bulkRemoveModal')).show();
+}
+
+// Función para quitar todos los roles
+function bulkRemoveRoles() {
+    // Obtener todos los roles del usuario
+    const userCard = document.querySelector(`[data-user-id="${currentUserId}"]`);
+    const badges = userCard.querySelectorAll('.badge');
+
+    badges.forEach(badge => {
+        const closeBtn = badge.querySelector('.btn-close');
+        if (closeBtn) {
+            // Simular clic en cada botón de cerrar
+            closeBtn.click();
+        }
+    });
+
+    // Cerrar modal
+    bootstrap.Modal.getInstance(document.getElementById('bulkRemoveModal')).hide();
+
+    // Recargar página después de un breve delay
+    setTimeout(() => {
+        location.reload();
+    }, 1000);
+}
+
+// Función para limpiar filtros
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('roleFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    filterUsers();
+}
+
+// Función para filtrar usuarios
+function filterUsers() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const roleFilter = document.getElementById('roleFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+
+    const userCards = document.querySelectorAll('.user-card');
+
+    userCards.forEach(card => {
+        const userName = card.querySelector('h6').textContent.toLowerCase();
+        const userUsername = card.querySelector('small').textContent.toLowerCase();
+        const roles = Array.from(card.querySelectorAll('.badge')).map(badge =>
+            badge.textContent.trim().toLowerCase()
+        );
+        const hasRoles = roles.length > 0;
+
+        let showCard = true;
+
+        // Filtro de búsqueda
+        if (searchTerm) {
+            showCard = showCard && (userName.includes(searchTerm) || userUsername.includes(searchTerm));
+        }
+
+        // Filtro de rol
+        if (roleFilter) {
+            showCard = showCard && roles.some(role => role.includes(roleFilter.toLowerCase()));
+        }
+
+        // Filtro de estado
+        if (statusFilter) {
+            if (statusFilter === 'with_roles') {
+                showCard = showCard && hasRoles;
+            } else if (statusFilter === 'without_roles') {
+                showCard = showCard && !hasRoles;
+            }
+        }
+
+        card.style.display = showCard ? 'block' : 'none';
+    });
+}
+
+// Event listeners
+document.getElementById('searchInput').addEventListener('input', filterUsers);
+document.getElementById('roleFilter').addEventListener('change', filterUsers);
+document.getElementById('statusFilter').addEventListener('change', filterUsers);
+
+// Manejar formulario de asignación rápida
+document.getElementById('quickAssignForm').addEventListener('submit', function(e) {
+    const userId = document.getElementById('quickAssignUserSelect').value;
+    if (userId) {
+        this.action = this.action.replace('user_id=0', `user_id=${userId}`);
+    }
+});
+
+// Auto-focus en selects cuando se abren los modales
+document.getElementById('assignRoleModal').addEventListener('shown.bs.modal', function() {
+    document.getElementById('assignRoleSelect').focus();
+});
+
+document.getElementById('quickAssignModal').addEventListener('shown.bs.modal', function() {
+    document.getElementById('quickAssignUserSelect').focus();
+});
+</script>
+
+{% endblock %}

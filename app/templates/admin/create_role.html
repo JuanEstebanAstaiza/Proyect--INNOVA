@@ -81,12 +81,12 @@
                         <h5 class="mb-0">
                             <i class="fas fa-key me-2"></i>Configuración de Permisos
                         </h5>
-                        <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-secondary" onclick="selectAllEditable()">
-                                <i class="fas fa-check-square me-1"></i>Seleccionar Todo
+                        <div class="btn-group shadow-sm">
+                            <button type="button" class="btn btn-success btn-lg fw-bold px-4 py-3 shadow" onclick="selectAllEditable()" style="font-size: 1.1rem;">
+                                <i class="fas fa-check-square me-2 fa-lg"></i><strong>Seleccionar Todo</strong>
                             </button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="clearAllEditable()">
-                                <i class="fas fa-square me-1"></i>Limpiar Todo
+                            <button type="button" class="btn btn-danger btn-lg fw-bold px-4 py-3 shadow" onclick="clearAllEditable()" style="font-size: 1.1rem;">
+                                <i class="fas fa-square me-2 fa-lg"></i><strong>Limpiar Todo</strong>
                             </button>
                         </div>
                     </div>
@@ -275,6 +275,67 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializar contadores
     updateCounts();
 });
+
+// Agregar efectos hover y animaciones a los botones
+document.addEventListener('DOMContentLoaded', function() {
+    const buttons = document.querySelectorAll('.btn-group .btn');
+
+    buttons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)';
+        });
+
+        button.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '';
+        });
+    });
+});
 </script>
+
+<style>
+/* Estilos adicionales para los botones de selección */
+.btn-group .btn {
+    transition: all 0.3s ease;
+    border-width: 2px !important;
+    margin: 0 2px;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important;
+}
+
+.btn-group .btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+}
+
+/* Asegurar que los botones sean claramente visibles */
+.btn-success {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+}
+
+/* Mejorar la legibilidad del texto */
+.btn-group .btn strong {
+    font-weight: 700 !important;
+}
+
+/* Efectos de foco mejorados */
+.btn-group .btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5) !important;
+}
+
+.btn-group .btn-danger:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.5) !important;
+}
+</style>
 
 {% endblock %}

@@ -543,6 +543,190 @@ function calcularAcumulados(row) {
     row.querySelector('[data-column="poblacion_impactada_acumulada"]').value = poblacionAcumulada;
 }
 
+// =======================
+// FUNCIONALIDAD DE EDICIÓN AVANZADA
+// =======================
+
+// Variables para el modal de edición
+let celdaSeleccionada = null;
+
+// Función para abrir modal de edición avanzada
+function abrirModalEdicion(celda, columnName, rowData) {
+    celdaSeleccionada = celda;
+
+    // Llenar información del modal
+    document.getElementById('editColumn').value = getColumnDisplayName(columnName);
+    document.getElementById('editCurrentValue').value = celda.value || '';
+    document.getElementById('editProject').value = rowData.nombre_proyecto || '';
+    document.getElementById('editIndicator').value = rowData.indicador_de_producto || '';
+    document.getElementById('editNewValue').value = celda.value || '';
+    document.getElementById('editJustification').value = '';
+    document.getElementById('editRowId').value = rowData._indicador_id || '';
+    document.getElementById('editColumnName').value = columnName;
+    document.getElementById('editIndicatorId').value = rowData._indicador_id || '';
+
+    // Limpiar campo de archivo
+    document.getElementById('editSupportFile').value = '';
+
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('editModal'));
+    modal.show();
+}
+
+// Función para obtener nombre legible de columna
+function getColumnDisplayName(columnName) {
+    const columnNames = {
+        'cod_linea': 'Código de Línea',
+        'lineas_estrategicas': 'Líneas Estratégicas',
+        'cod_componente': 'Código de Componente',
+        'componentes': 'Componentes',
+        'cod_programa': 'Código de Programa',
+        'programa_pdm': 'Programa PDM',
+        'dependencia_responsable': 'Dependencia Responsable',
+        'bpim': 'BPIM',
+        'nombre_proyecto': 'Nombre del Proyecto',
+        'indicadores': 'Indicadores',
+        'cod_indicador_de_producto': 'Código del Indicador',
+        'indicador_de_producto': 'Indicador de Producto',
+        'tipo_de_indicador': 'Tipo de Indicador',
+        'linea_base': 'Línea Base',
+        'sentido': 'Sentido',
+        'tipologia': 'Tipología',
+        'unidad': 'Unidad',
+        'meta_cuatrienio': 'Meta Cuatrienio',
+        'meta_2024': 'Meta 2024'
+    };
+
+    // Para columnas trimestrales
+    if (columnName.includes('_trimestre')) {
+        const parts = columnName.split('_');
+        const trimestre = parts[1];
+        const tipo = parts[0];
+
+        const tiposTrimestrales = {
+            'ejecucion': 'Ejecución',
+            'cumplimiento': '% Cumplimiento',
+            'poblacion_impactada': 'Población Impactada',
+            'observacion': 'Observación'
+        };
+
+        return `${tiposTrimestrales[tipo]} Trimestre ${trimestre}`;
+    }
+
+    return columnNames[columnName] || columnName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+// Función para manejar el envío del formulario de edición
+function manejarEdicionAvanzada(formData) {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+    modal.hide();
+
+    // Mostrar indicador de carga
+    const submitBtn = document.querySelector('#editModal .btn-primary');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Guardando...';
+    submitBtn.disabled = true;
+
+    // Enviar datos al servidor
+    fetch(`{{ url_for('planes.editar_celda_excel', plan_id=plan.id) }}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Actualizar el valor en la celda
+            if (celdaSeleccionada) {
+                celdaSeleccionada.value = document.getElementById('editNewValue').value;
+                marcarCambiosPendientes();
+                calcularAcumulados(celdaSeleccionada.closest('tr'));
+            }
+
+            // Mostrar mensaje de éxito
+            mostrarMensaje('Cambios guardados exitosamente.', 'success');
+        } else {
+            mostrarMensaje('Error al guardar cambios: ' + (data.error || 'Error desconocido'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarMensaje('Error de conexión al guardar cambios.', 'danger');
+    })
+    .finally(() => {
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+// Función para mostrar mensajes
+function mostrarMensaje(mensaje, tipo) {
+    // Crear elemento de alerta
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(alertDiv);
+
+    // Auto-remover después de 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Event listener para el formulario de edición
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejar envío del formulario de edición
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        // Validar campos requeridos
+        const newValue = document.getElementById('editNewValue').value.trim();
+        const justification = document.getElementById('editJustification').value.trim();
+
+        if (!newValue) {
+            mostrarMensaje('El nuevo valor es obligatorio.', 'warning');
+            return;
+        }
+
+        if (!justification) {
+            mostrarMensaje('La justificación es obligatoria.', 'warning');
+            return;
+        }
+
+        manejarEdicionAvanzada(formData);
+    });
+
+    // Agregar funcionalidad de doble clic para abrir modal de edición
+    document.querySelectorAll('.excel-cell').forEach(cell => {
+        cell.addEventListener('dblclick', function() {
+            const columnName = this.getAttribute('data-column');
+            const row = this.closest('tr');
+            const rowData = {{ excel_data|tojson }};
+
+            // Encontrar los datos de esta fila
+            const rowIndex = Array.from(row.parentNode.children).indexOf(row);
+            const currentRowData = rowData[rowIndex];
+
+            if (currentRowData) {
+                abrirModalEdicion(this, columnName, currentRowData);
+            }
+        });
+
+        // Agregar tooltip para indicar que se puede hacer doble clic
+        cell.title = 'Doble clic para editar con justificación';
+    });
+});
+
 // Función para calcular cumplimiento trimestral automáticamente
 function calcularCumplimientoTrimestral(row, trimestre) {
     const meta2024 = parseFloat(row.querySelector('[data-column="meta_2024"]').value) || 0;
@@ -893,4 +1077,90 @@ document.addEventListener('keydown', function(e) {
     }
 }
 </style>
+
+<!-- Modal de Edición Avanzada -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editModalLabel">
+                    <i class="fas fa-edit me-2"></i>Editar Celda
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <!-- Información de la celda -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Columna:</label>
+                            <input type="text" class="form-control" id="editColumn" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Valor Actual:</label>
+                            <input type="text" class="form-control" id="editCurrentValue" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Información contextual -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Proyecto:</label>
+                            <input type="text" class="form-control" id="editProject" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Indicador:</label>
+                            <input type="text" class="form-control" id="editIndicator" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Nuevo valor -->
+                    <div class="mb-3">
+                        <label for="editNewValue" class="form-label fw-bold">
+                            <i class="fas fa-pencil-alt me-1"></i>Nuevo Valor *
+                        </label>
+                        <input type="text" class="form-control" id="editNewValue" name="new_value" required>
+                        <div class="form-text">Ingrese el nuevo valor para esta celda</div>
+                    </div>
+
+                    <!-- Justificación -->
+                    <div class="mb-3">
+                        <label for="editJustification" class="form-label fw-bold">
+                            <i class="fas fa-comment me-1"></i>Justificación de la Edición *
+                        </label>
+                        <textarea class="form-control" id="editJustification" name="justification"
+                                  rows="3" required placeholder="Explique por qué está realizando esta edición..."></textarea>
+                        <div class="form-text">Describa detalladamente el motivo del cambio</div>
+                    </div>
+
+                    <!-- Archivo de soporte -->
+                    <div class="mb-3">
+                        <label for="editSupportFile" class="form-label fw-bold">
+                            <i class="fas fa-file-upload me-1"></i>Archivo de Soporte (Opcional)
+                        </label>
+                        <input type="file" class="form-control" id="editSupportFile" name="support_file"
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                        <div class="form-text">
+                            Suba un archivo que respalde esta edición (PDF, Word, Excel, imágenes)
+                        </div>
+                    </div>
+
+                    <!-- Campos ocultos -->
+                    <input type="hidden" id="editRowId" name="row_id">
+                    <input type="hidden" id="editColumnName" name="column_name">
+                    <input type="hidden" id="editIndicatorId" name="indicator_id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

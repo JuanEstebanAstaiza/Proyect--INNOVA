@@ -12,9 +12,17 @@
                     </h1>
                     <p class="text-muted mt-1">Administra los roles del sistema y sus permisos</p>
                 </div>
-                <a href="{{ url_for('admin.create_role') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Crear Rol
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('admin.create_role') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Crear Rol
+                    </a>
+                    <a href="{{ url_for('admin.user_roles') }}" class="btn btn-success">
+                        <i class="fas fa-user-plus me-2"></i>Asignar Roles
+                    </a>
+                    <a href="{{ url_for('admin.roles_guide') }}" class="btn btn-info">
+                        <i class="fas fa-book me-2"></i>Guía de Roles
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -104,7 +112,7 @@
                             {% endfor %}
                             {% if editable_cols|length > 3 %}
                             <span class="badge bg-secondary small">+{{ editable_cols|length - 3 }} más</span>
-                            {% endfor %}
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}

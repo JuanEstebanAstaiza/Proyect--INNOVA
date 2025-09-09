@@ -17,6 +17,9 @@ from .column_permission import ColumnPermission
 from .row_permission import RowPermission
 from .user_role import UserRole
 
+# Modelo para justificaciones de ediciones
+from .edit_justification import EditJustification
+
 __all__ = [
     'User',
     'PlanDesarrollo',
@@ -33,5 +36,6 @@ __all__ = [
     'Role',
     'ColumnPermission',
     'RowPermission',
-    'UserRole'
+    'UserRole',
+    'EditJustification'
 ]

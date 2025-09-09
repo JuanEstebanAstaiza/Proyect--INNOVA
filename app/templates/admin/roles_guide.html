@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.dashboard') }}">Panel Admin</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.roles') }}">Roles</a>
+                    </li>
+                    <li class="breadcrumb-item active">Guía de Roles</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-book me-2"></i>Guía de Roles y Permisos
+                    </h1>
+                    <p class="text-muted mt-1">Aprende a gestionar roles y permisos de manera efectiva</p>
+                </div>
+                <a href="{{ url_for('admin.roles') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Roles
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Introducción -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-left-primary">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>¿Qué es el Sistema de Roles?
+                    </h5>
+                    <p class="card-text">
+                        El sistema de roles permite controlar de manera granular qué usuarios pueden hacer en el sistema.
+                        Cada rol tiene permisos específicos sobre las columnas de la tabla Excel, permitiendo que diferentes
+                        usuarios puedan editar diferentes aspectos del plan de desarrollo.
+                    </p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> Un usuario puede tener múltiples roles asignados, y sus permisos serán
+                        la combinación de todos los roles que tenga.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Roles por Defecto -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>Roles por Defecto del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-crown me-2"></i>Administrador
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted mb-3">
+                                        Acceso completo al sistema. Puede gestionar usuarios, roles y editar todos los planes.
+                                    </p>
+                                    <div class="mb-2">
+                                        <span class="badge bg-danger">Sistema</span>
+                                        <span class="badge bg-success ms-1">Todos los permisos</span>
+                                    </div>
+                                    <strong>Permisos:</strong>
+                                    <ul class="list-unstyled small mt-2">
+                                        <li><i class="fas fa-check text-success me-1"></i>Gestionar usuarios</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Crear/editar roles</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar todas las columnas</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Ver todos los datos</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Permisos de fila ilimitados</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-edit me-2"></i>Editor General
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted mb-3">
+                                        Puede editar planes de desarrollo pero no gestionar usuarios o roles.
+                                    </p>
+                                    <div class="mb-2">
+                                        <span class="badge bg-success">Sistema</span>
+                                        <span class="badge bg-warning ms-1">Edición limitada</span>
+                                    </div>
+                                    <strong>Permisos:</strong>
+                                    <ul class="list-unstyled small mt-2">
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar códigos de línea</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar componentes</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar programas y proyectos</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar metas e indicadores</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No gestionar usuarios</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No crear roles</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-chart-line me-2"></i>Editor de Ejecución
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted mb-3">
+                                        Puede editar datos de ejecución trimestral y porcentajes de cumplimiento.
+                                    </p>
+                                    <div class="mb-2">
+                                        <span class="badge bg-primary">Personalizado</span>
+                                        <span class="badge bg-info ms-1">Ejecución</span>
+                                    </div>
+                                    <strong>Permisos:</strong>
+                                    <ul class="list-unstyled small mt-2">
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar ejecución trimestral</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar % cumplimiento</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar población impactada</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar observaciones</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No editar estructura</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No editar metas</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-target me-2"></i>Editor de Metas
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted mb-3">
+                                        Puede editar metas, indicadores y datos básicos del plan.
+                                    </p>
+                                    <div class="mb-2">
+                                        <span class="badge bg-warning text-dark">Personalizado</span>
+                                        <span class="badge bg-secondary ms-1">Metas</span>
+                                    </div>
+                                    <strong>Permisos:</strong>
+                                    <ul class="list-unstyled small mt-2">
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar metas</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar indicadores</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar línea base</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar tipos y unidades</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Editar sentido</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No editar ejecución</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 border-secondary">
+                                <div class="card-header bg-secondary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-eye me-2"></i>Visualizador
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted mb-3">
+                                        Solo puede ver información del plan de desarrollo.
+                                    </p>
+                                    <div class="mb-2">
+                                        <span class="badge bg-secondary">Sistema</span>
+                                        <span class="badge bg-light text-dark ms-1">Solo lectura</span>
+                                    </div>
+                                    <strong>Permisos:</strong>
+                                    <ul class="list-unstyled small mt-2">
+                                        <li><i class="fas fa-check text-success me-1"></i>Ver todas las columnas</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No editar nada</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No gestionar usuarios</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No crear roles</li>
+                                        <li><i class="fas fa-times text-danger me-1"></i>No permisos de fila</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cómo Crear Roles Personalizados -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Crear Roles Personalizados
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <h6>Pasos para crear un rol personalizado:</h6>
+                            <ol>
+                                <li><strong>Accede a "Crear Rol":</strong> Ve al panel de administración → Gestión de Roles → Crear Rol</li>
+                                <li><strong>Información básica:</strong> Define nombre, descripción y color distintivo</li>
+                                <li><strong>Configura permisos:</strong> Selecciona qué columnas puede ver y editar el rol</li>
+                                <li><strong>Organización por categorías:</strong> Las columnas están organizadas en categorías:
+                                    <ul class="mt-2">
+                                        <li><strong>Estructura:</strong> Códigos, líneas estratégicas, componentes, programas</li>
+                                        <li><strong>Indicadores:</strong> Metas, indicadores, tipos, unidades, línea base</li>
+                                        <li><strong>Ejecución:</strong> Datos trimestrales de ejecución</li>
+                                        <li><strong>Cumplimiento:</strong> Porcentajes de cumplimiento</li>
+                                        <li><strong>Población:</strong> Datos de población impactada</li>
+                                        <li><strong>Observaciones:</strong> Comentarios y notas</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Guardar:</strong> El rol se crea con los permisos especificados</li>
+                            </ol>
+
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Importante:</strong> Los roles del sistema (Administrador, Editor General, Visualizador)
+                                no pueden ser eliminados y tienen permisos predefinidos que no se pueden modificar.
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-lightbulb me-2"></i>Ejemplos de Roles Personalizados
+                                    </h6>
+                                    <ul class="list-unstyled small">
+                                        <li><i class="fas fa-dot-circle me-2"></i>Editor de Componentes</li>
+                                        <li><i class="fas fa-dot-circle me-2"></i>Supervisor de Programas</li>
+                                        <li><i class="fas fa-dot-circle me-2"></i>Analista de Metas</li>
+                                        <li><i class="fas fa-dot-circle me-2"></i>Reportador de Ejecución</li>
+                                        <li><i class="fas fa-dot-circle me-2"></i>Auditor Externo</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asignación de Roles -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Asignación de Roles a Usuarios
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <h6>Cómo asignar roles a los usuarios:</h6>
+                            <ol>
+                                <li><strong>Accede a "Asignación de Roles":</strong> Panel Admin → Asignación de Roles</li>
+                                <li><strong>Selecciona usuario:</strong> Busca al usuario por nombre o usuario</li>
+                                <li><strong>Asigna rol:</strong> Haz clic en "Asignar Rol" en la tarjeta del usuario</li>
+                                <li><strong>Selecciona rol:</strong> Elige el rol apropiado del listado</li>
+                                <li><strong>Agrega notas:</strong> Opcionalmente explica por qué se asigna este rol</li>
+                                <li><strong>Confirma:</strong> El rol queda asignado y activo inmediatamente</li>
+                            </ol>
+
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Nota:</strong> Un usuario puede tener múltiples roles asignados simultáneamente.
+                                Sus permisos serán la combinación de todos los roles que tenga.
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card bg-light border-primary">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">
+                                        <i class="fas fa-users-cog me-2"></i>Asignaciones Múltiples
+                                    </h6>
+                                    <p class="small mb-2 text-dark">
+                                        Un usuario puede tener varios roles para combinar permisos específicos.
+                                    </p>
+                                    <div class="small text-dark">
+                                        <strong class="text-primary">Ejemplo:</strong><br>
+                                        Usuario con roles:<br>
+                                        • <span class="text-success">Editor de Metas</span><br>
+                                        • <span class="text-info">Editor de Ejecución</span><br>
+                                        <br>
+                                        <strong class="text-primary">Resultado:</strong> Puede editar tanto metas como datos de ejecución.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permisos de Fila -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-2"></i>Permisos Específicos de Fila
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <h6>¿Qué son los permisos de fila?</h6>
+                            <p>
+                                Los permisos de fila permiten que un usuario pueda editar filas específicas
+                                aunque no tenga permisos generales para esa columna. Esto es útil cuando
+                                un usuario especializado necesita editar solo ciertos indicadores o proyectos.
+                            </p>
+
+                            <h6 class="mt-3">Cómo asignar permisos de fila:</h6>
+                            <ol>
+                                <li><strong>Accede a "Permisos de Fila":</strong> Panel Admin → Permisos de Fila</li>
+                                <li><strong>Busca indicador:</strong> Busca el indicador específico que quieres permitir editar</li>
+                                <li><strong>Selecciona usuario:</strong> Elige al usuario que podrá editar esta fila</li>
+                                <li><strong>Asigna permiso:</strong> Confirma la asignación con notas opcionales</li>
+                                <li><strong>Verificación:</strong> El usuario podrá editar solo esa fila específica</li>
+                            </ol>
+
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Beneficio:</strong> Permite delegar responsabilidades específicas sin dar
+                                acceso general a toda una columna.
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card bg-light border-success">
+                                <div class="card-body">
+                                    <h6 class="card-title text-success">
+                                        <i class="fas fa-bullseye me-2"></i>Casos de Uso
+                                    </h6>
+                                    <ul class="list-unstyled small text-dark">
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>Supervisor de proyecto específico</li>
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>Especialista en indicador particular</li>
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>Responsable de componente específico</li>
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>Auditor externo limitado</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mejores Prácticas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-left-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>Mejores Prácticas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-check text-success me-2"></i>Principios Generales</h6>
+                            <ul class="small">
+                                <li><strong>Principio de menor privilegio:</strong> Otorga solo los permisos necesarios</li>
+                                <li><strong>Separación de responsabilidades:</strong> Diferentes roles para diferentes tareas</li>
+                                <li><strong>Documentación clara:</strong> Describe claramente qué hace cada rol</li>
+                                <li><strong>Revisiones periódicas:</strong> Revisa y actualiza permisos regularmente</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-lightbulb text-warning me-2"></i>Recomendaciones</h6>
+                            <ul class="small">
+                                <li><strong>Nombres descriptivos:</strong> Usa nombres que indiquen claramente el alcance</li>
+                                <li><strong>Colores distintivos:</strong> Asigna colores únicos a cada rol</li>
+                                <li><strong>Notas de asignación:</strong> Documenta por qué se asigna cada rol</li>
+                                <li><strong>Permisos específicos:</strong> Prefiere permisos específicos sobre generales</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <h6><i class="fas fa-exclamation-triangle text-warning me-2"></i>Consideraciones de Seguridad</h6>
+                            <div class="alert alert-warning">
+                                <ul class="mb-0 small">
+                                    <li><strong>No asignes Administrador</strong> a usuarios que no necesiten gestionar el sistema</li>
+                                    <li><strong>Revisa permisos</strong> antes de asignar roles nuevos</li>
+                                    <li><strong>Documenta cambios</strong> en permisos para auditoría</li>
+                                    <li><strong>Monitorea actividad</strong> de usuarios con permisos elevados</li>
+                                    <li><strong>Remueve permisos</strong> de usuarios que ya no los necesiten</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enlaces de Navegación -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="mb-3">¿Listo para gestionar roles?</h5>
+                    <p class="text-muted mb-4">
+                        Ahora tienes toda la información necesaria para gestionar efectivamente
+                        los roles y permisos en tu sistema de planes de desarrollo.
+                    </p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{{ url_for('admin.roles') }}" class="btn btn-primary">
+                            <i class="fas fa-user-tag me-2"></i>Gestionar Roles
+                        </a>
+                        <a href="{{ url_for('admin.user_roles') }}" class="btn btn-success">
+                            <i class="fas fa-user-plus me-2"></i>Asignar Roles
+                        </a>
+                        <a href="{{ url_for('admin.row_permissions') }}" class="btn btn-info">
+                            <i class="fas fa-table me-2"></i>Permisos de Fila
+                        </a>
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-tachometer-alt me-2"></i>Panel Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.list-unstyled li {
+    margin-bottom: 0.25rem;
+}
+
+.alert ul li {
+    margin-bottom: 0.5rem;
+}
+
+.btn {
+    transition: all 0.15s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15);
+}
+</style>
+
+{% endblock %}

@@ -8,7 +8,8 @@ from datetime import datetime
 from app import db
 from app.models import (
     PlanDesarrollo, LineaEstrategica, Componente, Programa,
-    Proyecto, Actividad, IndicadorProducto, EjecucionTrimestral, Documento
+    Proyecto, Actividad, IndicadorProducto, EjecucionTrimestral, Documento,
+    EditJustification
 )
 from app.forms.planes import (
     PlanForm, LineaEstrategicaForm, ComponenteForm,
@@ -1242,6 +1243,188 @@ def guardar_excel(plan_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
+
+# ==================== EDICIÓN AVANZADA DE CELDAS ====================
+
+@planes_bp.route('/<int:plan_id>/editar-celda-excel', methods=['POST'])
+@login_required
+def editar_celda_excel(plan_id):
+    """Editar una celda individual de Excel con justificación y soporte de archivos"""
+    from flask import jsonify, request
+    from werkzeug.utils import secure_filename
+    import os
+
+    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+
+    try:
+        # Obtener datos del formulario
+        column_name = request.form.get('column_name')
+        new_value = request.form.get('new_value')
+        justification = request.form.get('justification')
+        indicator_id = request.form.get('indicator_id')
+
+        # Validaciones básicas
+        if not column_name or not new_value or not justification:
+            return jsonify({
+                'success': False,
+                'error': 'Faltan datos requeridos'
+            }), 400
+
+        # Buscar el indicador si existe
+        indicador = None
+        if indicator_id:
+            try:
+                indicador = IndicadorProducto.query.filter_by(
+                    id=int(indicator_id),
+                    proyecto_id=Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).filter(LineaEstrategica.plan_id == plan_id).subquery().c.id
+                ).first()
+            except:
+                indicador = None
+
+        # Obtener el valor anterior
+        old_value = None
+        if indicador:
+            # Para indicadores, obtener el valor actual del campo correspondiente
+            if hasattr(indicador, column_name):
+                old_value = getattr(indicador, column_name)
+            elif column_name.startswith('ejecucion_') or column_name.startswith('cumplimiento_') or column_name.startswith('poblacion_impactada_') or column_name.startswith('observacion_'):
+                # Para datos trimestrales, buscar en EjecucionTrimestral
+                trimestre = None
+                if '_trimestre' in column_name:
+                    parts = column_name.split('_')
+                    if len(parts) >= 2:
+                        try:
+                            trimestre = int(parts[1])
+                        except:
+                            trimestre = None
+
+                if trimestre:
+                    ejecucion = EjecucionTrimestral.query.filter_by(
+                        indicador_id=indicador.id,
+                        anio=2024,
+                        trimestre=trimestre
+                    ).first()
+
+                    if ejecucion:
+                        if column_name.startswith('ejecucion_'):
+                            old_value = ejecucion.ejecucion_trimestral
+                        elif column_name.startswith('cumplimiento_'):
+                            old_value = ejecucion.cumplimiento_trimestral
+                        elif column_name.startswith('poblacion_impactada_'):
+                            old_value = ejecucion.poblacion_impactada_trimestral
+                        elif column_name.startswith('observacion_'):
+                            old_value = ejecucion.observacion_trimestral
+
+        # Manejar archivo de soporte
+        support_file_path = None
+        if 'support_file' in request.files:
+            file = request.files['support_file']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                # Crear nombre único para el archivo
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                unique_filename = f"{timestamp}_{current_user.id}_{filename}"
+                file_path = os.path.join('uploads', 'justifications', unique_filename)
+
+                # Asegurar que el directorio existe
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+                # Guardar el archivo
+                file.save(file_path)
+                support_file_path = file_path
+
+        # Crear registro de justificación
+        edit_justification = EditJustification(
+            plan_id=plan_id,
+            indicador_id=indicador.id if indicador else None,
+            column_name=column_name,
+            old_value=str(old_value) if old_value is not None else None,
+            new_value=str(new_value),
+            justification=justification,
+            support_file_path=support_file_path,
+            user_id=current_user.id
+        )
+
+        db.session.add(edit_justification)
+
+        # Actualizar el valor en la base de datos
+        if indicador:
+            if hasattr(indicador, column_name):
+                # Actualizar campo directo del indicador
+                if column_name in ['linea_base', 'meta_cuatrienio', 'meta_2024']:
+                    try:
+                        setattr(indicador, column_name, float(new_value) if new_value else 0.0)
+                    except:
+                        setattr(indicador, column_name, 0.0)
+                else:
+                    setattr(indicador, column_name, new_value)
+                indicador.updated_at = datetime.utcnow()
+            elif column_name.startswith(('ejecucion_', 'cumplimiento_', 'poblacion_impactada_', 'observacion_')) and '_trimestre' in column_name:
+                # Actualizar datos trimestrales
+                parts = column_name.split('_')
+                if len(parts) >= 2:
+                    try:
+                        trimestre = int(parts[1])
+                    except:
+                        trimestre = None
+
+                    if trimestre:
+                        # Buscar o crear registro de ejecución trimestral
+                        ejecucion = EjecucionTrimestral.query.filter_by(
+                            indicador_id=indicador.id,
+                            anio=2024,
+                            trimestre=trimestre
+                        ).first()
+
+                        if not ejecucion:
+                            ejecucion = EjecucionTrimestral(
+                                indicador_id=indicador.id,
+                                proyecto_id=indicador.proyecto_id,
+                                usuario_id=current_user.id,
+                                anio=2024,
+                                trimestre=trimestre
+                            )
+                            db.session.add(ejecucion)
+
+                        # Actualizar el campo correspondiente
+                        if column_name.startswith('ejecucion_'):
+                            try:
+                                ejecucion.ejecucion_trimestral = float(new_value) if new_value else 0.0
+                                # Recalcular cumplimiento
+                                if indicador.meta_2024 and indicador.meta_2024 > 0:
+                                    ejecucion.cumplimiento_trimestral = (ejecucion.ejecucion_trimestral / indicador.meta_2024) * 100
+                            except:
+                                ejecucion.ejecucion_trimestral = 0.0
+                        elif column_name.startswith('cumplimiento_'):
+                            try:
+                                ejecucion.cumplimiento_trimestral = float(new_value) if new_value else 0.0
+                            except:
+                                ejecucion.cumplimiento_trimestral = 0.0
+                        elif column_name.startswith('poblacion_impactada_'):
+                            try:
+                                ejecucion.poblacion_impactada_trimestral = int(float(new_value)) if new_value else 0
+                            except:
+                                ejecucion.poblacion_impactada_trimestral = 0
+                        elif column_name.startswith('observacion_'):
+                            ejecucion.observacion_trimestral = new_value
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Celda editada exitosamente',
+            'edit_id': edit_justification.id
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al editar celda: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error interno del servidor: {str(e)}'
+        }), 500
+
+# ==================== FIN EDICIÓN AVANZADA ====================
 
 # ==================== DOCUMENTOS ====================
 

@@ -81,6 +81,85 @@
     </div>
 </div>
 
+<!-- Estadísticas de Roles y Permisos -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h5 class="text-dark fw-semibold mb-3">
+            <i class="fas fa-user-shield text-secondary me-2"></i>Gestión de Roles y Permisos
+        </h5>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card border-left-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-success">Roles Activos</h6>
+                        <h2 class="mb-0 text-success" id="roles-count">-</h2>
+                        <small class="text-muted">Configurados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-user-tag fa-3x text-success opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card border-left-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-info">Usuarios con Roles</h6>
+                        <h2 class="mb-0 text-info" id="users-with-roles">-</h2>
+                        <small class="text-muted">Asignados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users-cog fa-3x text-info opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card border-left-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-primary">Permisos de Fila</h6>
+                        <h2 class="mb-0 text-primary" id="row-permissions">-</h2>
+                        <small class="text-muted">Específicos</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-table fa-3x text-primary opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card border-left-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-warning">Columnas Editables</h6>
+                        <h2 class="mb-0 text-warning" id="editable-columns">-</h2>
+                        <small class="text-muted">Total sistema</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-edit fa-3x text-warning opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Accesos Rápidos de Admin -->
 <div class="row mb-4">
     <div class="col-12">
@@ -100,24 +179,56 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="{{ url_for('admin.activities') }}" class="btn btn-success w-100 d-flex flex-column align-items-center justify-content-center py-4">
-                            <i class="fas fa-history fa-2x mb-2 text-white"></i>
-                            <span class="fw-semibold text-white">Ver Actividades</span>
-                            <small class="text-white-50">Registro de acciones</small>
+                        <a href="{{ url_for('admin.roles') }}" class="btn btn-success w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-user-tag fa-2x mb-2 text-white"></i>
+                            <span class="fw-semibold text-white">Gestionar Roles</span>
+                            <small class="text-white-50">Permisos y asignaciones</small>
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="{{ url_for('admin.sessions') }}" class="btn btn-info w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                        <a href="{{ url_for('admin.activities') }}" class="btn btn-info w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-history fa-2x mb-2 text-dark"></i>
+                            <span class="fw-semibold text-dark">Ver Actividades</span>
+                            <small class="text-dark-75">Registro de acciones</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.sessions') }}" class="btn btn-warning w-100 d-flex flex-column align-items-center justify-content-center py-4">
                             <i class="fas fa-desktop fa-2x mb-2 text-dark"></i>
                             <span class="fw-semibold text-dark">Monitorear Sesiones</span>
                             <small class="text-dark-75">Sesiones activas</small>
                         </a>
                     </div>
+                </div>
+
+                <!-- Segunda fila de accesos rápidos -->
+                <div class="row mt-3">
                     <div class="col-md-3 mb-3">
-                        <a href="{{ url_for('admin.create_user') }}" class="btn btn-warning w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                        <a href="{{ url_for('admin.user_roles') }}" class="btn btn-secondary w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-user-cog fa-2x mb-2 text-white"></i>
+                            <span class="fw-semibold text-white">Asignar Roles</span>
+                            <small class="text-white-50">Usuarios y permisos</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.row_permissions') }}" class="btn btn-dark w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-table fa-2x mb-2 text-white"></i>
+                            <span class="fw-semibold text-white">Permisos de Fila</span>
+                            <small class="text-white-50">Acceso específico</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.create_user') }}" class="btn btn-light w-100 d-flex flex-column align-items-center justify-content-center py-4" style="border: 1px solid #dee2e6;">
                             <i class="fas fa-user-plus fa-2x mb-2 text-dark"></i>
                             <span class="fw-semibold text-dark">Crear Usuario</span>
                             <small class="text-dark-75">Nuevo usuario del sistema</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.roles_guide') }}" class="btn btn-outline-primary w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-book fa-2x mb-2 text-primary"></i>
+                            <span class="fw-semibold text-primary">Guía de Roles</span>
+                            <small class="text-primary-75">Documentación completa</small>
                         </a>
                     </div>
                 </div>
@@ -340,6 +451,19 @@ function setupPeriodicUpdates() {
             })
             .catch(error => console.log('Error updating alerts:', error));
     }, 45000);
+
+    // Actualizar estadísticas de roles cada 60 segundos
+    setInterval(function() {
+        fetch('/admin/api/roles/stats')
+            .then(response => response.json())
+            .then(data => {
+                updateRolesStats(data);
+            })
+            .catch(error => console.log('Error updating roles stats:', error));
+    }, 60000);
+
+    // Cargar estadísticas iniciales de roles
+    loadInitialRolesStats();
 }
 
 function updateStats(stats) {
@@ -348,6 +472,33 @@ function updateStats(stats) {
     animateCounter('.text-success h2', stats.active_users);
     animateCounter('.text-info h2', stats.active_sessions);
     animateCounter('.text-warning h2', stats.inactive_sessions);
+}
+
+function updateRolesStats(stats) {
+    // Actualizar estadísticas de roles con animación
+    animateCounter('#roles-count', stats.total_roles || 0);
+    animateCounter('#users-with-roles', stats.users_with_roles || 0);
+    animateCounter('#row-permissions', stats.total_row_permissions || 0);
+    animateCounter('#editable-columns', stats.total_editable_columns || 0);
+}
+
+function loadInitialRolesStats() {
+    // Cargar estadísticas iniciales de roles
+    fetch('/admin/api/roles/stats')
+        .then(response => response.json())
+        .then(data => {
+            updateRolesStats(data);
+        })
+        .catch(error => {
+            console.log('Error loading initial roles stats:', error);
+            // Valores por defecto si falla la carga
+            updateRolesStats({
+                total_roles: 0,
+                users_with_roles: 0,
+                total_row_permissions: 0,
+                total_editable_columns: 0
+            });
+        });
 }
 
 function animateCounter(selector, newValue) {

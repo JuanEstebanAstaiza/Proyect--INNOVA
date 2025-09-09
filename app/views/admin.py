@@ -855,3 +855,44 @@ def remove_row_permission(permission_id):
     )
 
     return jsonify({'status': 'success', 'message': 'Permiso removido exitosamente'})
+
+@admin_bp.route('/api/roles/stats')
+@login_required
+def get_roles_stats():
+    """API endpoint para estadísticas de roles en tiempo real"""
+    if not current_user.is_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        # Contar roles activos
+        total_roles = Role.query.filter_by(is_active=True).count()
+
+        # Contar usuarios con roles asignados
+        users_with_roles = db.session.query(User).join(UserRole).filter(
+            UserRole.is_active == True,
+            User.is_active == True
+        ).distinct().count()
+
+        # Contar permisos de fila
+        total_row_permissions = RowPermission.query.count()
+
+        # Calcular total de columnas editables en el sistema
+        total_editable_columns = 0
+        roles = Role.query.filter_by(is_active=True).all()
+        for role in roles:
+            total_editable_columns += len(role.get_editable_columns())
+
+        return jsonify({
+            'total_roles': total_roles,
+            'users_with_roles': users_with_roles,
+            'total_row_permissions': total_row_permissions,
+            'total_editable_columns': total_editable_columns
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/roles/guide')
+def roles_guide():
+    """Guía completa de roles y permisos"""
+    return render_template('admin/roles_guide.html', title='Guía de Roles y Permisos')
