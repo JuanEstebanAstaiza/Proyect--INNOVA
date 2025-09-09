@@ -1,14 +1,36 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h1 class="h3 mb-0 text-primary fw-bold">
-            <i class="fas fa-desktop text-secondary"></i> Monitoreo de Sesiones
-        </h1>
-        <p class="text-muted">Control en tiempo real de sesiones activas e inactivas</p>
+<div class="container-fluid mt-4">
+    <!-- Header con navegación -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.dashboard') }}">Panel Admin</a>
+                    </li>
+                    <li class="breadcrumb-item active">Sesiones</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-desktop text-secondary me-2"></i>Monitoreo de Sesiones
+                    </h1>
+                    <p class="text-muted">Control en tiempo real de sesiones activas e inactivas</p>
+                </div>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver al Panel
+                </a>
+            </div>
+        </div>
     </div>
-</div>
 
 <!-- Estadísticas de Sesiones -->
 <div class="row mb-4">
@@ -117,7 +139,7 @@
                                             <!-- Información esencial visible -->
                                             <div class="mt-1">
                                                 <small class="text-muted">
-                                                    <i class="fas fa-clock me-1"></i>{{ "%.0f"|format(session.get_inactive_duration()) }} min activo
+                                                    <i class="fas fa-clock me-1"></i>{{ "%.1f"|format(session.get_active_duration()) }} min activo
                                                 </small>
                                             </div>
                                         </div>
@@ -151,7 +173,7 @@
                                             <div class="border rounded p-2">
                                                 <small class="text-muted d-block">Actividad</small>
                                                 <span class="text-success fw-bold">
-                                                    {{ "%.1f"|format(session.get_inactive_duration()) }} min
+                                                    {{ "%.1f"|format(session.get_active_duration()) }} min
                                                 </span>
                                             </div>
                                         </div>

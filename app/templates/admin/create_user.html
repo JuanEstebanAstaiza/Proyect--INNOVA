@@ -1,12 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header con navegación -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.dashboard') }}">Panel Admin</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.users') }}">Usuarios</a>
+                    </li>
+                    <li class="breadcrumb-item active">Crear Usuario</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-user-plus text-secondary me-2"></i>Crear Nuevo Usuario
+                    </h1>
+                    <p class="text-muted">Agregar un nuevo usuario al sistema Proyecto INNOVA</p>
+                </div>
+                <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Usuarios
+                </a>
+            </div>
+        </div>
+    </div>
+
 <div class="row">
     <div class="col-md-8 mx-auto">
         <div class="card profile-form">
-            <div class="card-header">
-                <h4 class="mb-0 text-dark fw-semibold">
-                    <i class="fas fa-user-plus text-secondary"></i> Crear Nuevo Usuario
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0 text-white fw-semibold">
+                    <i class="fas fa-user-plus me-2"></i>Información del Nuevo Usuario
                 </h4>
             </div>
             <div class="card-body">

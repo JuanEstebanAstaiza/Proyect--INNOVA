@@ -77,6 +77,11 @@ class ActiveSession(db.Model):
         delta = datetime.utcnow() - self.last_activity
         return delta.total_seconds() / 60
 
+    def get_active_duration(self):
+        """Get total active duration of session in minutes"""
+        delta = datetime.utcnow() - self.login_time
+        return delta.total_seconds() / 60
+
     def to_dict(self):
         jwt_info = self.get_jwt_info()
         return {
@@ -90,6 +95,7 @@ class ActiveSession(db.Model):
             'last_activity': self.last_activity.isoformat(),
             'is_active': self.is_active,
             'inactive_duration': self.get_inactive_duration(),
+            'active_duration': self.get_active_duration(),
             'is_inactive': self.is_inactive(),
             'jwt_valid': jwt_info.get('valid', False),
             'jwt_expired': jwt_info.get('expired', True),
