@@ -37,9 +37,13 @@ def create_app(config_name=None):
     # Registrar blueprints
     from app.views.auth import auth_bp
     from app.views.main import main_bp
+    from app.views.planes import planes_bp
+    from app.views.admin import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(planes_bp)
+    app.register_blueprint(admin_bp, url_prefix='/admin')
 
     # Crear tablas de la base de datos
     with app.app_context():

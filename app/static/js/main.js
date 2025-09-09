@@ -1,4 +1,4 @@
-// JavaScript principal para el Sistema de Planes de Desarrollo Municipal
+// JavaScript principal para Proyecto INNOVA
 
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar tooltips de Bootstrap
@@ -243,3 +243,255 @@ window.handleAjaxError = function(xhr, status, error) {
 window.confirmDelete = function(message = '¿Está seguro de que desea eliminar este elemento?') {
     return confirm(message);
 };
+
+// =============================================
+// SISTEMA DE MONITOREO DE ACTIVIDAD DEL USUARIO
+// =============================================
+
+(function() {
+    'use strict';
+
+    let activityTimeout;
+    let lastActivityTime = Date.now();
+    const ACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutos de inactividad antes de enviar actualización
+    const HEARTBEAT_INTERVAL = 30 * 1000; // Enviar heartbeat cada 30 segundos
+
+    // Eventos que indican actividad del usuario
+    const activityEvents = [
+        'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click',
+        'keydown', 'keyup', 'focus', 'blur', 'wheel', 'contextmenu'
+    ];
+
+    // Función para actualizar actividad
+    function updateActivity(eventType = 'user_action') {
+        const now = Date.now();
+        lastActivityTime = now;
+
+        // Limpiar timeout anterior
+        clearTimeout(activityTimeout);
+
+        // Enviar actualización de actividad al servidor
+        sendActivityUpdate(eventType);
+
+        // Mostrar indicador visual de actividad
+        showActivityIndicator();
+
+        // Configurar próximo timeout
+        activityTimeout = setTimeout(function() {
+            sendActivityUpdate('timeout');
+        }, ACTIVITY_TIMEOUT);
+    }
+
+    // Función para enviar actualización al servidor
+    function sendActivityUpdate(eventType) {
+        const data = {
+            timestamp: new Date().toISOString(),
+            event_type: eventType,
+            user_agent: navigator.userAgent,
+            screen_resolution: `${screen.width}x${screen.height}`,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            url: window.location.href,
+            referrer: document.referrer
+        };
+
+        const csrfToken = getCsrfToken();
+
+        fetch('/api/activity/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        }).then(response => {
+            if (!response.ok) {
+                console.warn('Error updating activity:', response.status, eventType);
+            }
+        }).catch(error => {
+            // Solo log errores de red importantes, no todos
+            if (error.name !== 'TypeError' || !error.message.includes('Failed to fetch')) {
+                console.error('Activity update network error:', error);
+            }
+        });
+    }
+
+    // Función para enviar heartbeat periódico
+    function sendHeartbeat() {
+        const timeSinceLastActivity = Date.now() - lastActivityTime;
+        const isActive = timeSinceLastActivity < (10 * 60 * 1000); // Considerar activo si actividad en los últimos 10 minutos
+
+        const csrfToken = getCsrfToken();
+
+        fetch('/api/activity/heartbeat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                timestamp: new Date().toISOString(),
+                time_since_activity: Math.floor(timeSinceLastActivity / 1000),
+                is_active: isActive
+            })
+        }).then(response => {
+            if (!response.ok) {
+                console.warn('Heartbeat failed:', response.status);
+            }
+        }).catch(error => {
+            // Solo log errores críticos de heartbeat
+            if (!navigator.onLine) {
+                console.warn('Heartbeat failed - offline');
+            }
+        });
+    }
+
+    // Función para mostrar indicador de actividad
+    function showActivityIndicator() {
+        // Remover indicador anterior si existe
+        const existingIndicator = document.getElementById('activity-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+
+        // Solo mostrar indicador si el usuario está autenticado (tiene el navbar)
+        if (!document.querySelector('.navbar')) {
+            return;
+        }
+
+        // Crear nuevo indicador
+        const indicator = document.createElement('div');
+        indicator.id = 'activity-indicator';
+        indicator.innerHTML = '●';
+        indicator.title = 'Actividad detectada - Sistema monitoreando';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: #10b981;
+            font-size: 12px;
+            z-index: 9999;
+            opacity: 0.8;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            text-shadow: 0 0 3px rgba(16, 185, 129, 0.5);
+        `;
+
+        document.body.appendChild(indicator);
+
+        // Ocultar después de 3 segundos con animación
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.style.opacity = '0';
+                setTimeout(() => indicator.remove(), 300);
+            }
+        }, 3000);
+    }
+
+    // Función para obtener CSRF token
+    function getCsrfToken() {
+        // Buscar token en diferentes lugares
+        let token = null;
+
+        // En formularios (input oculto)
+        const csrfInput = document.querySelector('input[name="csrf_token"]');
+        if (csrfInput && csrfInput.value) {
+            token = csrfInput.value;
+        }
+
+        // En meta tags
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (!token && csrfMeta) {
+            token = csrfMeta.getAttribute('content');
+        }
+
+        // En headers de la respuesta (almacenado por JavaScript)
+        if (!token && window.csrfToken) {
+            token = window.csrfToken;
+        }
+
+        // Solo mostrar warning si realmente no hay token (primera vez)
+        if (!token && !window.csrfWarned) {
+            console.warn('No se encontró token CSRF');
+            window.csrfWarned = true;
+        }
+
+        return token || '';
+    }
+
+    // Función para manejar visibilidad de página
+    function handleVisibilityChange() {
+        if (document.hidden) {
+            sendActivityUpdate('page_hidden');
+        } else {
+            sendActivityUpdate('page_visible');
+            updateActivity('page_focus');
+        }
+    }
+
+    // Función para manejar antes de cerrar la página
+    function handleBeforeUnload() {
+        // Enviar una actualización final antes de que el usuario se vaya
+        navigator.sendBeacon('/api/activity/beforeunload', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            event_type: 'page_unload',
+            url: window.location.href
+        }));
+    }
+
+    // Función de inicialización
+    function initializeActivityMonitoring() {
+        // Solo inicializar si hay un usuario autenticado
+        if (!document.querySelector('.navbar')) {
+            console.log('Activity monitoring: No authenticated user detected');
+            return;
+        }
+
+        console.log('🔔 Sistema de monitoreo de actividad activado');
+        console.log('📊 Tu actividad será monitoreada para mejorar la experiencia del sistema');
+        console.log('🔄 Actualizaciones automáticas cada 5 minutos de actividad detectada');
+
+        // Agregar event listeners para detectar actividad
+        activityEvents.forEach(eventType => {
+            document.addEventListener(eventType, function(e) {
+                updateActivity(eventType);
+            }, { passive: true });
+        });
+
+        // Event listeners para cambios de visibilidad
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Event listener para antes de cerrar la página
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        // Configurar heartbeat periódico
+        setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+
+        // Actualización inicial
+        updateActivity('page_load');
+
+        // Mostrar notificación inicial (solo una vez por sesión)
+        if (!sessionStorage.getItem('activityMonitoringNotified')) {
+            setTimeout(() => {
+                showToast('🔔 Sistema de monitoreo activo - Tu actividad es rastreada para seguridad', 'info', 4000);
+                sessionStorage.setItem('activityMonitoringNotified', 'true');
+            }, 2000);
+        }
+    }
+
+    // Inicializar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeActivityMonitoring);
+    } else {
+        initializeActivityMonitoring();
+    }
+
+    // Exponer algunas funciones globalmente para debugging
+    window.activityMonitor = {
+        updateActivity: updateActivity,
+        sendHeartbeat: sendHeartbeat,
+        showActivityIndicator: showActivityIndicator,
+        getLastActivityTime: () => lastActivityTime,
+        getTimeSinceActivity: () => Date.now() - lastActivityTime
+    };
+
+})();

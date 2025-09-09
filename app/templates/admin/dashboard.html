@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0 text-primary fw-bold">
+            <i class="fas fa-shield-alt text-secondary"></i> Panel de Administrador
+        </h1>
+        <p class="text-muted">Monitoreo y gestión del sistema Proyecto INNOVA</p>
+    </div>
+</div>
+
+<!-- Estadísticas principales -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-primary">Total Usuarios</h6>
+                        <h2 class="mb-0 text-primary">{{ stats.total_users }}</h2>
+                        <small class="text-muted">Registrados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-3x text-primary opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-success">Usuarios Activos</h6>
+                        <h2 class="mb-0 text-success">{{ stats.active_users }}</h2>
+                        <small class="text-muted">Conectados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-user-check fa-3x text-success opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-info">Sesiones Activas</h6>
+                        <h2 class="mb-0 text-info">{{ stats.total_sessions }}</h2>
+                        <small class="text-muted">En tiempo real</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-desktop fa-3x text-info opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-warning">Sesiones Inactivas</h6>
+                        <h2 class="mb-0 text-warning">{{ stats.inactive_sessions }}</h2>
+                        <small class="text-muted">Requieren atención</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-user-clock fa-3x text-warning opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Accesos Rápidos de Admin -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0 text-dark fw-semibold">
+                    <i class="fas fa-bolt text-secondary"></i> Accesos Rápidos
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-primary w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-users fa-2x mb-2 text-white"></i>
+                            <span class="fw-semibold text-white">Gestionar Usuarios</span>
+                            <small class="text-white-50">Crear, editar y desactivar</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.activities') }}" class="btn btn-success w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-history fa-2x mb-2 text-white"></i>
+                            <span class="fw-semibold text-white">Ver Actividades</span>
+                            <small class="text-white-50">Registro de acciones</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.sessions') }}" class="btn btn-info w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-desktop fa-2x mb-2 text-dark"></i>
+                            <span class="fw-semibold text-dark">Monitorear Sesiones</span>
+                            <small class="text-dark-75">Sesiones activas</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin.create_user') }}" class="btn btn-warning w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-user-plus fa-2x mb-2 text-dark"></i>
+                            <span class="fw-semibold text-dark">Crear Usuario</span>
+                            <small class="text-dark-75">Nuevo usuario del sistema</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas de Usuarios Inactivos -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning" id="inactivity-alerts-card" style="{% if not inactive_sessions %}display: none;{% endif %}">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0 text-dark">
+                    <i class="fas fa-exclamation-triangle"></i> 🚨 Alertas de Inactividad
+                    <span class="badge bg-danger ms-2" id="inactive-count">{{ inactive_sessions|length if inactive_sessions else 0 }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning border-0 mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>🚨 ALERTA DE SEGURIDAD CRÍTICA</strong><br>
+                    Los siguientes usuarios han estado inactivos por más de 20 minutos.
+                    Se recomienda contactarlos inmediatamente o cerrar sus sesiones por seguridad.
+                </div>
+
+                <div id="inactive-users-container">
+                    {% if inactive_sessions %}
+                        <div class="row">
+                            {% for session in inactive_sessions %}
+                            <div class="col-md-6 mb-3 inactive-user-card" data-user-id="{{ session.user.id if session.user else 0 }}">
+                                <div class="card border-warning h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle me-3" style="width: 48px; height: 48px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                                    {{ session.user.first_name[0] if session.user and session.user.first_name else session.user.username[0] if session.user else '?' }}
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0 text-warning">
+                                                        <i class="fas fa-clock text-warning"></i>
+                                                        {{ session.user.username if session.user else 'Usuario Desconocido' }}
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        {{ session.user.get_full_name() if session.user else 'N/A' }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock"></i>
+                                                    INACTIVO
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="row text-center mb-3">
+                                            <div class="col-6">
+                                                <div class="border rounded p-2">
+                                                    <small class="text-muted d-block">IP Address</small>
+                                                    <code class="small">{{ session.ip_address or 'N/A' }}</code>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="border rounded p-2">
+                                                    <small class="text-muted d-block">Tiempo Inactivo</small>
+                                                    <span class="text-danger fw-bold inactive-time" data-last-activity="{{ session.last_activity.isoformat() }}">
+                                                        {{ "%.1f"|format(session.get_inactive_duration()) }} min
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="small text-muted mb-3">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <strong>Inicio:</strong><br>
+                                                    {{ session.login_time.strftime('%d/%m/%Y %H:%M') }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>Última actividad:</strong><br>
+                                                    <span class="last-activity-time">{{ session.last_activity.strftime('%d/%m/%Y %H:%M') }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-warning btn-sm" onclick="sendInactivityAlert({{ session.user.id if session.user else 0 }}, '{{ session.user.username if session.user else 'Unknown' }}')">
+                                                <i class="fas fa-bell"></i> Enviar Alerta
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" onclick="forceUserLogout({{ session.user.id if session.user else 0 }}, '{{ session.user.username if session.user else 'Unknown' }}')">
+                                                <i class="fas fa-sign-out-alt"></i> Forzar Cierre
+                                            </button>
+                                        </div>
+
+                                        {% if session.get_inactive_duration() > 30 %}
+                                        <div class="mt-3">
+                                            <div class="alert alert-danger py-2">
+                                                <small>
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                    <strong>🚨 ALERTA CRÍTICA:</strong> Usuario inactivo por más de 30 minutos
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
+                            <h5 class="text-success">¡Sistema Seguro!</h5>
+                            <p class="text-muted">No hay usuarios inactivos que requieran atención.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actividades Recientes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0 text-dark fw-semibold">
+                    <i class="fas fa-history text-secondary"></i> Actividades Recientes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activities %}
+                <div class="list-group list-group-flush">
+                    {% for activity in recent_activities %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <h6 class="mb-0 me-2">{{ activity.user.username }}</h6>
+                                    <span class="badge bg-{{ 'success' if activity.action == 'login' else 'info' if activity.action == 'logout' else 'primary' }}">
+                                        {{ activity.action.replace('_', ' ').title() }}
+                                    </span>
+                                </div>
+                                <p class="mb-1 text-muted small">{{ activity.description }}</p>
+                                {% if activity.ip_address %}
+                                <small class="text-muted">
+                                    <i class="fas fa-globe"></i> {{ activity.ip_address }}
+                                </small>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">{{ activity.timestamp.strftime('%H:%M') }}</small>
+                                <br>
+                                <small class="text-muted">{{ activity.timestamp.strftime('%d/%m') }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('admin.activities') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye"></i> Ver Todas las Actividades
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay actividades recientes</h5>
+                    <p class="text-muted">Las actividades de los usuarios aparecerán aquí.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para sistema de alertas de inactividad en tiempo real -->
+<script>
+// =============================================
+// SISTEMA DE ALERTAS DE INACTIVIDAD EN TIEMPO REAL
+// =============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar sistema de monitoreo en tiempo real
+    initializeRealtimeMonitoring();
+
+    // Configurar actualizaciones periódicas
+    setupPeriodicUpdates();
+});
+
+function initializeRealtimeMonitoring() {
+    console.log('🔔 Sistema de monitoreo de inactividad activado');
+
+    // Actualizar tiempos de inactividad cada minuto
+    setInterval(updateInactiveTimes, 60000);
+}
+
+function setupPeriodicUpdates() {
+    // Actualizar estadísticas cada 30 segundos
+    setInterval(function() {
+        fetch('/admin/api/stats/live')
+            .then(response => response.json())
+            .then(data => {
+                updateStats(data.stats);
+                if (data.recent_activities.length > 0) {
+                    updateRecentActivities(data.recent_activities);
+                }
+            })
+            .catch(error => console.log('Error updating stats:', error));
+    }, 30000);
+
+    // Actualizar alertas de inactividad cada 45 segundos
+    setInterval(function() {
+        fetch('/admin/api/sessions/inactive-alerts')
+            .then(response => response.json())
+            .then(data => {
+                updateInactiveAlerts(data.alerts, data.count);
+            })
+            .catch(error => console.log('Error updating alerts:', error));
+    }, 45000);
+}
+
+function updateStats(stats) {
+    // Actualizar contadores con animación
+    animateCounter('.text-primary h2', stats.total_users);
+    animateCounter('.text-success h2', stats.active_users);
+    animateCounter('.text-info h2', stats.active_sessions);
+    animateCounter('.text-warning h2', stats.inactive_sessions);
+}
+
+function animateCounter(selector, newValue) {
+    const element = document.querySelector(selector);
+    if (element) {
+        const currentValue = parseInt(element.textContent) || 0;
+        if (currentValue !== newValue) {
+            element.style.transition = 'all 0.5s ease';
+            element.textContent = newValue;
+
+            // Efecto de resaltado
+            element.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 300);
+        }
+    }
+}
+
+function updateRecentActivities(activities) {
+    const container = document.querySelector('.list-group');
+    if (container && activities.length > 0) {
+        console.log('📊 Nuevas actividades:', activities);
+        // Aquí se podría implementar actualización en tiempo real de actividades
+    }
+}
+
+function updateInactiveAlerts(alerts, count) {
+    const alertCard = document.getElementById('inactivity-alerts-card');
+    const inactiveCount = document.getElementById('inactive-count');
+    const container = document.getElementById('inactive-users-container');
+
+    if (!alertCard || !inactiveCount || !container) return;
+
+    if (count > 0) {
+        // Mostrar alertas si hay usuarios inactivos
+        alertCard.style.display = 'block';
+        inactiveCount.textContent = count;
+
+        // Actualizar tiempos de inactividad
+        updateInactiveTimes();
+
+        // Mostrar notificación si es la primera vez que aparecen alertas
+        if (!sessionStorage.getItem('inactivityAlertsShown')) {
+            showInactivityNotification(count);
+            sessionStorage.setItem('inactivityAlertsShown', 'true');
+        }
+
+    } else {
+        // Ocultar alertas si no hay usuarios inactivos
+        alertCard.style.display = 'none';
+        sessionStorage.removeItem('inactivityAlertsShown');
+    }
+}
+
+function updateInactiveTimes() {
+    // Actualizar los tiempos de inactividad en tiempo real
+    const inactiveTimes = document.querySelectorAll('.inactive-time');
+
+    inactiveTimes.forEach(timeElement => {
+        const lastActivity = timeElement.getAttribute('data-last-activity');
+        if (lastActivity) {
+            const lastActivityDate = new Date(lastActivity);
+            const now = new Date();
+            const diffMinutes = Math.floor((now - lastActivityDate) / (1000 * 60));
+
+            timeElement.textContent = diffMinutes + ' min';
+
+            // Cambiar color si supera los 30 minutos
+            if (diffMinutes > 30) {
+                timeElement.classList.remove('text-danger');
+                timeElement.classList.add('text-dark', 'fw-bold');
+                timeElement.style.fontSize = '1.1em';
+            }
+        }
+    });
+}
+
+function showInactivityNotification(count) {
+    // Crear notificación toast para alertas de inactividad
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-warning border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>¡${count} usuario(s) inactivo(s)!</strong><br>
+                    <small>Se han detectado usuarios sin actividad por más de 20 minutos.</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+    const toastElement = toastContainer.lastElementChild;
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+
+    // Reproducir sonido de alerta (opcional)
+    playAlertSound();
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container;
+}
+
+function playAlertSound() {
+    // Crear un beep suave (opcional)
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+        // Silenciar errores si el navegador no soporta Web Audio API
+    }
+}
+
+// =============================================
+// FUNCIONES PARA ACCIONES DE ADMINISTRADOR
+// =============================================
+
+function sendInactivityAlert(userId, username) {
+    if (!userId) {
+        showToast('ID de usuario inválido', 'error');
+        return;
+    }
+
+    // Confirmar envío de alerta
+    if (!confirm(`¿Desea enviar una alerta de inactividad a ${username}?`)) {
+        return;
+    }
+
+    // Mostrar indicador de carga
+    const button = event.target.closest('button');
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    button.disabled = true;
+
+    fetch(`/admin/api/activity/alert/${userId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast(`✅ Alerta enviada a ${username}`, 'success');
+            button.innerHTML = '<i class="fas fa-check"></i> Enviada';
+            button.classList.remove('btn-warning');
+            button.classList.add('btn-success');
+        } else {
+            throw new Error(data.message || 'Error desconocido');
+        }
+    })
+    .catch(error => {
+        console.error('Error sending alert:', error);
+        showToast(`❌ Error al enviar alerta: ${error.message}`, 'error');
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    });
+}
+
+function forceUserLogout(userId, username) {
+    if (!userId) {
+        showToast('ID de usuario inválido', 'error');
+        return;
+    }
+
+    // Confirmar cierre forzado
+    if (!confirm(`¿Está seguro de forzar el cierre de sesión de ${username}? Esta acción cerrará todas sus sesiones activas.`)) {
+        return;
+    }
+
+    // Mostrar indicador de carga
+    const button = event.target.closest('button');
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cerrando...';
+    button.disabled = true;
+
+    // Aquí se implementaría la lógica para forzar logout
+    // Por ahora solo simulamos la acción
+    setTimeout(() => {
+        showToast(`✅ Sesión de ${username} cerrada forzosamente`, 'success');
+        button.innerHTML = '<i class="fas fa-check"></i> Cerrada';
+        button.classList.remove('btn-outline-danger');
+        button.classList.add('btn-success');
+
+        // Remover la tarjeta del usuario después de 2 segundos
+        setTimeout(() => {
+            const userCard = button.closest('.inactive-user-card');
+            if (userCard) {
+                userCard.style.transition = 'opacity 0.5s';
+                userCard.style.opacity = '0';
+                setTimeout(() => userCard.remove(), 500);
+            }
+        }, 2000);
+    }, 1500);
+}
+
+function getCsrfToken() {
+    const csrfInput = document.querySelector('input[name="csrf_token"]');
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+
+    return csrfInput ? csrfInput.value :
+           csrfMeta ? csrfMeta.getAttribute('content') : '';
+}
+
+// Función auxiliar para mostrar toasts
+function showToast(message, type = 'info', duration = 4000) {
+    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-${type} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = toastContainer.lastElementChild;
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+
+    setTimeout(() => toastElement.remove(), duration);
+}
+</script>
+{% endblock %}

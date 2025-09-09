@@ -50,14 +50,19 @@ class IndicadorProducto(db.Model):
 
     def get_ultima_ejecucion(self):
         """Obtiene la última ejecución trimestral registrada"""
-        return self.ejecuciones_trimestrales.order_by(
+        from app.models.ejecucion_trimestral import EjecucionTrimestral
+        return EjecucionTrimestral.query.filter_by(indicador_id=self.id).order_by(
             db.desc(EjecucionTrimestral.anio),
             db.desc(EjecucionTrimestral.trimestre)
         ).first()
 
     def get_ejecuciones_por_anio(self, anio):
         """Obtiene todas las ejecuciones de un año específico"""
-        return self.ejecuciones_trimestrales.filter_by(anio=anio).order_by(EjecucionTrimestral.trimestre).all()
+        from app.models.ejecucion_trimestral import EjecucionTrimestral
+        return EjecucionTrimestral.query.filter_by(
+            indicador_id=self.id,
+            anio=anio
+        ).order_by(EjecucionTrimestral.trimestre).all()
 
     def __repr__(self):
         return f'<IndicadorProducto {self.nombre}>'

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-edit"></i> Editar Plan de Desarrollo
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.titulo.label(class="form-label") }}
+                        {{ form.titulo(class="form-control" + (" is-invalid" if form.titulo.errors else "")) }}
+                        {% if form.titulo.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.titulo.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.descripcion.label(class="form-label") }}
+                        {{ form.descripcion(class="form-control" + (" is-invalid" if form.descripcion.errors else ""), rows=3) }}
+                        {% if form.descripcion.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.descripcion.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.anio_inicio.label(class="form-label") }}
+                            {{ form.anio_inicio(class="form-control" + (" is-invalid" if form.anio_inicio.errors else "")) }}
+                            {% if form.anio_inicio.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.anio_inicio.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.anio_fin.label(class="form-label") }}
+                            {{ form.anio_fin(class="form-control" + (" is-invalid" if form.anio_fin.errors else "")) }}
+                            {% if form.anio_fin.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.anio_fin.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.presupuesto_total.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.presupuesto_total(class="form-control" + (" is-invalid" if form.presupuesto_total.errors else "")) }}
+                            </div>
+                            {% if form.presupuesto_total.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.presupuesto_total.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.prioridad.label(class="form-label") }}
+                            {{ form.prioridad(class="form-select" + (" is-invalid" if form.prioridad.errors else "")) }}
+                            {% if form.prioridad.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.prioridad.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirmarEdicion" required>
+                            <label class="form-check-label" for="confirmarEdicion">
+                                Confirmo que deseo actualizar este plan de desarrollo
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        {{ form.submit(class="btn btn-warning") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Atención:</strong> Los cambios realizados en el plan afectarán toda su estructura.
+                Asegúrate de que la información sea correcta antes de guardar.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Habilitar/deshabilitar el botón de envío basado en el checkbox
+document.getElementById('confirmarEdicion').addEventListener('change', function() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    submitBtn.disabled = !this.checked;
+});
+
+// Deshabilitar inicialmente el botón
+document.addEventListener('DOMContentLoaded', function() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

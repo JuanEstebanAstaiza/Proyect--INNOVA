@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0 text-primary fw-bold">
+                    <i class="fas fa-history text-secondary"></i> Registro de Actividades
+                </h1>
+                <p class="text-muted">Monitoreo completo de acciones realizadas por usuarios</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button onclick="exportActivities()" class="btn btn-success">
+                    <i class="fas fa-download"></i> Exportar
+                </button>
+                <button onclick="clearFilters()" class="btn btn-outline-secondary">
+                    <i class="fas fa-eraser"></i> Limpiar Filtros
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0 text-dark fw-semibold">
+                    <i class="fas fa-filter text-secondary"></i> Filtros
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="user" class="form-label">Usuario</label>
+                        <select class="form-select" id="user" name="user">
+                            <option value="">Todos los usuarios</option>
+                            {% for user in all_users %}
+                            <option value="{{ user.id }}" {{ 'selected' if current_user_filter == user.id else '' }}>
+                                {{ user.username }} - {{ user.get_full_name() }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="action" class="form-label">Tipo de Acción</label>
+                        <select class="form-select" id="action" name="action">
+                            <option value="">Todas las acciones</option>
+                            {% for action in actions %}
+                            <option value="{{ action }}" {{ 'selected' if current_action_filter == action else '' }}>
+                                {{ action.replace('_', ' ').title() }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Filtrar
+                            </button>
+                            <a href="{{ url_for('admin.activities') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Limpiar
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas de Actividades -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-primary">Total Actividades</h6>
+                        <h2 class="mb-0 text-primary">{{ activities|length if activities else 0 }}</h2>
+                        <small class="text-muted">Registradas</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-chart-line fa-3x text-primary opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-success">Logins Hoy</h6>
+                        <h2 class="mb-0 text-success">
+                            {{ logins_today }}
+                        </h2>
+                        <small class="text-muted">Inicios de sesión</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-sign-in-alt fa-3x text-success opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-info">Planes Creados</h6>
+                        <h2 class="mb-0 text-info">
+                            {{ total_plans }}
+                        </h2>
+                        <small class="text-muted">Total creados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-plus-circle fa-3x text-info opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-warning">Usuarios Únicos</h6>
+                        <h2 class="mb-0 text-warning">
+                            {{ unique_users_today }}
+                        </h2>
+                        <small class="text-muted">Activos hoy</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-3x text-warning opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Actividades -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0 text-dark fw-semibold">
+                    <i class="fas fa-list text-secondary"></i> Registro de Actividades
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if activities %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Acción</th>
+                                <th>Descripción</th>
+                                <th>Dirección IP</th>
+                                <th>Fecha y Hora</th>
+                                <th>Dispositivo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in activities %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-2" style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8rem;">
+                                            {{ activity.user.first_name[0] if activity.user and activity.user.first_name else activity.user.username[0] if activity.user else '?' }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ activity.user.username if activity.user else 'Usuario Desconocido' }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ activity.user.get_full_name() if activity.user else 'N/A' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if activity.action == 'login' else 'danger' if activity.action == 'logout' else 'primary' if 'create' in activity.action else 'info' }}">
+                                        {% if activity.action == 'login' %}
+                                            <i class="fas fa-sign-in-alt"></i> Inicio de Sesión
+                                        {% elif activity.action == 'logout' %}
+                                            <i class="fas fa-sign-out-alt"></i> Cierre de Sesión
+                                        {% elif activity.action == 'create_plan' %}
+                                            <i class="fas fa-plus"></i> Crear Plan
+                                        {% elif activity.action == 'edit_profile' %}
+                                            <i class="fas fa-edit"></i> Editar Perfil
+                                        {% elif activity.action == 'change_password' %}
+                                            <i class="fas fa-key"></i> Cambiar Contraseña
+                                        {% elif activity.action == 'create_user' %}
+                                            <i class="fas fa-user-plus"></i> Crear Usuario
+                                        {% elif activity.action == 'toggle_user_status' %}
+                                            <i class="fas fa-ban"></i> Cambiar Estado Usuario
+                                        {% elif activity.action == 'change_user_role' %}
+                                            <i class="fas fa-user-tag"></i> Cambiar Rol Usuario
+                                        {% else %}
+                                            <i class="fas fa-cog"></i> {{ activity.action.replace('_', ' ').title() }}
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="max-width: 300px;">
+                                        <small class="text-muted">{{ activity.description }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if activity.ip_address %}
+                                        <code class="small">{{ activity.ip_address }}</code>
+                                    {% else %}
+                                        <small class="text-muted">N/A</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ activity.timestamp.strftime('%d/%m/%Y') }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ activity.timestamp.strftime('%H:%M:%S') }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if activity.user_agent %}
+                                        <small class="text-muted">
+                                            {% if 'Mobile' in activity.user_agent %}
+                                                <i class="fas fa-mobile-alt"></i> Móvil
+                                            {% elif 'Tablet' in activity.user_agent %}
+                                                <i class="fas fa-tablet-alt"></i> Tablet
+                                            {% else %}
+                                                <i class="fas fa-desktop"></i> Desktop
+                                            {% endif %}
+                                        </small>
+                                    {% else %}
+                                        <small class="text-muted">N/A</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if pagination %}
+                <nav aria-label="Paginación de actividades" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.activities', page=pagination.prev_num, user=current_user_filter, action=current_action_filter) }}">
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-left"></i> Anterior</span>
+                        </li>
+                        {% endif %}
+
+                        {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                            <a class="page-link" href="{{ url_for('admin.activities', page=page_num, user=current_user_filter, action=current_action_filter) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.activities', page=pagination.next_num, user=current_user_filter, action=current_action_filter) }}">
+                                Siguiente <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Siguiente <i class="fas fa-chevron-right"></i></span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay actividades registradas</h5>
+                    <p class="text-muted">Las actividades de los usuarios aparecerán aquí cuando realicen acciones en el sistema.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function clearFilters() {
+    window.location.href = '{{ url_for("admin.activities") }}';
+}
+
+function exportActivities() {
+    // Crear un enlace temporal para descargar
+    const link = document.createElement('a');
+    link.href = '{{ url_for("admin.activities") }}?export=csv&user={{ current_user_filter }}&action={{ current_action_filter }}';
+    link.download = 'actividades_proyecto_innova.csv';
+    link.click();
+}
+
+// Auto-refresh de la página cada 60 segundos para mantener datos actualizados
+setInterval(function() {
+    location.reload();
+}, 60000);
+</script>
+{% endblock %}

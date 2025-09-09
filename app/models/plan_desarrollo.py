@@ -45,5 +45,42 @@ class PlanDesarrollo(db.Model):
         total_progreso = sum(obj.get_progreso() for obj in objetivos)
         return total_progreso / len(objetivos)
 
+    def activar(self):
+        """Activa este plan y desactiva los demás del mismo municipio"""
+        # Primero desactivar todos los planes activos del municipio
+        PlanDesarrollo.query.filter_by(
+            municipio=self.municipio,
+            estado='activo'
+        ).update({'estado': 'borrador'})
+
+        # Luego activar este plan
+        self.estado = 'activo'
+        db.session.commit()
+
+    def desactivar(self):
+        """Desactiva este plan"""
+        self.estado = 'borrador'
+        db.session.commit()
+
+    @classmethod
+    def get_plan_activo(cls, municipio):
+        """Obtiene el plan activo del municipio, o None si no hay ninguno"""
+        return cls.query.filter_by(
+            municipio=municipio,
+            estado='activo'
+        ).first()
+
+    @classmethod
+    def get_plan_activo_o_primero(cls, municipio):
+        """Obtiene el plan activo, o si no hay ninguno, el más reciente"""
+        plan_activo = cls.get_plan_activo(municipio)
+        if plan_activo:
+            return plan_activo
+
+        # Si no hay plan activo, devolver el más reciente
+        return cls.query.filter_by(municipio=municipio).order_by(
+            cls.created_at.desc()
+        ).first()
+
     def __repr__(self):
         return f'<PlanDesarrollo {self.titulo} - {self.municipio.municipality}>'

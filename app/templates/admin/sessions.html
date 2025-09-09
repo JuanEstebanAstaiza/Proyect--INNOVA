@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0 text-primary fw-bold">
+            <i class="fas fa-desktop text-secondary"></i> Monitoreo de Sesiones
+        </h1>
+        <p class="text-muted">Control en tiempo real de sesiones activas e inactivas</p>
+    </div>
+</div>
+
+<!-- Estadísticas de Sesiones -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-success">Sesiones Activas</h6>
+                        <h2 class="mb-0 text-success">{{ total_active }}</h2>
+                        <small class="text-muted">En línea ahora</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-circle fa-3x text-success opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-warning">Sesiones Inactivas</h6>
+                        <h2 class="mb-0 text-warning">{{ total_inactive }}</h2>
+                        <small class="text-muted">Requieren atención</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-3x text-warning opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-info">Tiempo Promedio</h6>
+                        <h2 class="mb-0 text-info">
+                            {{ "%.0f"|format(avg_duration) }}
+                        </h2>
+                        <small class="text-muted">Minutos activo</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-chart-bar fa-3x text-info opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-danger">Alertas Activas</h6>
+                        <h2 class="mb-0 text-danger">
+                            {{ critical_alerts }}
+                        </h2>
+                        <small class="text-muted">+30 min inactivos</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sesiones Activas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-circle text-white"></i> Sesiones Activas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if active_sessions %}
+                <div class="row">
+                    {% for session in active_sessions %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-success h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-3" style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                            {{ session.user.first_name[0] if session.user and session.user.first_name else session.user.username[0] if session.user else '?' }}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 text-success">
+                                                <i class="fas fa-circle text-success"></i>
+                                                {{ session.user.username if session.user else 'Usuario Desconocido' }}
+                                            </h6>
+                                            <small class="text-muted">
+                                                {{ session.user.get_full_name() if session.user else 'N/A' }}
+                                            </small>
+                                            <!-- Información esencial visible -->
+                                            <div class="mt-1">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>{{ "%.0f"|format(session.get_inactive_duration()) }} min activo
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-circle"></i> ACTIVO
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Información detallada colapsable -->
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary w-100" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#session-details-{{ session.id }}"
+                                            aria-expanded="false">
+                                        <i class="fas fa-info-circle me-1"></i>Detalles de Sesión
+                                    </button>
+                                </div>
+
+                                <div class="collapse mt-2" id="session-details-{{ session.id }}">
+                                    <div class="row text-center">
+                                        <div class="col-6">
+                                            <div class="border rounded p-2">
+                                                <small class="text-muted d-block">IP Address</small>
+                                                <code class="small">{{ session.ip_address or 'N/A' }}</code>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="border rounded p-2">
+                                                <small class="text-muted d-block">Actividad</small>
+                                                <span class="text-success fw-bold">
+                                                    {{ "%.1f"|format(session.get_inactive_duration()) }} min
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-2">
+
+                                    <div class="small text-muted">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Inicio:</strong><br>
+                                                {{ session.login_time.strftime('%H:%M:%S') }}
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Última actividad:</strong><br>
+                                                {{ session.last_activity.strftime('%H:%M:%S') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay sesiones activas</h5>
+                    <p class="text-muted">No hay usuarios conectados actualmente al sistema.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sesiones Inactivas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0 text-dark">
+                    <i class="fas fa-clock text-warning"></i> Sesiones Inactivas (Requieren Atención)
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if inactive_sessions %}
+                <div class="alert alert-warning border-0 mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>¡Atención!</strong> Los siguientes usuarios han estado inactivos por más de 20 minutos.
+                    Considere contactarlos o cerrar sus sesiones por seguridad.
+                </div>
+
+                <div class="row">
+                    {% for session in inactive_sessions %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-warning h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-3" style="width: 48px; height: 48px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                            {{ session.user.first_name[0] if session.user and session.user.first_name else session.user.username[0] if session.user else '?' }}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 text-warning">
+                                                <i class="fas fa-clock text-warning"></i>
+                                                {{ session.user.username if session.user else 'Usuario Desconocido' }}
+                                            </h6>
+                                            <small class="text-muted">
+                                                {{ session.user.get_full_name() if session.user else 'N/A' }}
+                                            </small>
+                                            <!-- Información esencial visible -->
+                                            <div class="mt-1">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>{{ "%.0f"|format(session.get_inactive_duration()) }} min inactivo
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock"></i>
+                                            INACTIVO
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Información detallada colapsable -->
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary w-100" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#inactive-session-details-{{ session.id }}"
+                                            aria-expanded="false">
+                                        <i class="fas fa-info-circle me-1"></i>Detalles de Sesión
+                                    </button>
+                                </div>
+
+                                <div class="collapse mt-2" id="inactive-session-details-{{ session.id }}">
+                                    <div class="row text-center">
+                                        <div class="col-6">
+                                            <div class="border rounded p-2">
+                                                <small class="text-muted d-block">IP Address</small>
+                                                <code class="small">{{ session.ip_address or 'N/A' }}</code>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="border rounded p-2">
+                                                <small class="text-muted d-block">Tiempo Inactivo</small>
+                                                <span class="text-danger fw-bold">
+                                                    {{ "%.1f"|format(session.get_inactive_duration()) }} min
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-2">
+
+                                <div class="small text-muted">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>Inicio:</strong><br>
+                                            {{ session.login_time.strftime('%d/%m/%Y %H:%M') }}
+                                        </div>
+                                        <div class="col-6">
+                                            <strong>Última actividad:</strong><br>
+                                            {{ session.last_activity.strftime('%d/%m/%Y %H:%M') }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% if session.get_inactive_duration() > 30 %}
+                                <div class="mt-3">
+                                    <div class="alert alert-danger py-2">
+                                        <small>
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            <strong>Alerta:</strong> Usuario inactivo por más de 30 minutos
+                                        </small>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5 class="text-success">¡Excelente!</h5>
+                    <p class="text-muted">No hay sesiones inactivas que requieran atención.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para enviar alerta a usuario inactivo -->
+<div class="modal fade" id="alertUserModal" tabindex="-1" aria-labelledby="alertUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alertUserModalLabel">
+                    <i class="fas fa-bell"></i> Enviar Alerta a Usuario
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Desea enviar una notificación al usuario <strong id="alertUserName"></strong> para que reanude su actividad?</p>
+                <div class="alert alert-info">
+                    <small>Esta acción enviará una notificación push al navegador del usuario (si está soportado) y registrará la alerta en el sistema.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-warning" onclick="sendAlert()">
+                    <i class="fas fa-bell"></i> Enviar Alerta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Función para mostrar alerta de usuario inactivo
+function showAlertModal(username, userId) {
+    document.getElementById('alertUserName').textContent = username;
+    const modal = new bootstrap.Modal(document.getElementById('alertUserModal'));
+    modal.show();
+
+    // Aquí se podría implementar el envío de alerta real
+    // Por ahora solo mostramos el modal
+}
+
+// Función para enviar alerta (placeholder)
+function sendAlert() {
+    // Implementar lógica para enviar alerta al usuario
+    alert('Funcionalidad de envío de alertas próximamente disponible');
+    bootstrap.Modal.getInstance(document.getElementById('alertUserModal')).hide();
+}
+
+// Actualizar datos en tiempo real cada 30 segundos
+setInterval(function() {
+    // Actualizar indicadores de tiempo inactivo
+    const inactiveCards = document.querySelectorAll('.border-warning');
+    inactiveCards.forEach(card => {
+        // Aquí se podría actualizar el tiempo en tiempo real
+        // Por simplicidad, recargamos la página
+    });
+}, 30000);
+
+// Auto-refresh de la página cada 2 minutos para mantener datos actualizados
+setInterval(function() {
+    location.reload();
+}, 120000);
+</script>
+{% endblock %}

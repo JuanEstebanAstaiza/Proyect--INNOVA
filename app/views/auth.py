@@ -29,7 +29,37 @@ def login():
         login_user(user, remember=form.remember_me.data)
 
         # Actualizar último login
-        user.last_login = db.func.now()
+        user.update_last_login()
+
+        # Registrar actividad de login
+        from app.models.activity_log import ActivityLog
+        ActivityLog.log_activity(
+            'login',
+            f'Inicio de sesión exitoso desde {request.remote_addr}',
+            request.remote_addr,
+            request.headers.get('User-Agent')
+        )
+
+        # Crear o actualizar sesión activa
+        from app.models.active_session import ActiveSession
+        session_id = request.cookies.get('session', str(hash(str(user.id) + str(request.remote_addr))))
+        active_session = ActiveSession.query.filter_by(
+            user_id=user.id,
+            session_id=session_id
+        ).first()
+
+        if not active_session:
+            active_session = ActiveSession(
+                user_id=user.id,
+                session_id=session_id,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            db.session.add(active_session)
+        else:
+            active_session.is_active = True
+            active_session.update_activity()
+
         db.session.commit()
 
         next_page = request.args.get('next')
@@ -42,6 +72,26 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
+    # Registrar actividad de logout antes de cerrar sesión
+    from app.models.activity_log import ActivityLog
+    ActivityLog.log_activity(
+        'logout',
+        f'Cierre de sesión desde {request.remote_addr}',
+        request.remote_addr,
+        request.headers.get('User-Agent')
+    )
+
+    # Marcar sesión como inactiva
+    from app.models.active_session import ActiveSession
+    session_id = request.cookies.get('session', str(hash(str(current_user.id) + str(request.remote_addr))))
+    active_session = ActiveSession.query.filter_by(
+        user_id=current_user.id,
+        session_id=session_id
+    ).first()
+    if active_session:
+        active_session.is_active = False
+        db.session.commit()
+
     logout_user()
     flash('Ha cerrado sesión exitosamente.', 'success')
     return redirect(url_for('auth.login'))
@@ -67,6 +117,15 @@ def register():
 
         db.session.add(user)
         db.session.commit()
+
+        # Registrar actividad de registro
+        from app.models.activity_log import ActivityLog
+        ActivityLog.log_activity(
+            'user_registration',
+            f'Nuevo usuario registrado: {user.username}',
+            request.remote_addr,
+            request.headers.get('User-Agent')
+        )
 
         flash('¡Registro exitoso! Ahora puede iniciar sesión.', 'success')
         return redirect(url_for('auth.login'))

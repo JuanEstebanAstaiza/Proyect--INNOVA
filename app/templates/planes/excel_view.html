@@ -1,0 +1,644 @@
+{% extends "base.html" %}
+
+{# Funciones helper para permisos #}
+{% macro can_view_column(column_name) %}
+    {{ column_name in user_viewable_columns }}
+{% endmacro %}
+
+{% macro can_edit_column(column_name) %}
+    {{ column_name in user_editable_columns }}
+{% endmacro %}
+
+{% macro get_cell_classes(column_name, row_data) %}
+    {% set classes = ['excel-cell'] %}
+    {% if not can_edit_column(column_name) or not row_data._can_edit_row %}
+        {% set classes = classes + ['readonly-cell'] %}
+    {% endif %}
+    {{ classes|join(' ') }}
+{% endmacro %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-table text-success"></i> Vista Excel: {{ plan.titulo }}
+                </h1>
+                <p class="text-muted">Vista tabular editable del plan de desarrollo</p>
+
+                <!-- Información de permisos -->
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-key me-1"></i>
+                        Columnas editables: <strong>{{ user_editable_columns|length }}</strong> |
+                        Total visibles: <strong>{{ user_viewable_columns|length }}</strong>
+                    </small>
+                </div>
+            </div>
+            <div class="btn-group">
+                {% if user_editable_columns %}
+                <button type="button" class="btn btn-success" onclick="guardarCambios()">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+                {% endif %}
+                <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas de permisos -->
+{% if not user_editable_columns %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>Modo Solo Lectura:</strong> No tienes permisos para editar ninguna columna. Solo puedes visualizar la información.
+</div>
+{% endif %}
+
+<!-- Barra de herramientas Excel -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="excel-toolbar">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2">
+                    {% if user_editable_columns %}
+                    <button type="button" class="btn btn-success" onclick="guardarCambios()">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                    {% endif %}
+                    {% if current_user.is_editor() %}
+                    <button type="button" class="btn btn-outline-primary" onclick="agregarFila()">
+                        <i class="fas fa-plus"></i> Agregar Fila
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="eliminarFilaSeleccionada()">
+                        <i class="fas fa-trash"></i> Eliminar Fila
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="copiarFila()">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('planes.exportar_excel', plan_id=plan.id) }}" class="btn btn-info">
+                        <i class="fas fa-download"></i> Exportar Excel
+                    </a>
+                    {% if current_user.is_editor() %}
+                    <button type="button" class="btn btn-warning" onclick="importarExcel()">
+                        <i class="fas fa-upload"></i> Importar Excel
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla Excel -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                    <table id="excelTable" class="excel-table table mb-0">
+                        <thead class="sticky-top">
+                            <tr>
+                                <!-- Información básica de la estructura -->
+                                {% if can_view_column('CÓD LINEA') %}
+                                <th class="text-center col-estructura" style="min-width: 80px;">CÓD<br>LÍNEA</th>
+                                {% endif %}
+                                {% if can_view_column('LINEAS ESTRATEGICAS') %}
+                                <th class="text-center col-estructura" style="min-width: 200px;">LÍNEAS<br>ESTRATÉGICAS</th>
+                                {% endif %}
+                                {% if can_view_column('CÓD COMPONENTE') %}
+                                <th class="text-center col-estructura" style="min-width: 100px;">CÓD<br>COMPONENTE</th>
+                                {% endif %}
+                                {% if can_view_column('COMPONENTES') %}
+                                <th class="text-center col-estructura" style="min-width: 200px;">COMPONENTES</th>
+                                {% endif %}
+                                {% if can_view_column('CÓD PROGRAMA') %}
+                                <th class="text-center col-estructura" style="min-width: 100px;">CÓD<br>PROGRAMA</th>
+                                {% endif %}
+                                {% if can_view_column('PROGRAMA PDM') %}
+                                <th class="text-center col-estructura" style="min-width: 200px;">PROGRAMA<br>PDM</th>
+                                {% endif %}
+                                {% if can_view_column('DEPENDENCIA RESPOSABLE') %}
+                                <th class="text-center col-estructura" style="min-width: 150px;">DEPENDENCIA<br>RESPONSABLE</th>
+                                {% endif %}
+                                {% if can_view_column('BPIM') %}
+                                <th class="text-center col-estructura" style="min-width: 100px;">BPIM</th>
+                                {% endif %}
+                                {% if can_view_column('NOMBRE PROYECTO') %}
+                                <th class="text-center col-estructura" style="min-width: 200px;">NOMBRE<br>PROYECTO</th>
+                                {% endif %}
+                                <th class="text-center col-indicadores" style="min-width: 150px;">INDICADORES</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;">CÓD<br>INDICADOR</th>
+                                <th class="text-center col-indicadores" style="min-width: 200px;">INDICADOR DE<br>PRODUCTO</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;">TIPO DE<br>INDICADOR</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;">LÍNEA<br>BASE</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;">SENTIDO</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;">TIPOLOGÍA</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;">UNIDAD</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;">META<br>CUATRIENIO</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;">META<br>2024</th>
+
+                                <!-- Columnas de ejecución trimestral -->
+                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>I TRIMESTRE</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>I TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>I TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>I TRIMESTRE</th>
+
+                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>II TRIMESTRE</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>II TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>II TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>II TRIMESTRE</th>
+
+                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>III TRIMESTRE</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>III TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>III TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>III TRIMESTRE</th>
+
+                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>IV TRIMESTRE</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>IV TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>IV TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>IV TRIMESTRE</th>
+
+                                <!-- Columnas acumuladas -->
+                                <th class="text-center col-acumulado" style="min-width: 120px;">EJECUCIÓN<br>ACUMULADA</th>
+                                <th class="text-center col-acumulado" style="min-width: 120px;">% CUMPLIMIENTO<br>ACUMULADO</th>
+                                <th class="text-center col-acumulado" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>ACUMULADA</th>
+                                <th class="text-center col-acumulado" style="min-width: 150px;">OBSERVACIÓN<br>ACUMULADA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in excel_data %}
+                            <tr data-row-id="{{ loop.index }}">
+                                <!-- Información básica de la estructura -->
+                                <td class="text-center">
+                                    <input type="number" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.cod_linea }}" data-column="cod_linea">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.lineas_estrategicas }}" data-column="lineas_estrategicas">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.cod_componente }}" data-column="cod_componente">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.componentes }}" data-column="componentes">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.cod_programa }}" data-column="cod_programa">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.programa_pdm }}" data-column="programa_pdm">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.dependencia_responsable }}" data-column="dependencia_responsable">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.bpim }}" data-column="bpim">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.nombre_proyecto }}" data-column="nombre_proyecto">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.indicadores }}" data-column="indicadores">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.cod_indicador_de_producto }}" data-column="cod_indicador_de_producto">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.indicador_de_producto }}" data-column="indicador_de_producto">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.tipo_de_indicador }}" data-column="tipo_de_indicador">
+                                </td>
+                                <td class="text-end">
+                                    <input type="number" step="0.01" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.linea_base }}" data-column="linea_base">
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm excel-cell" data-column="sentido">
+                                        <option value="positivo" {% if row.sentido == 'positivo' %}selected{% endif %}>Positivo</option>
+                                        <option value="negativo" {% if row.sentido == 'negativo' %}selected{% endif %}>Negativo</option>
+                                        <option value="neutral" {% if row.sentido == 'neutral' %}selected{% endif %}>Neutral</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.tipologia }}" data-column="tipologia">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.unidad }}" data-column="unidad">
+                                </td>
+                                <td class="text-end">
+                                    <input type="number" step="0.01" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.meta_cuatrienio }}" data-column="meta_cuatrienio">
+                                </td>
+                                <td class="text-end">
+                                    <input type="number" step="0.01" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.meta_2024 }}" data-column="meta_2024">
+                                </td>
+
+                                <!-- Columnas de ejecución trimestral -->
+                                {% for trimestre in range(1, 5) %}
+                                <td class="text-end bg-light">
+                                    <input type="number" step="0.01" class="form-control form-control-sm excel-cell"
+                                           value="{{ row['ejecucion_' + trimestre|string + '_trimestre'] }}"
+                                           data-column="ejecucion_{{ trimestre }}_trimestre">
+                                </td>
+                                <td class="text-end bg-light">
+                                    <input type="number" step="0.01" class="form-control form-control-sm excel-cell"
+                                           value="{{ row['cumplimiento_' + trimestre|string + '_trimestre'] }}"
+                                           data-column="cumplimiento_{{ trimestre }}_trimestre">
+                                </td>
+                                <td class="text-end bg-light">
+                                    <input type="number" class="form-control form-control-sm excel-cell"
+                                           value="{{ row['poblacion_impactada_' + trimestre|string + '_trimestre'] }}"
+                                           data-column="poblacion_impactada_{{ trimestre }}_trimestre">
+                                </td>
+                                <td class="bg-light">
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row['observacion_' + trimestre|string + '_trimestre'] }}"
+                                           data-column="observacion_{{ trimestre }}_trimestre">
+                                </td>
+                                {% endfor %}
+
+                                <!-- Columnas acumuladas -->
+                                <td class="text-end bg-warning">
+                                    <input type="number" step="0.01" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.ejecucion_acumulada }}" data-column="ejecucion_acumulada" readonly>
+                                </td>
+                                <td class="text-end bg-warning">
+                                    <input type="number" step="0.01" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.cumplimiento_acumulado }}" data-column="cumplimiento_acumulado" readonly>
+                                </td>
+                                <td class="text-end bg-warning">
+                                    <input type="number" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.poblacion_impactada_acumulada }}" data-column="poblacion_impactada_acumulada" readonly>
+                                </td>
+                                <td class="bg-warning">
+                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                           value="{{ row.observacion_acumulada }}" data-column="observacion_acumulada" readonly>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para importar Excel -->
+<div class="modal fade" id="importarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Importar desde Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('planes.importar_excel', plan_id=plan.id) }}" method="POST" enctype="multipart/form-data" id="importForm">
+                    <div class="mb-3">
+                        <label for="excel_file" class="form-label">Seleccionar archivo Excel</label>
+                        <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+                        <div class="form-text">
+                            Selecciona un archivo Excel con la estructura del plan de desarrollo.
+                            El archivo debe tener las columnas según el diccionario de datos.
+                        </div>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Importante:</strong> Esta acción sobrescribirá los datos existentes.
+                        Asegúrate de que el archivo Excel tenga la estructura correcta.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="importForm" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> Importar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variables globales
+let cambiosPendientes = false;
+let filaSeleccionada = null;
+
+// Función para guardar cambios
+function guardarCambios() {
+    if (!cambiosPendientes) {
+        alert('No hay cambios pendientes para guardar.');
+        return;
+    }
+
+    // Recopilar todos los datos de la tabla
+    const filas = document.querySelectorAll('#excelTable tbody tr');
+    const datosExcel = [];
+
+    filas.forEach(fila => {
+        const filaData = {};
+        const celdas = fila.querySelectorAll('input, select');
+
+        celdas.forEach(celda => {
+            const columnName = celda.getAttribute('data-column');
+            if (columnName) {
+                if (celda.type === 'number') {
+                    filaData[columnName] = parseFloat(celda.value) || 0;
+                } else {
+                    filaData[columnName] = celda.value;
+                }
+            }
+        });
+
+        datosExcel.push(filaData);
+    });
+
+    // Enviar datos al servidor
+    fetch(`{{ url_for('planes.guardar_excel', plan_id=plan.id) }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            excel_data: datosExcel
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Cambios guardados exitosamente.');
+            cambiosPendientes = false;
+            actualizarIndicadorCambios();
+            location.reload(); // Recargar para mostrar datos actualizados
+        } else {
+            alert('Error al guardar cambios: ' + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al guardar cambios. Inténtelo de nuevo.');
+    });
+}
+
+// Función para marcar cambios pendientes
+function marcarCambiosPendientes() {
+    cambiosPendientes = true;
+    actualizarIndicadorCambios();
+}
+
+// Función para actualizar indicador visual de cambios
+function actualizarIndicadorCambios() {
+    const btnGuardar = document.querySelector('button[onclick="guardarCambios()"]');
+    if (cambiosPendientes) {
+        btnGuardar.classList.remove('btn-success');
+        btnGuardar.classList.add('btn-warning');
+        btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios (*)';
+    } else {
+        btnGuardar.classList.remove('btn-warning');
+        btnGuardar.classList.add('btn-success');
+        btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+    }
+}
+
+// Función para agregar fila
+function agregarFila() {
+    const tbody = document.querySelector('#excelTable tbody');
+    const newRow = tbody.rows[tbody.rows.length - 1].cloneNode(true);
+    const rowId = tbody.rows.length + 1;
+
+    newRow.setAttribute('data-row-id', rowId);
+
+    // Limpiar valores de la nueva fila
+    const inputs = newRow.querySelectorAll('input, select');
+    inputs.forEach(input => {
+        if (input.type === 'number') {
+            input.value = '0';
+        } else {
+            input.value = '';
+        }
+    });
+
+    tbody.appendChild(newRow);
+    marcarCambiosPendientes();
+}
+
+// Función para eliminar fila seleccionada
+function eliminarFilaSeleccionada() {
+    if (!filaSeleccionada) {
+        alert('Selecciona una fila para eliminar.');
+        return;
+    }
+
+    if (confirm('¿Estás seguro de que deseas eliminar esta fila?')) {
+        filaSeleccionada.remove();
+        filaSeleccionada = null;
+        marcarCambiosPendientes();
+    }
+}
+
+// Función para copiar fila
+function copiarFila() {
+    if (!filaSeleccionada) {
+        alert('Selecciona una fila para copiar.');
+        return;
+    }
+
+    const tbody = document.querySelector('#excelTable tbody');
+    const newRow = filaSeleccionada.cloneNode(true);
+    const rowId = tbody.rows.length + 1;
+
+    newRow.setAttribute('data-row-id', rowId);
+    tbody.appendChild(newRow);
+    marcarCambiosPendientes();
+}
+
+// Función para exportar a Excel (ya está implementada en el botón)
+
+// Función para importar Excel
+function importarExcel() {
+    const modal = new bootstrap.Modal(document.getElementById('importarModal'));
+    modal.show();
+}
+
+// Función para procesar importación (ya está implementada en el formulario)
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Marcar fila seleccionada al hacer clic
+    document.querySelectorAll('#excelTable tbody tr').forEach(row => {
+        row.addEventListener('click', function() {
+            // Remover selección anterior
+            if (filaSeleccionada) {
+                filaSeleccionada.classList.remove('table-active');
+            }
+
+            // Seleccionar nueva fila
+            this.classList.add('table-active');
+            filaSeleccionada = this;
+        });
+    });
+
+    // Detectar cambios en las celdas
+    document.querySelectorAll('.excel-cell').forEach(cell => {
+        cell.addEventListener('input', function() {
+            marcarCambiosPendientes();
+
+            // Calcular automáticamente columnas acumuladas si es necesario
+            if (this.dataset.column.includes('ejecucion_') && !this.dataset.column.includes('acumulada')) {
+                calcularAcumulados(this.closest('tr'));
+            }
+        });
+    });
+
+    // Calcular acumuladas al cargar la página
+    document.querySelectorAll('#excelTable tbody tr').forEach(row => {
+        calcularAcumulados(row);
+    });
+});
+
+// Función para calcular valores acumulados
+function calcularAcumulados(row) {
+    // Calcular ejecución acumulada
+    let ejecucionAcumulada = 0;
+    for (let i = 1; i <= 4; i++) {
+        const ejecucionValue = parseFloat(row.querySelector(`[data-column="ejecucion_${i}_trimestre"]`).value) || 0;
+        ejecucionAcumulada += ejecucionValue;
+    }
+    row.querySelector('[data-column="ejecucion_acumulada"]').value = ejecucionAcumulada.toFixed(2);
+
+    // Calcular cumplimiento acumulado
+    const meta2024 = parseFloat(row.querySelector('[data-column="meta_2024"]').value) || 0;
+    const cumplimientoAcumulado = meta2024 > 0 ? (ejecucionAcumulada / meta2024 * 100) : 0;
+    row.querySelector('[data-column="cumplimiento_acumulado"]').value = cumplimientoAcumulado.toFixed(2);
+
+    // Calcular población impactada acumulada
+    let poblacionAcumulada = 0;
+    for (let i = 1; i <= 4; i++) {
+        const poblacionValue = parseInt(row.querySelector(`[data-column="poblacion_impactada_${i}_trimestre"]`).value) || 0;
+        poblacionAcumulada += poblacionValue;
+    }
+    row.querySelector('[data-column="poblacion_impactada_acumulada"]').value = poblacionAcumulada;
+}
+
+// Función para calcular cumplimiento trimestral automáticamente
+function calcularCumplimientoTrimestral(row, trimestre) {
+    const meta2024 = parseFloat(row.querySelector('[data-column="meta_2024"]').value) || 0;
+    const ejecucionTrimestral = parseFloat(row.querySelector(`[data-column="ejecucion_${trimestre}_trimestre"]`).value) || 0;
+
+    if (meta2024 > 0) {
+        const cumplimientoTrimestral = (ejecucionTrimestral / meta2024 * 100);
+        row.querySelector(`[data-column="cumplimiento_${trimestre}_trimestre"]`).value = cumplimientoTrimestral.toFixed(2);
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+S para guardar
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        guardarCambios();
+    }
+
+    // Supr para eliminar fila
+    if (e.key === 'Delete' && filaSeleccionada) {
+        e.preventDefault();
+        eliminarFilaSeleccionada();
+    }
+});
+</script>
+
+<style>
+/* Estilos específicos para la vista Excel */
+.excel-cell {
+    border: none;
+    padding: 2px 4px;
+    font-size: 0.85rem;
+    min-height: 30px;
+}
+
+.excel-cell:focus {
+    outline: 2px solid #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 8px 4px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 2px 4px;
+    vertical-align: middle;
+}
+
+.table-responsive {
+    border: 1px solid #dee2e6;
+}
+
+.sticky-top {
+    top: 0;
+    z-index: 1020;
+}
+
+/* Estilos para la fila seleccionada */
+.table-active {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+/* Estilos para las columnas de diferentes tipos */
+.text-end {
+    text-align: right;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.bg-warning {
+    background-color: #fff3cd !important;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .excel-cell {
+        font-size: 0.75rem;
+        padding: 1px 2px;
+    }
+
+    .table th {
+        font-size: 0.65rem;
+        padding: 4px 2px;
+    }
+
+    .table td {
+        padding: 1px 2px;
+    }
+}
+</style>
+{% endblock %}

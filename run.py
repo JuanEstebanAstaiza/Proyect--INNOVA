@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Archivo principal para ejecutar la aplicación del Sistema de Planes de Desarrollo Municipal
+Archivo principal para ejecutar la aplicación Proyecto INNOVA
 """
 
 import os

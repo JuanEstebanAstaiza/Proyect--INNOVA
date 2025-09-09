@@ -6,7 +6,8 @@ Script para inicializar la base de datos con datos de ejemplo
 from app import create_app, db
 from app.models import (
     User, PlanDesarrollo, LineaEstrategica, Componente,
-    Programa, Proyecto, IndicadorProducto, EjecucionTrimestral
+    Programa, Proyecto, IndicadorProducto, EjecucionTrimestral,
+    ActivityLog, ActiveSession
 )
 from werkzeug.security import generate_password_hash
 from datetime import datetime
@@ -14,7 +15,7 @@ from datetime import datetime
 def create_sample_data():
     """Crear datos de ejemplo para testing"""
 
-    # Crear usuario administrador de ejemplo
+    # Crear usuarios de ejemplo con diferentes roles
     admin_user = User(
         username='admin',
         email='admin@alcaldia.com',
@@ -27,6 +28,68 @@ def create_sample_data():
     )
     admin_user.password = 'admin123'
     db.session.add(admin_user)
+
+    editor_user = User(
+        username='editor',
+        email='editor@alcaldia.com',
+        first_name='Editor',
+        last_name='Ejemplo',
+        position='Editor de Planes',
+        municipality='Municipio de Ejemplo',
+        department='Departamento de Ejemplo',
+        role='editor'
+    )
+    editor_user.password = 'editor123'
+    db.session.add(editor_user)
+
+    viewer_user = User(
+        username='viewer',
+        email='viewer@alcaldia.com',
+        first_name='Visualizador',
+        last_name='Ejemplo',
+        position='Analista de Datos',
+        municipality='Municipio de Ejemplo',
+        department='Departamento de Ejemplo',
+        role='viewer'
+    )
+    viewer_user.password = 'viewer123'
+    db.session.add(viewer_user)
+
+    db.session.commit()
+
+    # Crear algunos registros de actividad de ejemplo
+    ActivityLog.log_activity(
+        'login',
+        'Inicio de sesión del administrador',
+        '127.0.0.1',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        user_id=admin_user.id
+    )
+
+    ActivityLog.log_activity(
+        'create_plan',
+        'Creación del Plan de Desarrollo Municipal 2024-2027',
+        '127.0.0.1',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        user_id=admin_user.id
+    )
+
+    ActivityLog.log_activity(
+        'login',
+        'Inicio de sesión del editor',
+        '192.168.1.100',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        user_id=editor_user.id
+    )
+
+    # Crear sesión activa de ejemplo
+    active_session = ActiveSession(
+        user_id=admin_user.id,
+        session_id='sample_session_123',
+        ip_address='127.0.0.1',
+        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    )
+    db.session.add(active_session)
     db.session.commit()
 
     # Crear plan de desarrollo
@@ -129,10 +192,25 @@ def create_sample_data():
     db.session.commit()
 
     print("✅ Datos de ejemplo creados exitosamente!")
-    print("\nUsuario administrador:")
+    print("\nUsuarios de prueba creados:")
+    print("\n👑 ADMINISTRADOR:")
     print("  Usuario: admin")
     print("  Contraseña: admin123")
     print("  Email: admin@alcaldia.com")
+    print("  Rol: Administrador del Sistema")
+    print("\n✏️ EDITOR:")
+    print("  Usuario: editor")
+    print("  Contraseña: editor123")
+    print("  Email: editor@alcaldia.com")
+    print("  Rol: Editor de Planes")
+    print("\n👁️ VISUALIZADOR:")
+    print("  Usuario: viewer")
+    print("  Contraseña: viewer123")
+    print("  Email: viewer@alcaldia.com")
+    print("  Rol: Analista de Datos")
+    print("\n🔗 Acceso al Panel de Administrador:")
+    print("  Solo el usuario 'admin' puede acceder al panel de administración")
+    print("  URL: /admin/dashboard")
 
 def init_database():
     """Inicializar la base de datos"""

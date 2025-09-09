@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0 text-primary fw-bold">
+                    <i class="fas fa-users text-secondary"></i> Gestión de Usuarios
+                </h1>
+                <p class="text-muted">Administrar usuarios del sistema Proyecto INNOVA</p>
+            </div>
+            <a href="{{ url_for('admin.create_user') }}" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> Crear Usuario
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas de Usuarios -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-primary">Total Usuarios</h6>
+                        <h2 class="mb-0 text-primary">{{ users|length if users else 0 }}</h2>
+                        <small class="text-muted">Registrados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-3x text-primary opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-success">Usuarios Activos</h6>
+                        <h2 class="mb-0 text-success">{{ users|selectattr('is_active', 'equalto', True)|list|length if users else 0 }}</h2>
+                        <small class="text-muted">Conectados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-user-check fa-3x text-success opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-warning">Administradores</h6>
+                        <h2 class="mb-0 text-warning">{{ users|selectattr('role', 'equalto', 'admin')|list|length if users else 0 }}</h2>
+                        <small class="text-muted">Con permisos</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-shield-alt fa-3x text-warning opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-info">Editores</h6>
+                        <h2 class="mb-0 text-info">{{ users|selectattr('role', 'equalto', 'editor')|list|length if users else 0 }}</h2>
+                        <small class="text-muted">Con edición</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-edit fa-3x text-info opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Usuarios -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0 text-dark fw-semibold">
+                    <i class="fas fa-list text-secondary"></i> Lista de Usuarios
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Nombre Completo</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Última Actividad</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-2" style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                            {{ user.first_name[0] if user.first_name else user.username[0] }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ user.username }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ user.position or 'Sin cargo' }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ user.get_full_name() }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if user.role == 'admin' else 'warning' if user.role == 'editor' else 'info' }}">
+                                        {% if user.role == 'admin' %}
+                                            <i class="fas fa-shield-alt"></i> Administrador
+                                        {% elif user.role == 'editor' %}
+                                            <i class="fas fa-edit"></i> Editor
+                                        {% else %}
+                                            <i class="fas fa-eye"></i> Visualizador
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> Activo
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle"></i> Inactivo
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.last_login %}
+                                        <small class="text-muted">
+                                            {{ user.last_login.strftime('%d/%m/%Y') }}<br>
+                                            {{ user.last_login.strftime('%H:%M') }}
+                                        </small>
+                                    {% else %}
+                                        <small class="text-muted">Nunca</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle"
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-cog"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="{{ url_for('main.profile') }}?user={{ user.id }}">
+                                                <i class="fas fa-eye"></i> Ver Perfil
+                                            </a></li>
+                                            {% if user.id != current_user.id %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" style="display: inline;">
+                                                    <button type="submit" class="dropdown-item text-{{ 'danger' if user.is_active else 'success' }}">
+                                                        <i class="fas fa-{{ 'ban' if user.is_active else 'check' }}"></i>
+                                                        {{ 'Desactivar' if user.is_active else 'Activar' }}
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <button type="button" class="dropdown-item" data-bs-toggle="modal"
+                                                        data-bs-target="#changeRoleModal"
+                                                        onclick="setUserForRoleChange({{ user.id }}, '{{ user.username }}', '{{ user.role }}')">
+                                                    <i class="fas fa-user-tag"></i> Cambiar Rol
+                                                </button>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if pagination %}
+                <nav aria-label="Paginación de usuarios" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.users', page=pagination.prev_num) }}">
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-left"></i> Anterior</span>
+                        </li>
+                        {% endif %}
+
+                        {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                            <a class="page-link" href="{{ url_for('admin.users', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.users', page=pagination.next_num) }}">
+                                Siguiente <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Siguiente <i class="fas fa-chevron-right"></i></span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cambiar rol -->
+<div class="modal fade" id="changeRoleModal" tabindex="-1" aria-labelledby="changeRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changeRoleModalLabel">
+                    <i class="fas fa-user-tag"></i> Cambiar Rol de Usuario
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" id="changeRoleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="userInfo" class="form-label">Usuario:</label>
+                        <div id="userInfo" class="form-control-plaintext fw-bold"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="roleSelect" class="form-label">Nuevo Rol:</label>
+                        <select class="form-select" id="roleSelect" name="role" required>
+                            <option value="viewer">Visualizador</option>
+                            <option value="editor">Editor</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Cambiar Rol
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function setUserForRoleChange(userId, username, currentRole) {
+    document.getElementById('userInfo').textContent = username;
+    document.getElementById('roleSelect').value = currentRole;
+    document.getElementById('changeRoleForm').action = `/admin/users/${userId}/change-role`;
+}
+
+// Auto-refresh de la página cada 30 segundos para mantener datos actualizados
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

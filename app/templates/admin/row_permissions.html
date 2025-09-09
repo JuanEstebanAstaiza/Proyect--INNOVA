@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.dashboard') }}">Panel Admin</a>
+                    </li>
+                    <li class="breadcrumb-item active">Permisos de Fila</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-table me-2"></i>Permisos de Fila
+                    </h1>
+                    <p class="text-muted mt-1">Asignar permisos específicos de filas a usuarios</p>
+                </div>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignPermissionModal">
+                    <i class="fas fa-plus me-2"></i>Asignar Permiso
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar Usuario</label>
+                            <input type="text" class="form-control" id="userSearch" placeholder="Nombre de usuario...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar Indicador</label>
+                            <input type="text" class="form-control" id="indicatorSearch" placeholder="Nombre del indicador...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar Proyecto</label>
+                            <input type="text" class="form-control" id="projectSearch" placeholder="Nombre del proyecto...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Permisos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Permisos Asignados
+                        <span class="badge bg-primary ms-2" id="totalPermissions">0</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if permissions_data %}
+                        <div class="accordion" id="permissionsAccordion">
+                            {% for permission_data in permissions_data %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ permission_data.user.id }}">
+                                    <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#collapse{{ permission_data.user.id }}">
+                                        <div class="d-flex align-items-center w-100">
+                                            <div class="me-3">
+                                                <i class="fas fa-user-circle fa-lg text-primary"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <strong>{{ permission_data.user.get_full_name() }}</strong>
+                                                <small class="text-muted d-block">@{{ permission_data.user.username }}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success">{{ permission_data.count }} permisos</span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ permission_data.user.id }}" class="accordion-collapse collapse"
+                                     data-bs-parent="#permissionsAccordion">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Indicador</th>
+                                                        <th>Proyecto</th>
+                                                        <th>Programa</th>
+                                                        <th>Término de Búsqueda</th>
+                                                        <th>Asignado Por</th>
+                                                        <th>Fecha</th>
+                                                        <th>Acciones</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for permission in permission_data.permissions %}
+                                                    <tr>
+                                                        <td>
+                                                            <strong>{{ permission.indicador.nombre }}</strong>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-light text-dark">
+                                                                {{ permission.indicador.proyecto.nombre }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <small class="text-muted">
+                                                                {{ permission.indicador.proyecto.programa.nombre if permission.indicador.proyecto.programa else 'N/A' }}
+                                                            </small>
+                                                        </td>
+                                                        <td>
+                                                            {% if permission.search_term %}
+                                                                <code class="text-primary">{{ permission.search_term }}</code>
+                                                            {% else %}
+                                                                <span class="text-muted">N/A</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <small>{{ permission.assigner.get_full_name() if permission.assigner else 'Sistema' }}</small>
+                                                        </td>
+                                                        <td>
+                                                            <small class="text-muted">
+                                                                {{ permission.assigned_at.strftime('%d/%m/%Y %H:%M') if permission.assigned_at else 'N/A' }}
+                                                            </small>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-sm btn-outline-danger"
+                                                                    onclick="removePermission({{ permission.id }}, '{{ permission.indicador.nombre }}')">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-table fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay permisos de fila asignados</h5>
+                            <p class="text-muted mb-4">Los usuarios solo tendrán acceso a las filas según sus roles asignados.</p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignPermissionModal">
+                                <i class="fas fa-plus me-2"></i>Asignar Primer Permiso
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Asignar Permiso -->
+<div class="modal fade" id="assignPermissionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>Asignar Permiso de Fila
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="assignPermissionForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-user me-1"></i>Seleccionar Usuario *
+                                </label>
+                                <select class="form-select" name="user_id" required>
+                                    <option value="">-- Seleccionar Usuario --</option>
+                                    {% for user in all_users %}
+                                    <option value="{{ user.id }}">{{ user.get_full_name() }} (@{{ user.username }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-search me-1"></i>Buscar Indicador *
+                                </label>
+                                <input type="text" class="form-control" id="indicatorSearchInput"
+                                       placeholder="Escriba para buscar indicadores..." autocomplete="off">
+                                <input type="hidden" name="indicador_id" id="selectedIndicatorId">
+                                <div class="form-text">
+                                    Busque por nombre del indicador, proyecto o programa
+                                </div>
+                                <div id="searchResults" class="mt-2" style="display: none;">
+                                    <div class="list-group" id="resultsList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="indicatorDetails" style="display: none;">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-info-circle me-2"></i>Indicador Seleccionado
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Indicador:</strong> <span id="selectedIndicatorName"></span><br>
+                                        <strong>Proyecto:</strong> <span id="selectedProjectName"></span><br>
+                                        <strong>Programa:</strong> <span id="selectedProgramName"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Componente:</strong> <span id="selectedComponentName"></span><br>
+                                        <strong>Línea Estratégica:</strong> <span id="selectedLineaName"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-tag me-1"></i>Notas (Opcional)
+                        </label>
+                        <textarea class="form-control" name="notes" rows="2"
+                                  placeholder="Notas adicionales sobre este permiso..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="assignButton" disabled>
+                        <i class="fas fa-save me-2"></i>Asignar Permiso
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Eliminar Permiso -->
+<div class="modal fade" id="removePermissionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-trash-alt text-danger me-2"></i>Eliminar Permiso
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar el permiso para el indicador <strong id="removeIndicatorName"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Advertencia:</strong> Esta acción no se puede deshacer.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="removePermissionForm" method="POST">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let searchTimeout;
+let selectedIndicator = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Actualizar contador total
+    updateTotalCount();
+
+    // Configurar búsqueda de indicadores
+    setupIndicatorSearch();
+
+    // Configurar filtros
+    setupFilters();
+});
+
+function updateTotalCount() {
+    const total = document.querySelectorAll('.accordion-item').length;
+    document.getElementById('totalPermissions').textContent = total;
+}
+
+function setupIndicatorSearch() {
+    const searchInput = document.getElementById('indicatorSearchInput');
+    const resultsDiv = document.getElementById('searchResults');
+    const resultsList = document.getElementById('resultsList');
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            resultsDiv.style.display = 'none';
+            selectedIndicator = null;
+            updateAssignButton();
+            return;
+        }
+
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetch(`{{ url_for('admin.search_indicadores') }}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    resultsList.innerHTML = '';
+
+                    if (data.results.length === 0) {
+                        resultsList.innerHTML = '<div class="list-group-item text-muted">No se encontraron resultados</div>';
+                    } else {
+                        data.results.forEach(result => {
+                            const item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'list-group-item list-group-item-action';
+                            item.innerHTML = `
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">${result.text}</h6>
+                                </div>
+                                <small class="text-muted">
+                                    Programa: ${result.programa} | Componente: ${result.componente}
+                                </small>
+                            `;
+                            item.addEventListener('click', () => selectIndicator(result));
+                            resultsList.appendChild(item);
+                        });
+                    }
+
+                    resultsDiv.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error en búsqueda:', error);
+                    resultsList.innerHTML = '<div class="list-group-item text-danger">Error en la búsqueda</div>';
+                    resultsDiv.style.display = 'block';
+                });
+        }, 300);
+    });
+}
+
+function selectIndicator(indicator) {
+    selectedIndicator = indicator;
+    document.getElementById('indicatorSearchInput').value = indicator.text;
+    document.getElementById('selectedIndicatorId').value = indicator.id;
+    document.getElementById('searchResults').style.display = 'none';
+
+    // Mostrar detalles del indicador seleccionado
+    document.getElementById('selectedIndicatorName').textContent = indicator.text.split(' (Proyecto:')[0];
+    document.getElementById('selectedProjectName').textContent = indicator.proyecto;
+    document.getElementById('selectedProgramName').textContent = indicator.programa;
+    document.getElementById('selectedComponentName').textContent = indicator.componente;
+    document.getElementById('indicatorDetails').style.display = 'block';
+
+    updateAssignButton();
+}
+
+function updateAssignButton() {
+    const assignButton = document.getElementById('assignButton');
+    const userSelect = document.querySelector('select[name="user_id"]');
+
+    assignButton.disabled = !selectedIndicator || !userSelect.value;
+}
+
+function setupFilters() {
+    document.getElementById('userSearch').addEventListener('input', filterPermissions);
+    document.getElementById('indicatorSearch').addEventListener('input', filterPermissions);
+    document.getElementById('projectSearch').addEventListener('input', filterPermissions);
+
+    document.querySelector('select[name="user_id"]').addEventListener('change', updateAssignButton);
+}
+
+function filterPermissions() {
+    const userFilter = document.getElementById('userSearch').value.toLowerCase();
+    const indicatorFilter = document.getElementById('indicatorSearch').value.toLowerCase();
+    const projectFilter = document.getElementById('projectSearch').value.toLowerCase();
+
+    const accordionItems = document.querySelectorAll('.accordion-item');
+
+    accordionItems.forEach(item => {
+        const userText = item.textContent.toLowerCase();
+        const isVisible = (!userFilter || userText.includes(userFilter)) &&
+                         (!indicatorFilter || userText.includes(indicatorFilter)) &&
+                         (!projectFilter || userText.includes(projectFilter));
+
+        item.style.display = isVisible ? '' : 'none';
+    });
+}
+
+function removePermission(permissionId, indicatorName) {
+    document.getElementById('removeIndicatorName').textContent = indicatorName;
+    document.getElementById('removePermissionForm').action = `{{ url_for('admin.remove_row_permission', permission_id=0) }}`.replace('0', permissionId);
+    new bootstrap.Modal(document.getElementById('removePermissionModal')).show();
+}
+
+// Manejar envío del formulario de asignación
+document.getElementById('assignPermissionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    formData.append('search_term', document.getElementById('indicatorSearchInput').value);
+
+    fetch('{{ url_for('admin.assign_row_permission') }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Cerrar modal y recargar página
+            bootstrap.Modal.getInstance(document.getElementById('assignPermissionModal')).hide();
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al asignar permiso');
+    });
+});
+</script>
+
+{% endblock %}

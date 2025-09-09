@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.dashboard') }}">Panel Admin</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin.roles') }}">Roles</a>
+                    </li>
+                    <li class="breadcrumb-item active">Crear Rol</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-plus-circle me-2"></i>Crear Nuevo Rol
+                    </h1>
+                    <p class="text-muted mt-1">Define un rol personalizado con permisos específicos</p>
+                </div>
+                <a href="{{ url_for('admin.roles') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="POST" id="roleForm">
+                <!-- Información Básica -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Información del Rol
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">
+                                        <i class="fas fa-tag me-1"></i>Nombre del Rol *
+                                    </label>
+                                    <input type="text" class="form-control" id="name" name="name"
+                                           placeholder="Ej: Editor de Salud" required>
+                                    <div class="form-text">Nombre descriptivo del rol</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="color" class="form-label">
+                                        <i class="fas fa-palette me-1"></i>Color
+                                    </label>
+                                    <input type="color" class="form-control form-control-color" id="color"
+                                           name="color" value="#007bff" title="Selecciona un color para el rol">
+                                    <div class="form-text">Color para identificar el rol</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">
+                                <i class="fas fa-align-left me-1"></i>Descripción
+                            </label>
+                            <textarea class="form-control" id="description" name="description"
+                                      rows="3" placeholder="Describe las responsabilidades de este rol"></textarea>
+                            <div class="form-text">Descripción opcional del rol y sus funciones</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Permisos por Categoría -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-key me-2"></i>Configuración de Permisos
+                        </h5>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" onclick="selectAllEditable()">
+                                <i class="fas fa-check-square me-1"></i>Seleccionar Todo
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearAllEditable()">
+                                <i class="fas fa-square me-1"></i>Limpiar Todo
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Nota:</strong> Marca las casillas de las columnas que los usuarios con este rol podrán <strong>editar</strong>.
+                            Todos los usuarios podrán <strong>ver</strong> todas las columnas marcadas.
+                        </div>
+
+                        <!-- Categorías de Columnas -->
+                        <div class="accordion" id="permissionsAccordion">
+                            {% set categories = [
+                                ('estructura', 'Estructura', 'fas fa-sitemap', 'text-primary'),
+                                ('indicadores', 'Indicadores', 'fas fa-chart-line', 'text-success'),
+                                ('ejecucion', 'Ejecución', 'fas fa-play-circle', 'text-info'),
+                                ('cumplimiento', 'Cumplimiento', 'fas fa-percentage', 'text-warning'),
+                                ('poblacion', 'Población', 'fas fa-users', 'text-danger'),
+                                ('observaciones', 'Observaciones', 'fas fa-comment', 'text-secondary')
+                            ] %}
+
+                            {% for cat_key, cat_name, cat_icon, cat_color in categories %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ cat_key }}">
+                                    <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#collapse{{ cat_key }}">
+                                        <i class="{{ cat_icon }} me-2 {{ cat_color }}"></i>
+                                        {{ cat_name }}
+                                        <span class="badge bg-secondary ms-2" id="count{{ cat_key }}">0</span>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ cat_key }}" class="accordion-collapse collapse"
+                                     data-bs-parent="#permissionsAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row">
+                                            {% set cat_columns = [] %}
+                                            {% for col in [
+                                                'CÓD LINEA', 'LINEAS ESTRATEGICAS', 'CÓD COMPONENTE', 'COMPONENTES',
+                                                'CÓD PROGRAMA', 'PROGRAMA PDM', 'DEPENDENCIA RESPOSABLE', 'BPIM',
+                                                'NOMBRE PROYECTO', 'INDICADORES ', 'CÓD INDICADOR DE PRODUCTO',
+                                                'INDICADOR DE PRODUCTO', 'TIPO DE INDICADOR', 'LINEA BASE', 'SENTIDO',
+                                                'TIPOLOGÍA', 'UNIDAD', 'META CUATRIENIO (2024-2027)', 'META 2024',
+                                                'EJECUCIÓN I TRIMESTRE ', 'EJECUCIÓN II TRIMESTRE ',
+                                                'EJECUCIÓN III TRIMESTRE ', 'EJECUCIÓN IV TRIMESTRE ',
+                                                'EJECUCIÓN ACUMULADA', '% CUMPLIMIENTO I TRIMESTRE',
+                                                '% CUMPLIMIENTO II TRIMESTRE', '% CUMPLIMIENTO III TRIMESTRE',
+                                                '% CUMPLIMIENTO IV TRIMESTRE', '% CUMPLIMIENTO ACUMULADO',
+                                                'POBLACIÓN IMPACTADA POR SECTOR I TRIMESTRE',
+                                                'POBLACIÓN IMPACTADA POR SECTOR II TRIMESTRE',
+                                                'POBLACIÓN IMPACTADA POR SECTOR III TRIMESTRE',
+                                                'POBLACIÓN IMPACTADA POR SECTOR IV TRIMESTRE',
+                                                'OBSERVACIÓN AL CUMPLIMIENTO ITRIMESTRE',
+                                                'OBSERVACIÓN AL CUMPLIMIENTO II TRIMESTRE',
+                                                'OBSERVACIÓN AL CUMPLIMIENTO III TRIMESTRE',
+                                                'OBSERVACIÓN AL CUMPLIMIENTO IV TRIMESTRE'
+                                            ] %}
+                                            {% if cat_key == 'estructura' and col in ['CÓD LINEA', 'LINEAS ESTRATEGICAS', 'CÓD COMPONENTE', 'COMPONENTES', 'CÓD PROGRAMA', 'PROGRAMA PDM', 'DEPENDENCIA RESPOSABLE', 'BPIM', 'NOMBRE PROYECTO'] %}
+                                                {% set cat_columns = cat_columns.append(col) %}
+                                            {% elif cat_key == 'indicadores' and col in ['INDICADORES ', 'CÓD INDICADOR DE PRODUCTO', 'INDICADOR DE PRODUCTO', 'TIPO DE INDICADOR', 'LINEA BASE', 'SENTIDO', 'TIPOLOGÍA', 'UNIDAD', 'META CUATRIENIO (2024-2027)', 'META 2024'] %}
+                                                {% set cat_columns = cat_columns.append(col) %}
+                                            {% elif cat_key == 'ejecucion' and col in ['EJECUCIÓN I TRIMESTRE ', 'EJECUCIÓN II TRIMESTRE ', 'EJECUCIÓN III TRIMESTRE ', 'EJECUCIÓN IV TRIMESTRE ', 'EJECUCIÓN ACUMULADA'] %}
+                                                {% set cat_columns = cat_columns.append(col) %}
+                                            {% elif cat_key == 'cumplimiento' and col in ['% CUMPLIMIENTO I TRIMESTRE', '% CUMPLIMIENTO II TRIMESTRE', '% CUMPLIMIENTO III TRIMESTRE', '% CUMPLIMIENTO IV TRIMESTRE', '% CUMPLIMIENTO ACUMULADO'] %}
+                                                {% set cat_columns = cat_columns.append(col) %}
+                                            {% elif cat_key == 'poblacion' and 'POBLACIÓN' in col %}
+                                                {% set cat_columns = cat_columns.append(col) %}
+                                            {% elif cat_key == 'observaciones' and 'OBSERVACIÓN' in col %}
+                                                {% set cat_columns = cat_columns.append(col) %}
+                                            {% endif %}
+                                            {% endfor %}
+
+                                            {% for column in cat_columns %}
+                                            <div class="col-md-6 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input editable-checkbox category-{{ cat_key }}"
+                                                           type="checkbox" id="edit_{{ column|replace(' ', '_')|replace('%', 'pct')|replace('(', '')|replace(')', '')|replace('/', '_')|replace("'", '')|lower }}"
+                                                           name="edit_{{ column|replace(' ', '_')|replace('%', 'pct')|replace('(', '')|replace(')', '')|replace('/', '_')|replace("'", '')|lower }}"
+                                                           value="true">
+                                                    <label class="form-check-label" for="edit_{{ column|replace(' ', '_')|replace('%', 'pct')|replace('(', '')|replace(')', '')|replace('/', '_')|replace("'", '')|lower }}">
+                                                        <small class="text-muted">{{ column }}</small>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Panel Lateral -->
+        <div class="col-lg-4">
+            <!-- Resumen -->
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Resumen
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="text-success">
+                                <h4 class="mb-0" id="editableCount">0</h4>
+                                <small class="text-muted">Editables</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-info">
+                                <h4 class="mb-0" id="totalColumns">38</h4>
+                                <small class="text-muted">Total</small>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <h6 class="small font-weight-bold text-uppercase text-muted mb-2">Permisos por Categoría:</h6>
+                        <div id="categorySummary">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" form="roleForm" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i>Crear Rol
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Actualizar contadores en tiempo real
+function updateCounts() {
+    const editableCheckboxes = document.querySelectorAll('.editable-checkbox:checked');
+    const editableCount = editableCheckboxes.length;
+
+    document.getElementById('editableCount').textContent = editableCount;
+
+    // Actualizar contadores por categoría
+    const categories = ['estructura', 'indicadores', 'ejecucion', 'cumplimiento', 'poblacion', 'observaciones'];
+    let summaryHTML = '';
+
+    categories.forEach(cat => {
+        const catCheckboxes = document.querySelectorAll(`.category-${cat}:checked`);
+        const count = catCheckboxes.length;
+
+        document.getElementById(`count${cat}`).textContent = count;
+
+        if (count > 0) {
+            const catName = cat.charAt(0).toUpperCase() + cat.slice(1);
+            summaryHTML += `<div class="d-flex justify-content-between small mb-1">
+                <span>${catName}:</span>
+                <span class="fw-bold">${count}</span>
+            </div>`;
+        }
+    });
+
+    document.getElementById('categorySummary').innerHTML = summaryHTML || '<small class="text-muted">Ninguna categoría seleccionada</small>';
+}
+
+// Seleccionar/deseleccionar todo
+function selectAllEditable() {
+    document.querySelectorAll('.editable-checkbox').forEach(cb => cb.checked = true);
+    updateCounts();
+}
+
+function clearAllEditable() {
+    document.querySelectorAll('.editable-checkbox').forEach(cb => cb.checked = false);
+    updateCounts();
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Actualizar contadores cuando cambian los checkboxes
+    document.querySelectorAll('.editable-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateCounts);
+    });
+
+    // Inicializar contadores
+    updateCounts();
+});
+</script>
+
+{% endblock %}

@@ -1,168 +1,419 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h1 class="h3 mb-0">
-            <i class="fas fa-tachometer-alt text-primary"></i> Dashboard
-        </h1>
-        <p class="text-muted">Bienvenido al Sistema de Gestión de Planes de Desarrollo Municipal</p>
-    </div>
-</div>
-
-<!-- Información del Usuario -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-primary">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-user-circle"></i> Información de Usuario
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Nombre:</strong> {{ current_user.get_full_name() }}</p>
-                        <p><strong>Cargo:</strong> {{ current_user.position }}</p>
-                        <p><strong>Usuario:</strong> {{ current_user.username }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Alcaldía:</strong> {{ current_user.municipality }}</p>
-                        <p><strong>Departamento:</strong> {{ current_user.department }}</p>
-                        {% if current_user.municipality_code %}
-                        <p><strong>Código:</strong> {{ current_user.municipality_code }}</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Estadísticas del Sistema -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card bg-success text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Planes Activos</h6>
-                        <h2 class="mb-0">--</h2>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-clipboard-check fa-2x"></i>
+<div class="container-fluid mt-4">
+    <!-- Header de Bienvenida -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-dark">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="mb-1">
+                                <i class="fas fa-home me-2"></i>Bienvenido a Proyecto INNOVA
+                            </h2>
+                            <p class="mb-0 text-muted">
+                                Sistema de Gestión de Planes de Desarrollo Municipal
+                            </p>
+                            <!-- Indicador de actividad -->
+                            <div id="activity-status" class="mt-2 d-flex align-items-center">
+                                <small class="text-muted me-2">Estado de actividad:</small>
+                                <span id="activity-indicator" class="badge bg-secondary">
+                                    <i class="fas fa-circle me-1"></i>Verificando...
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="d-flex align-items-center justify-content-end">
+                                <div class="me-3">
+                                    <small class="text-muted">Usuario:</small><br>
+                                    <strong>{{ current_user.get_full_name() }}</strong>
+                                </div>
+                                <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                                     style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #e2e8f0;">
+                                    <i class="fas fa-user fa-lg"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3 mb-3">
-        <div class="card bg-info text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Objetivos</h6>
-                        <h2 class="mb-0">--</h2>
+    <!-- Roles Activos del Usuario -->
+    {% if current_user.active_roles %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-tag me-2"></i>Mis Roles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for user_role in current_user.active_roles %}
+                        <span class="badge fs-6 px-3 py-2"
+                              style="background-color: {{ user_role.role.color }}; color: white;">
+                            <i class="fas fa-tag me-1"></i>{{ user_role.role.name }}
+                        </span>
+                        {% endfor %}
                     </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-bullseye fa-2x"></i>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Tus permisos están determinados por estos roles. Contacta al administrador para modificarlos.
+                        </small>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <div class="col-md-3 mb-3">
-        <div class="card bg-warning text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Indicadores</h6>
-                        <h2 class="mb-0">--</h2>
-                    </div>
-                    <div class="align-self-center">
+    <!-- Accesos Rápidos -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="fas fa-rocket me-2"></i>Accesos Rápidos
+            </h4>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Acceso Principal -->
+    <div class="row mb-4">
+        <!-- Vista del Plan de Desarrollo -->
+        <div class="col-lg-6 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-primary text-white mb-3 mx-auto"
+                         style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-chart-line fa-2x"></i>
                     </div>
+                    <h5 class="card-title mb-3">Plan de Desarrollo</h5>
+                    <p class="card-text text-muted mb-4">
+                        Visualizar y gestionar el plan de desarrollo municipal con indicadores y objetivos.
+                    </p>
+                    {% if plan_activo %}
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('planes.ver', plan_id=plan_activo.id) }}" class="btn btn-primary btn-lg px-4">
+                            <i class="fas fa-eye me-2"></i>Ver Plan Activo
+                        </a>
+                        <a href="{{ url_for('planes.reportes', plan_id=plan_activo.id) }}" class="btn btn-outline-info btn-lg px-4">
+                            <i class="fas fa-chart-bar me-2"></i>Ver Reportes
+                        </a>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('planes.index') }}" class="btn btn-primary btn-lg px-4">
+                        <i class="fas fa-eye me-2"></i>Ver Plan
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista Excel -->
+        <div class="col-lg-6 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-success text-white mb-3 mx-auto"
+                         style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-file-excel fa-2x"></i>
+                    </div>
+                    <h5 class="card-title mb-3">Vista Excel</h5>
+                    <p class="card-text text-muted mb-4">
+                        Editar el plan de desarrollo en formato de hoja de cálculo con todas las funcionalidades.
+                    </p>
+                    {% if plan_activo %}
+                    <a href="{{ url_for('planes.ver_excel', plan_id=plan_activo.id) }}" class="btn btn-success btn-lg px-4">
+                        <i class="fas fa-table me-2"></i>Vista Excel
+                    </a>
+                    <div class="mt-2">
+                        <small class="text-success">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Plan activo: {{ plan_activo.titulo }}
+                        </small>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('planes.index') }}" class="btn btn-success btn-lg px-4">
+                        <i class="fas fa-table me-2"></i>Ver Planes
+                    </a>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            No hay plan activo. Contacta al administrador.
+                        </small>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3 mb-3">
-        <div class="card bg-danger text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">Alertas</h6>
-                        <h2 class="mb-0">--</h2>
+    <!-- Información del Sistema -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="fas fa-info-circle me-2"></i>Información del Sistema
+            </h4>
+        </div>
+    </div>
+
+    <!-- Estadísticas Básicas -->
+    <div class="row">
+        <!-- Estado del Sistema -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Estado del Sistema
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                <i class="fas fa-circle text-success me-2"></i>Operativo
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-server fa-2x text-success opacity-50"></i>
+                        </div>
                     </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Última Actividad -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card border-left-info shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Última Actividad
+                            </div>
+                            <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                {% if current_user.last_login %}
+                                    {{ current_user.last_login.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                    Primera sesión
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-clock fa-2x text-info opacity-50"></i>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columnas Editables -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card border-left-warning shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Columnas Editables
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ current_user.get_editable_columns()|length }}
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-edit fa-2x text-warning opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de Permisos -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-key me-2"></i>Mis Permisos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-columns me-2"></i>Columnas que puedo editar:
+                            </h6>
+                            <div class="d-flex flex-wrap gap-1 mb-3">
+                                {% set editable_cols = current_user.get_editable_columns() %}
+                                {% if editable_cols %}
+                                    {% for col in editable_cols[:6] %}
+                                        <span class="badge bg-primary">{{ col }}</span>
+                                    {% endfor %}
+                                    {% if editable_cols|length > 6 %}
+                                        <span class="badge bg-secondary">+{{ editable_cols|length - 6 }} más</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Ninguna columna editable</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info mb-3">
+                                <i class="fas fa-eye me-2"></i>Columnas que puedo ver:
+                            </h6>
+                            <div class="d-flex flex-wrap gap-1 mb-3">
+                                {% set viewable_cols = current_user.get_viewable_columns() %}
+                                {% if viewable_cols %}
+                                    <span class="badge bg-info">{{ viewable_cols|length }} columnas totales</span>
+                                {% else %}
+                                    <span class="text-muted">Sin acceso a columnas</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if current_user.active_roles %}
+                    <div class="mt-3 pt-3 border-top">
+                        <h6 class="text-muted mb-2">Permisos específicos por rol:</h6>
+                        {% for user_role in current_user.active_roles %}
+                        <div class="mb-2">
+                            <strong style="color: {{ user_role.role.color }}">
+                                {{ user_role.role.name }}:
+                            </strong>
+                            {{ user_role.role.get_editable_columns()|length }} columnas editables,
+                            {{ user_role.role.get_viewable_columns()|length }} visibles
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer con información -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                        <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Proyecto INNOVA - Sistema de Gestión de Planes de Desarrollo Municipal<br>
+                        Versión 1.0 | Última actualización: 08/09/2025
+                    </small>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Accesos Rápidos -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-rocket"></i> Accesos Rápidos
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
-                            <i class="fas fa-plus-circle fa-2x mb-2"></i>
-                            <span>Crear Plan</span>
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
-                            <i class="fas fa-list fa-2x mb-2"></i>
-                            <span>Ver Planes</span>
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-outline-info btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
-                            <i class="fas fa-chart-bar fa-2x mb-2"></i>
-                            <span>Reportes</span>
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-outline-warning btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center py-4">
-                            <i class="fas fa-cog fa-2x mb-2"></i>
-                            <span>Configuración</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<style>
+.hover-card {
+    transition: all 0.3s ease;
+}
 
-<!-- Próximas Actividades -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-calendar-alt"></i> Próximas Actividades
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    <strong>Información:</strong> Las funcionalidades de planes de desarrollo estarán disponibles próximamente.
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.icon-circle {
+    transition: all 0.3s ease;
+}
+
+.hover-card:hover .icon-circle {
+    transform: scale(1.1);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+    border: 1px solid #e2e8f0;
+}
+
+.avatar-circle {
+    transition: all 0.3s ease;
+}
+
+.avatar-circle:hover {
+    transform: scale(1.05);
+}
+</style>
+
+<script>
+// Agregar animaciones de entrada
+document.addEventListener('DOMContentLoaded', function() {
+    // Animar tarjetas al cargar
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+
+    // Actualizar indicador de actividad
+    updateActivityIndicator();
+
+    // Verificar estado de actividad cada 30 segundos
+    setInterval(updateActivityIndicator, 30000);
+});
+
+// Función para actualizar el indicador de actividad
+function updateActivityIndicator() {
+    const indicator = document.getElementById('activity-indicator');
+    if (!indicator) return; // Si no existe el indicador, salir
+
+    // Solo actualizar si ha pasado tiempo suficiente desde la última actualización
+    const now = Date.now();
+    if (window.lastIndicatorUpdate && (now - window.lastIndicatorUpdate) < 30000) {
+        return; // No actualizar más de una vez cada 30 segundos
+    }
+    window.lastIndicatorUpdate = now;
+
+    // Enviar una solicitud de prueba a la API
+    fetch('/api/activity/heartbeat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            dashboard_check: true
+        })
+    }).then(response => {
+        if (response.ok) {
+            // Solo cambiar si no está ya en estado activo
+            if (!indicator.classList.contains('bg-success')) {
+                indicator.className = 'badge bg-success';
+                indicator.innerHTML = '<i class="fas fa-circle me-1"></i>Activo';
+            }
+        } else {
+            indicator.className = 'badge bg-warning';
+            indicator.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Verificar';
+        }
+    }).catch(error => {
+        // Solo mostrar error si no está ya en estado de error
+        if (!indicator.classList.contains('bg-danger')) {
+            indicator.className = 'badge bg-danger';
+            indicator.innerHTML = '<i class="fas fa-times-circle me-1"></i>Offline';
+        }
+    });
+}
+
+// Función para obtener CSRF token
+function getCsrfToken() {
+    const csrfInput = document.querySelector('input[name="csrf_token"]');
+    if (csrfInput && csrfInput.value) {
+        return csrfInput.value;
+    }
+    return '';
+}
+</script>
+
 {% endblock %}
