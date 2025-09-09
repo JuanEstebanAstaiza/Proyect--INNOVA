@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-file-alt me-2"></i>Documentos del Plan
+                    </h1>
+                    <p class="text-muted mb-0">Plan: {{ plan.titulo }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Volver al Plan
+                    </a>
+                    <a href="{{ url_for('planes.subir_documento', plan_id=plan.id) }}" class="btn btn-primary">
+                        <i class="fas fa-upload me-2"></i>Subir Documento
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas de Documentos -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
+                                <div class="fw-bold">{{ documentos|length }}</div>
+                                <small class="text-muted">Total Documentos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-file-pdf fa-2x text-danger mb-2"></i>
+                                <div class="fw-bold">{{ documentos|selectattr('tipo_archivo', 'equalto', 'pdf')|list|length }}</div>
+                                <small class="text-muted">PDF</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-file-word fa-2x text-info mb-2"></i>
+                                <div class="fw-bold">{{ documentos|selectattr('tipo_archivo', 'equalto', 'docx')|list|length + documentos|selectattr('tipo_archivo', 'equalto', 'doc')|list|length }}</div>
+                                <small class="text-muted">Word</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-file-excel fa-2x text-success mb-2"></i>
+                                <div class="fw-bold">{{ documentos|selectattr('tipo_archivo', 'equalto', 'xlsx')|list|length + documentos|selectattr('tipo_archivo', 'equalto', 'xls')|list|length }}</div>
+                                <small class="text-muted">Excel</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Documentos -->
+    <div class="row">
+        <div class="col-12">
+            {% if documentos %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>Documentos del Plan
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="border-0 fw-bold">
+                                            <i class="fas fa-file me-2"></i>Documento
+                                        </th>
+                                        <th class="border-0 fw-bold">
+                                            <i class="fas fa-tag me-2"></i>Tipo
+                                        </th>
+                                        <th class="border-0 fw-bold">
+                                            <i class="fas fa-user me-2"></i>Subido por
+                                        </th>
+                                        <th class="border-0 fw-bold">
+                                            <i class="fas fa-calendar me-2"></i>Fecha
+                                        </th>
+                                        <th class="border-0 fw-bold">
+                                            <i class="fas fa-weight-hanging me-2"></i>Tamaño
+                                        </th>
+                                        <th class="border-0 fw-bold text-center">
+                                            <i class="fas fa-cogs me-2"></i>Acciones
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for documento in documentos %}
+                                    <tr>
+                                        <td class="border-0">
+                                            <div class="d-flex align-items-center">
+                                                <!-- Icono según tipo de archivo -->
+                                                {% if documento.tipo_archivo == 'pdf' %}
+                                                    <i class="fas fa-file-pdf fa-lg text-danger me-3"></i>
+                                                {% elif documento.tipo_archivo in ['docx', 'doc'] %}
+                                                    <i class="fas fa-file-word fa-lg text-primary me-3"></i>
+                                                {% elif documento.tipo_archivo in ['xlsx', 'xls'] %}
+                                                    <i class="fas fa-file-excel fa-lg text-success me-3"></i>
+                                                {% else %}
+                                                    <i class="fas fa-file fa-lg text-secondary me-3"></i>
+                                                {% endif %}
+
+                                                <div>
+                                                    <div class="fw-bold text-truncate" style="max-width: 300px;" title="{{ documento.nombre_original }}">
+                                                        {{ documento.nombre_original }}
+                                                    </div>
+                                                    {% if documento.descripcion %}
+                                                    <small class="text-muted text-truncate" style="max-width: 300px;" title="{{ documento.descripcion }}">
+                                                        {{ documento.descripcion }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="border-0">
+                                            <span class="badge
+                                                {% if documento.tipo_archivo == 'pdf' %}bg-danger
+                                                {% elif documento.tipo_archivo in ['docx', 'doc'] %}bg-primary
+                                                {% elif documento.tipo_archivo in ['xlsx', 'xls'] %}bg-success
+                                                {% else %}bg-secondary{% endif %}">
+                                                {{ documento.tipo_archivo|upper }}
+                                            </span>
+                                        </td>
+                                        <td class="border-0">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-sm me-2">
+                                                    <span class="avatar-initial rounded-circle bg-primary text-white">
+                                                        {{ documento.usuario.nombre[0] if documento.usuario.nombre else documento.usuario.username[0] }}
+                                                    </span>
+                                                </div>
+                                                <span>{{ documento.usuario.nombre or documento.usuario.username }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="border-0">
+                                            <div>
+                                                <div class="fw-bold">{{ documento.created_at.strftime('%d/%m/%Y') }}</div>
+                                                <small class="text-muted">{{ documento.created_at.strftime('%H:%M') }}</small>
+                                            </div>
+                                        </td>
+                                        <td class="border-0">
+                                            {% set size_kb = documento.tamano_archivo / 1024 %}
+                                            {% set size_mb = size_kb / 1024 %}
+                                            {% if size_mb >= 1 %}
+                                                <span class="fw-bold">{{ "%.1f"|format(size_mb) }} MB</span>
+                                            {% else %}
+                                                <span class="fw-bold">{{ "%.0f"|format(size_kb) }} KB</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="border-0 text-center">
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('planes.descargar_documento', documento_id=documento.id) }}"
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   title="Descargar">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                {% if current_user.id == documento.usuario_id or current_user.has_role('admin') %}
+                                                <a href="#" class="btn btn-sm btn-outline-danger"
+                                                   onclick="confirmarEliminar('{{ documento.nombre_original }}', '{{ url_for('planes.eliminar_documento', documento_id=documento.id) }}')"
+                                                   title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Estado vacío -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-file-alt fa-4x text-muted"></i>
+                        </div>
+                        <h4 class="text-muted mb-3">No hay documentos</h4>
+                        <p class="text-muted mb-4">
+                            Este plan de desarrollo aún no tiene documentos asociados.
+                            Sube el primer documento para comenzar a organizar la documentación del plan.
+                        </p>
+                        <a href="{{ url_for('planes.subir_documento', plan_id=plan.id) }}"
+                           class="btn btn-primary btn-lg">
+                            <i class="fas fa-upload me-2"></i>Subir Primer Documento
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Eliminación -->
+<div class="modal fade" id="confirmarEliminarModal" tabindex="-1" aria-labelledby="confirmarEliminarModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmarEliminarModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar el documento <strong id="documentoNombre"></strong>?</p>
+                <p class="text-muted small">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmarEliminarBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.table th {
+    border: none;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.table td {
+    padding: 1rem 1.25rem;
+    vertical-align: middle;
+}
+
+.table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.btn-group .btn {
+    border-radius: 6px !important;
+    margin: 0 1px;
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+}
+
+.avatar-initial {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+}
+
+.text-muted {
+    color: #64748b !important;
+}
+
+.bg-light {
+    background-color: #f8fafc !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+
+    .table th, .table td {
+        padding: 0.75rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+
+    .btn-group .btn {
+        margin: 1px 0;
+        width: 100%;
+    }
+}
+</style>
+
+<!-- Script para el modal de confirmación -->
+<script>
+function confirmarEliminar(nombreDocumento, urlEliminar) {
+    document.getElementById('documentoNombre').textContent = nombreDocumento;
+    document.getElementById('confirmarEliminarBtn').onclick = function() {
+        window.location.href = urlEliminar;
+    };
+
+    const modal = new bootstrap.Modal(document.getElementById('confirmarEliminarModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

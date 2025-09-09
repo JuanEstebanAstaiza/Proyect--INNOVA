@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-plus-circle me-2"></i>Crear Componente
+                    </h1>
+                    <p class="text-muted mb-0">Línea: {{ linea.nombre }} ({{ linea.cod_linea }})</p>
+                </div>
+                <a href="{{ url_for('planes.componentes', linea_id=linea.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Componentes
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Información del Componente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+
+                        <!-- Código de Componente -->
+                        <div class="mb-3">
+                            <label for="cod_componente" class="form-label fw-bold">
+                                <i class="fas fa-hashtag me-1"></i>Código de Componente *
+                            </label>
+                            {{ form.cod_componente(class="form-control", placeholder="Ej: 1.1, 1.2, 2.1...") }}
+                            {% if form.cod_componente.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.cod_componente.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Código único que identifica el componente dentro de la línea estratégica</div>
+                        </div>
+
+                        <!-- Nombre -->
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label fw-bold">
+                                <i class="fas fa-tag me-1"></i>Nombre del Componente *
+                            </label>
+                            {{ form.nombre(class="form-control", placeholder="Ej: Infraestructura Básica") }}
+                            {% if form.nombre.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.nombre.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Nombre descriptivo del componente</div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-bold">
+                                <i class="fas fa-align-left me-1"></i>Descripción
+                            </label>
+                            {{ form.descripcion(class="form-control", rows="4", placeholder="Describa los objetivos específicos de este componente...") }}
+                            {% if form.descripcion.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.descripcion.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Descripción detallada del componente (opcional)</div>
+                        </div>
+
+                        <!-- Presupuesto Asignado -->
+                        <div class="mb-3">
+                            <label for="presupuesto_asignado" class="form-label fw-bold">
+                                <i class="fas fa-dollar-sign me-1"></i>Presupuesto Asignado
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.presupuesto_asignado(class="form-control", placeholder="0.00") }}
+                            </div>
+                            {% if form.presupuesto_asignado.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.presupuesto_asignado.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Presupuesto asignado para este componente (opcional)</div>
+                        </div>
+
+                        <!-- Prioridad -->
+                        <div class="mb-4">
+                            <label for="prioridad" class="form-label fw-bold">
+                                <i class="fas fa-star me-1"></i>Prioridad *
+                            </label>
+                            {{ form.prioridad(class="form-select") }}
+                            {% if form.prioridad.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.prioridad.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Nivel de prioridad de este componente</div>
+                        </div>
+
+                        <!-- Información de la Línea -->
+                        <div class="alert alert-info border-0">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle me-2"></i>Información de la Línea Estratégica
+                            </h6>
+                            <hr class="my-2">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Código:</strong> {{ linea.cod_linea }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Nombre:</strong> {{ linea.nombre }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Presupuesto Línea:</strong> ${{ "%.2f"|format(linea.presupuesto_asignado) }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Prioridad:</strong>
+                                    {% if linea.prioridad == 'critica' %}
+                                        <span class="badge bg-danger">CRÍTICA</span>
+                                    {% elif linea.prioridad == 'alta' %}
+                                        <span class="badge bg-warning text-dark">ALTA</span>
+                                    {% elif linea.prioridad == 'media' %}
+                                        <span class="badge bg-info">MEDIA</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">BAJA</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('planes.componentes', linea_id=linea.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Crear Componente
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.form-label {
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.form-control, .form-select {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+    background: #6b7280;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+}
+
+.alert {
+    border-radius: 6px;
+}
+
+.form-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+</style>
+
+<!-- Script para formato de números -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Formato de números en el campo de presupuesto
+    const presupuestoInput = document.getElementById('presupuesto_asignado');
+    if (presupuestoInput) {
+        presupuestoInput.addEventListener('input', function(e) {
+            // Permitir solo números y punto decimal
+            let value = e.target.value.replace(/[^0-9.]/g, '');
+            // Asegurar que solo haya un punto decimal
+            const parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            e.target.value = value;
+        });
+
+        presupuestoInput.addEventListener('blur', function(e) {
+            // Formato con 2 decimales al perder foco
+            if (e.target.value) {
+                const num = parseFloat(e.target.value);
+                if (!isNaN(num)) {
+                    e.target.value = num.toFixed(2);
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

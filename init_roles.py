@@ -41,7 +41,10 @@ def create_default_roles():
     for permission in editor_role.column_permissions:
         column_name = permission.column_name.lower()
         # Los editores pueden editar casi todo menos estructura organizacional
-        if 'responsable' not in column_name and 'cód' not in column_name:
+        if 'responsable' not in column_name and not (column_name == 'cód' and 'linea' not in column_name):
+            permission.can_edit = True
+        # Permitir editar específicamente 'CÓD LINEA'
+        if permission.column_name == 'CÓD LINEA':
             permission.can_edit = True
         permission.can_view = True
     db.session.commit()

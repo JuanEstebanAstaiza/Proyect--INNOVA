@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, IntegerField, FloatField, SelectField, FileField, SubmitField
+from wtforms import StringField, TextAreaField, IntegerField, FloatField, SelectField, FileField, DateField, SubmitField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, ValidationError
 from app.models import PlanDesarrollo, LineaEstrategica
 
@@ -53,6 +53,29 @@ class LineaEstrategicaForm(FlaskForm):
 
     submit = SubmitField('Crear Línea Estratégica')
 
+class EditarLineaEstrategicaForm(FlaskForm):
+    cod_linea = IntegerField('Código de Línea',
+                            validators=[DataRequired(message='El código es obligatorio'),
+                                      NumberRange(min=1, max=999, message='El código debe estar entre 1 y 999')])
+
+    nombre = StringField('Nombre de la Línea Estratégica',
+                        validators=[DataRequired(message='El nombre es obligatorio'),
+                                  Length(min=5, max=200, message='El nombre debe tener entre 5 y 200 caracteres')])
+
+    descripcion = TextAreaField('Descripción',
+                               validators=[Optional(),
+                                         Length(max=1000, message='La descripción no puede exceder 1000 caracteres')])
+
+    presupuesto_asignado = FloatField('Presupuesto Asignado',
+                                     validators=[Optional(),
+                                               NumberRange(min=0, message='El presupuesto debe ser positivo')])
+
+    prioridad = SelectField('Prioridad',
+                           choices=[('baja', 'Baja'), ('media', 'Media'), ('alta', 'Alta'), ('critica', 'Crítica')],
+                           validators=[DataRequired(message='La prioridad es obligatoria')])
+
+    submit = SubmitField('Actualizar Línea Estratégica')
+
 class ComponenteForm(FlaskForm):
     cod_componente = StringField('Código de Componente',
                                 validators=[DataRequired(message='El código es obligatorio'),
@@ -76,6 +99,29 @@ class ComponenteForm(FlaskForm):
 
     submit = SubmitField('Crear Componente')
 
+class EditarComponenteForm(FlaskForm):
+    cod_componente = StringField('Código de Componente',
+                                validators=[DataRequired(message='El código es obligatorio'),
+                                          Length(min=3, max=10, message='El código debe tener entre 3 y 10 caracteres')])
+
+    nombre = StringField('Nombre del Componente',
+                        validators=[DataRequired(message='El nombre es obligatorio'),
+                                  Length(min=5, max=200, message='El nombre debe tener entre 5 y 200 caracteres')])
+
+    descripcion = TextAreaField('Descripción',
+                               validators=[Optional(),
+                                         Length(max=1000, message='La descripción no puede exceder 1000 caracteres')])
+
+    presupuesto_asignado = FloatField('Presupuesto Asignado',
+                                     validators=[Optional(),
+                                               NumberRange(min=0, message='El presupuesto debe ser positivo')])
+
+    prioridad = SelectField('Prioridad',
+                           choices=[('baja', 'Baja'), ('media', 'Media'), ('alta', 'Alta'), ('critica', 'Crítica')],
+                           validators=[DataRequired(message='La prioridad es obligatoria')])
+
+    submit = SubmitField('Actualizar Componente')
+
 class ProgramaForm(FlaskForm):
     cod_programa = StringField('Código del Programa',
                               validators=[DataRequired(message='El código es obligatorio'),
@@ -98,6 +144,29 @@ class ProgramaForm(FlaskForm):
                                 Length(max=20, message='BPIM no puede exceder 20 caracteres')])
 
     submit = SubmitField('Crear Programa')
+
+class EditarProgramaForm(FlaskForm):
+    cod_programa = StringField('Código del Programa',
+                              validators=[DataRequired(message='El código es obligatorio'),
+                                        Length(min=3, max=20, message='El código debe tener entre 3 y 20 caracteres')])
+
+    nombre = StringField('Nombre del Programa PDM',
+                        validators=[DataRequired(message='El nombre es obligatorio'),
+                                  Length(min=5, max=200, message='El nombre debe tener entre 5 y 200 caracteres')])
+
+    descripcion = TextAreaField('Descripción',
+                               validators=[Optional(),
+                                         Length(max=1000, message='La descripción no puede exceder 1000 caracteres')])
+
+    dependencia_responsable = StringField('Dependencia Responsable',
+                                         validators=[Optional(),
+                                                   Length(max=200, message='La dependencia no puede exceder 200 caracteres')])
+
+    bpim = StringField('BPIM',
+                      validators=[Optional(),
+                                Length(max=20, message='BPIM no puede exceder 20 caracteres')])
+
+    submit = SubmitField('Actualizar Programa')
 
 class ProyectoForm(FlaskForm):
     nombre = StringField('Nombre del Proyecto',
@@ -129,6 +198,37 @@ class ProyectoForm(FlaskForm):
                                                    Length(max=200, message='El nombre no puede exceder 200 caracteres')])
 
     submit = SubmitField('Crear Proyecto')
+
+class EditarProyectoForm(FlaskForm):
+    nombre = StringField('Nombre del Proyecto',
+                        validators=[DataRequired(message='El nombre es obligatorio'),
+                                  Length(min=5, max=200, message='El nombre debe tener entre 5 y 200 caracteres')])
+
+    descripcion = TextAreaField('Descripción',
+                               validators=[Optional(),
+                                         Length(max=1000, message='La descripción no puede exceder 1000 caracteres')])
+
+    presupuesto_total = FloatField('Presupuesto Total',
+                                  validators=[Optional(),
+                                            NumberRange(min=0, message='El presupuesto debe ser positivo')])
+
+    ubicacion = StringField('Ubicación',
+                           validators=[Optional(),
+                                     Length(max=200, message='La ubicación no puede exceder 200 caracteres')])
+
+    sector = StringField('Sector',
+                        validators=[Optional(),
+                                  Length(max=100, message='El sector no puede exceder 100 caracteres')])
+
+    responsable_ejecucion = StringField('Responsable de Ejecución',
+                                       validators=[Optional(),
+                                                 Length(max=200, message='El nombre no puede exceder 200 caracteres')])
+
+    responsable_seguimiento = StringField('Responsable de Seguimiento',
+                                         validators=[Optional(),
+                                                   Length(max=200, message='El nombre no puede exceder 200 caracteres')])
+
+    submit = SubmitField('Actualizar Proyecto')
 
 class IndicadorForm(FlaskForm):
     cod_indicador = StringField('Código del Indicador',
@@ -223,3 +323,111 @@ class DocumentoForm(FlaskForm):
             if not any(filename.endswith(ext) for ext in allowed_extensions):
                 raise ValidationError('Tipo de archivo no permitido. Extensiones permitidas: ' +
                                     ', '.join(allowed_extensions))
+
+class ActividadForm(FlaskForm):
+    nombre = StringField('Nombre de la Actividad',
+                        validators=[DataRequired(message='El nombre es obligatorio'),
+                                  Length(min=5, max=200, message='El nombre debe tener entre 5 y 200 caracteres')])
+
+    descripcion = TextAreaField('Descripción',
+                               validators=[Optional(),
+                                         Length(max=1000, message='La descripción no puede exceder 1000 caracteres')])
+
+    tipo_actividad = SelectField('Tipo de Actividad',
+                                choices=[('construccion', 'Construcción'),
+                                        ('capacitacion', 'Capacitación'),
+                                        ('compra', 'Compra de Equipos'),
+                                        ('mantenimiento', 'Mantenimiento'),
+                                        ('supervision', 'Supervisión'),
+                                        ('evaluacion', 'Evaluación'),
+                                        ('planificacion', 'Planificación'),
+                                        ('otro', 'Otro')],
+                                validators=[Optional()])
+
+    prioridad = SelectField('Prioridad',
+                           choices=[('baja', 'Baja'), ('media', 'Media'), ('alta', 'Alta'), ('critica', 'Crítica')],
+                           validators=[DataRequired(message='La prioridad es obligatoria')])
+
+    presupuesto_asignado = FloatField('Presupuesto Asignado',
+                                     validators=[Optional(),
+                                               NumberRange(min=0, message='El presupuesto debe ser positivo')])
+
+    responsable_ejecucion = StringField('Responsable de Ejecución',
+                                       validators=[Optional(),
+                                                 Length(max=200, message='El nombre no puede exceder 200 caracteres')])
+
+    responsable_supervision = StringField('Responsable de Supervisión',
+                                         validators=[Optional(),
+                                                   Length(max=200, message='El nombre no puede exceder 200 caracteres')])
+
+    fecha_inicio = DateField('Fecha de Inicio',
+                            validators=[Optional()],
+                            format='%Y-%m-%d')
+
+    fecha_fin = DateField('Fecha de Fin',
+                         validators=[Optional()],
+                         format='%Y-%m-%d')
+
+    progreso_porcentual = FloatField('Progreso (%)',
+                                    validators=[Optional(),
+                                              NumberRange(min=0, max=100, message='El progreso debe estar entre 0 y 100')])
+
+    observaciones = TextAreaField('Observaciones',
+                                 validators=[Optional(),
+                                           Length(max=1000, message='Las observaciones no pueden exceder 1000 caracteres')])
+
+    submit = SubmitField('Crear Actividad')
+
+class EditarActividadForm(FlaskForm):
+    nombre = StringField('Nombre de la Actividad',
+                        validators=[DataRequired(message='El nombre es obligatorio'),
+                                  Length(min=5, max=200, message='El nombre debe tener entre 5 y 200 caracteres')])
+
+    descripcion = TextAreaField('Descripción',
+                               validators=[Optional(),
+                                         Length(max=1000, message='La descripción no puede exceder 1000 caracteres')])
+
+    tipo_actividad = SelectField('Tipo de Actividad',
+                                choices=[('construccion', 'Construcción'),
+                                        ('capacitacion', 'Capacitación'),
+                                        ('compra', 'Compra de Equipos'),
+                                        ('mantenimiento', 'Mantenimiento'),
+                                        ('supervision', 'Supervisión'),
+                                        ('evaluacion', 'Evaluación'),
+                                        ('planificacion', 'Planificación'),
+                                        ('otro', 'Otro')],
+                                validators=[Optional()])
+
+    prioridad = SelectField('Prioridad',
+                           choices=[('baja', 'Baja'), ('media', 'Media'), ('alta', 'Alta'), ('critica', 'Crítica')],
+                           validators=[DataRequired(message='La prioridad es obligatoria')])
+
+    presupuesto_asignado = FloatField('Presupuesto Asignado',
+                                     validators=[Optional(),
+                                               NumberRange(min=0, message='El presupuesto debe ser positivo')])
+
+    responsable_ejecucion = StringField('Responsable de Ejecución',
+                                       validators=[Optional(),
+                                                 Length(max=200, message='El nombre no puede exceder 200 caracteres')])
+
+    responsable_supervision = StringField('Responsable de Supervisión',
+                                         validators=[Optional(),
+                                                   Length(max=200, message='El nombre no puede exceder 200 caracteres')])
+
+    fecha_inicio = DateField('Fecha de Inicio',
+                            validators=[Optional()],
+                            format='%Y-%m-%d')
+
+    fecha_fin = DateField('Fecha de Fin',
+                         validators=[Optional()],
+                         format='%Y-%m-%d')
+
+    progreso_porcentual = FloatField('Progreso (%)',
+                                    validators=[Optional(),
+                                              NumberRange(min=0, max=100, message='El progreso debe estar entre 0 y 100')])
+
+    observaciones = TextAreaField('Observaciones',
+                                 validators=[Optional(),
+                                           Length(max=1000, message='Las observaciones no pueden exceder 1000 caracteres')])
+
+    submit = SubmitField('Actualizar Actividad')

@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-folder me-2"></i>Programas PDM
+                    </h1>
+                    <p class="text-muted mb-0">Componente: {{ componente.nombre }} ({{ componente.cod_componente }})</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('planes.componentes', linea_id=componente.linea_estrategica_id) }}" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Componentes
+                    </a>
+                    {% if current_user.can_edit_column('CÓD PROGRAMA') %}
+                    <a href="{{ url_for('planes.crear_programa', componente_id=componente.id) }}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-2"></i>Crear Programa
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Componente -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-cube fa-2x text-primary mb-2"></i>
+                                <div class="fw-bold">{{ componente.cod_componente }}</div>
+                                <small class="text-muted">Código Componente</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-dollar-sign fa-2x text-success mb-2"></i>
+                                <div class="fw-bold">${{ "%.2f"|format(componente.presupuesto_asignado) }}</div>
+                                <small class="text-muted">Presupuesto</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-folder fa-2x text-info mb-2"></i>
+                                <div class="fw-bold">{{ componente.programas|length if componente.programas else 0 }}</div>
+                                <small class="text-muted">Programas</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                                <div class="fw-bold">{{ "%.1f"|format(componente.get_progreso() or 0) }}%</div>
+                                <small class="text-muted">Progreso</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Programas -->
+    <div class="row">
+        <div class="col-12">
+            {% if componente.programas %}
+                <div class="row">
+                    {% for programa in componente.programas %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header d-flex justify-content-between align-items-center
+                                {% if programa.prioridad == 'critica' %}bg-danger text-white
+                                {% elif programa.prioridad == 'alta' %}bg-warning text-dark
+                                {% elif programa.prioridad == 'media' %}bg-info text-white
+                                {% else %}bg-light text-dark{% endif %}">
+                                <div>
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-folder me-2"></i>Programa {{ programa.cod_programa }}
+                                    </h5>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    {% if programa.prioridad == 'critica' %}
+                                        <span class="badge bg-danger me-2">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>CRÍTICA
+                                        </span>
+                                    {% elif programa.prioridad == 'alta' %}
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="fas fa-arrow-up me-1"></i>ALTA
+                                        </span>
+                                    {% elif programa.prioridad == 'media' %}
+                                        <span class="badge bg-info me-2">
+                                            <i class="fas fa-minus me-1"></i>MEDIA
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary me-2">
+                                            <i class="fas fa-arrow-down me-1"></i>BAJA
+                                        </span>
+                                    {% endif %}
+                                    {% if programa.estado == 'activo' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-circle me-1"></i>ACTIVO
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-pause-circle me-1"></i>INACTIVO
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">{{ programa.nombre }}</h5>
+
+                                {% if programa.descripcion %}
+                                <p class="card-text text-muted mb-3">{{ programa.descripcion|truncate(150) }}</p>
+                                {% endif %}
+
+                                <!-- Estadísticas -->
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <small class="text-muted d-block">Progreso</small>
+                                            <span class="fw-bold text-primary">
+                                                {{ "%.1f"|format(programa.get_progreso() or 0) }}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <small class="text-muted d-block">Presupuesto</small>
+                                            <span class="fw-bold text-success">
+                                                ${{ "%.2f"|format(programa.presupuesto_asignado) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <small class="text-muted d-block">Ejecutado</small>
+                                            <span class="fw-bold text-info">
+                                                ${{ "%.2f"|format(programa.get_presupuesto_ejecutado()) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Información adicional -->
+                                <div class="small text-muted mb-3">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>Creado:</strong><br>
+                                            {{ programa.created_at.strftime('%d/%m/%Y') }}
+                                        </div>
+                                        <div class="col-6">
+                                            <strong>Actualizado:</strong><br>
+                                            {{ programa.updated_at.strftime('%d/%m/%Y') }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Barra de progreso -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted">Progreso General</small>
+                                        <small class="fw-bold">{{ "%.1f"|format(programa.get_progreso() or 0) }}%</small>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar
+                                            {% set progreso = programa.get_progreso() or 0 %}
+                                            {% if progreso >= 80 %}bg-success
+                                            {% elif progreso >= 60 %}bg-info
+                                            {% elif progreso >= 40 %}bg-warning
+                                            {% else %}bg-danger{% endif %}"
+                                            role="progressbar"
+                                            style="width: {{ progreso }}%"
+                                            aria-valuenow="{{ progreso }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-footer bg-light">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <a href="{{ url_for('planes.proyectos', programa_id=programa.id) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-project-diagram me-1"></i>Ver Proyectos
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('planes.detalles_programa', programa_id=programa.id) }}" class="btn btn-sm btn-outline-info me-1">
+                                            <i class="fas fa-eye me-1"></i>Detalles
+                                        </a>
+                                        {% if current_user.can_edit_column('CÓD PROGRAMA') %}
+                                        <a href="{{ url_for('planes.editar_programa', programa_id=programa.id) }}" class="btn btn-sm btn-outline-warning">
+                                            <i class="fas fa-edit me-1"></i>Editar
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <!-- Estado vacío -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-folder fa-4x text-muted"></i>
+                        </div>
+                        <h4 class="text-muted mb-3">No hay programas</h4>
+                        <p class="text-muted mb-4">
+                            Este componente aún no tiene programas definidos.
+                            Crea el primer programa para comenzar a estructurar este componente.
+                        </p>
+                        {% if current_user.can_edit_column('CÓD PROGRAMA') %}
+                        <a href="{{ url_for('planes.crear_programa', componente_id=componente.id) }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus-circle me-2"></i>Crear Primer Programa
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Resumen Estadístico -->
+    {% if componente.programas %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Resumen del Componente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-primary">{{ componente.programas|length }}</div>
+                                <div class="text-muted">Total Programas</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-success">
+                                    {{ componente.programas|selectattr('estado', 'equalto', 'activo')|list|length }}
+                                </div>
+                                <div class="text-muted">Programas Activos</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-warning">
+                                    {{ componente.programas|selectattr('prioridad', 'equalto', 'alta')|list|length +
+                                       componente.programas|selectattr('prioridad', 'equalto', 'critica')|list|length }}
+                                </div>
+                                <div class="text-muted">Alta Prioridad</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-info">
+                                    {% set total_presupuesto = componente.programas|sum(attribute='presupuesto_asignado') %}
+                                    ${{ "%.1f"|format(total_presupuesto / 1000) }}K
+                                </div>
+                                <div class="text-muted">Presupuesto Total</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.card-footer {
+    border: none;
+    border-radius: 0 0 8px 8px !important;
+    padding: 0.75rem 1.25rem;
+}
+
+.progress {
+    border-radius: 4px;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+}
+
+.text-muted {
+    color: #64748b !important;
+}
+
+.bg-light {
+    background-color: #f8fafc !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-body .row .col-4 {
+        margin-bottom: 1rem;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .d-flex.justify-content-between .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

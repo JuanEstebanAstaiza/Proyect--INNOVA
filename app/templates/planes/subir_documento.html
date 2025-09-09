@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-upload me-2"></i>Subir Documento
+                    </h1>
+                    <p class="text-muted mb-0">Plan: {{ plan.titulo }}</p>
+                </div>
+                <a href="{{ url_for('planes.documentos', plan_id=plan.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Documentos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Información del Documento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+
+                        <!-- Archivo -->
+                        <div class="mb-4">
+                            <label for="archivo" class="form-label fw-bold">
+                                <i class="fas fa-file-upload me-1"></i>Seleccionar Archivo *
+                            </label>
+                            <div class="file-upload-area border-dashed border-2 border-primary rounded p-4 text-center"
+                                 onclick="document.getElementById('archivo').click()">
+                                <div class="mb-3">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-primary"></i>
+                                </div>
+                                <div class="fw-bold mb-2">Haz clic para seleccionar un archivo</div>
+                                <div class="text-muted small mb-3">
+                                    o arrastra y suelta el archivo aquí
+                                </div>
+                                <div class="text-muted small">
+                                    Formatos soportados: PDF, Word (.doc, .docx), Excel (.xls, .xlsx)<br>
+                                    Tamaño máximo: 10MB
+                                </div>
+                                {{ form.archivo(class="form-control d-none", accept=".pdf,.doc,.docx,.xls,.xlsx") }}
+                            </div>
+                            {% if form.archivo.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.archivo.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <!-- Vista previa del archivo seleccionado -->
+                            <div id="filePreview" class="mt-3" style="display: none;">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-file fa-2x text-primary me-3" id="fileIcon"></i>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold" id="fileName"></div>
+                                                <div class="text-muted small" id="fileSize"></div>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="clearFile()">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Nombre del Documento -->
+                        <div class="mb-3">
+                            <label for="nombre_original" class="form-label fw-bold">
+                                <i class="fas fa-tag me-1"></i>Nombre del Documento *
+                            </label>
+                            {{ form.nombre_original(class="form-control", placeholder="Ej: Plan de Desarrollo Municipal 2025") }}
+                            {% if form.nombre_original.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.nombre_original.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Nombre descriptivo del documento</div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-bold">
+                                <i class="fas fa-align-left me-1"></i>Descripción
+                            </label>
+                            {{ form.descripcion(class="form-control", rows="3", placeholder="Describe el contenido y propósito de este documento...") }}
+                            {% if form.descripcion.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.descripcion.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Descripción opcional del documento (opcional)</div>
+                        </div>
+
+                        <!-- Categoría -->
+                        <div class="mb-4">
+                            <label for="categoria" class="form-label fw-bold">
+                                <i class="fas fa-folder me-1"></i>Categoría
+                            </label>
+                            {{ form.categoria(class="form-select") }}
+                            {% if form.categoria.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.categoria.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Categoría del documento para mejor organización (opcional)</div>
+                        </div>
+
+                        <!-- Información del Plan -->
+                        <div class="alert alert-info border-0">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle me-2"></i>Información del Plan
+                            </h6>
+                            <hr class="my-2">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Título:</strong> {{ plan.titulo }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Municipio:</strong> {{ plan.municipio }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Período:</strong> {{ plan.anio_inicio }} - {{ plan.anio_fin }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Documentos Actuales:</strong> {{ plan.documentos|length if plan.documentos else 0 }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('planes.documentos', plan_id=plan.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                                <i class="fas fa-upload me-2"></i>Subir Documento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.file-upload-area {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.file-upload-area:hover {
+    background: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.file-upload-area.dragover {
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+    border-color: #3b82f6 !important;
+}
+
+.form-label {
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.form-control, .form-select {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-primary:disabled {
+    background: #9ca3af;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: #6b7280;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+}
+
+.alert {
+    border-radius: 6px;
+}
+
+.form-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .file-upload-area {
+        padding: 2rem 1rem;
+    }
+
+    .file-upload-area i {
+        font-size: 2rem;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .d-flex.justify-content-between .btn {
+        width: 100%;
+    }
+}
+</style>
+
+<!-- Script para manejo de archivos -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('archivo');
+    const filePreview = document.getElementById('filePreview');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileIcon = document.getElementById('fileIcon');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadArea = document.querySelector('.file-upload-area');
+
+    // Manejadores de eventos para el input de archivo
+    fileInput.addEventListener('change', handleFileSelect);
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect({ target: fileInput });
+        }
+    });
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+            // Validar tipo de archivo
+            const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+            const fileExtension = file.name.toLowerCase().split('.').pop();
+
+            if (!allowedTypes.includes(file.type) && !['pdf', 'doc', 'docx', 'xls', 'xlsx'].includes(fileExtension)) {
+                alert('Tipo de archivo no permitido. Solo se permiten PDF, Word y Excel.');
+                clearFile();
+                return;
+            }
+
+            // Validar tamaño (10MB máximo)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('El archivo es demasiado grande. Tamaño máximo: 10MB.');
+                clearFile();
+                return;
+            }
+
+            // Mostrar vista previa
+            showFilePreview(file);
+            submitBtn.disabled = false;
+        } else {
+            clearFile();
+        }
+    }
+
+    function showFilePreview(file) {
+        // Determinar icono según tipo
+        let iconClass = 'fas fa-file';
+        if (file.type === 'application/pdf') {
+            iconClass = 'fas fa-file-pdf text-danger';
+        } else if (file.type.includes('word') || file.name.includes('.doc')) {
+            iconClass = 'fas fa-file-word text-primary';
+        } else if (file.type.includes('excel') || file.name.includes('.xls')) {
+            iconClass = 'fas fa-file-excel text-success';
+        }
+
+        fileIcon.className = iconClass;
+        fileName.textContent = file.name;
+
+        // Formatear tamaño
+        const sizeKB = file.size / 1024;
+        const sizeMB = sizeKB / 1024;
+        if (sizeMB >= 1) {
+            fileSize.textContent = sizeMB.toFixed(1) + ' MB';
+        } else {
+            fileSize.textContent = Math.round(sizeKB) + ' KB';
+        }
+
+        filePreview.style.display = 'block';
+    }
+
+    function clearFile() {
+        fileInput.value = '';
+        filePreview.style.display = 'none';
+        submitBtn.disabled = true;
+    }
+
+    // Función global para limpiar archivo
+    window.clearFile = clearFile;
+});
+</script>
+{% endblock %}

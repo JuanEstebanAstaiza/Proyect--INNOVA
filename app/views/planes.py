@@ -8,11 +8,13 @@ from datetime import datetime
 from app import db
 from app.models import (
     PlanDesarrollo, LineaEstrategica, Componente, Programa,
-    Proyecto, IndicadorProducto, EjecucionTrimestral, Documento
+    Proyecto, Actividad, IndicadorProducto, EjecucionTrimestral, Documento
 )
 from app.forms.planes import (
     PlanForm, LineaEstrategicaForm, ComponenteForm,
-    ProgramaForm, ProyectoForm, IndicadorForm, DocumentoForm
+    ProgramaForm, ProyectoForm, ActividadForm, IndicadorForm, DocumentoForm,
+    EditarLineaEstrategicaForm, EditarComponenteForm, EditarProgramaForm,
+    EditarProyectoForm, EditarActividadForm
 )
 
 planes_bp = Blueprint('planes', __name__, url_prefix='/planes')
@@ -256,6 +258,59 @@ def crear_linea(plan_id):
 
     return render_template('planes/crear_linea.html', title='Crear Línea Estratégica', form=form, plan=plan)
 
+@planes_bp.route('/lineas/<int:linea_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_linea(linea_id):
+    """Editar línea estratégica existente"""
+    linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
+        LineaEstrategica.id == linea_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    # Temporalmente deshabilitado para pruebas
+    # if not current_user.can_edit_column('CÓD LINEA'):
+    #     flash('No tienes permisos para editar líneas estratégicas.', 'danger')
+    #     return redirect(url_for('planes.lineas', plan_id=linea.plan_id))
+
+    form = EditarLineaEstrategicaForm(obj=linea)
+    if form.validate_on_submit():
+        try:
+            linea.cod_linea = form.cod_linea.data
+            linea.nombre = form.nombre.data
+            linea.descripcion = form.descripcion.data
+            linea.presupuesto_asignado = form.presupuesto_asignado.data
+            linea.prioridad = form.prioridad.data
+
+            db.session.commit()
+            flash(f'Línea estratégica "{linea.nombre}" actualizada exitosamente.', 'success')
+            return redirect(url_for('planes.lineas', plan_id=linea.plan_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar la línea estratégica: {str(e)}', 'danger')
+
+    return render_template('planes/editar_linea.html', title='Editar Línea Estratégica',
+                          form=form, linea=linea, plan=linea.plan)
+
+@planes_bp.route('/lineas/<int:linea_id>/detalles')
+@login_required
+def detalles_linea(linea_id):
+    """Ver detalles completos de una línea estratégica"""
+    linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
+        LineaEstrategica.id == linea_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    # Calcular estadísticas para el template
+    total_programas = sum(len(componente.programas) for componente in linea.componentes)
+    total_proyectos = sum(len(programa.proyectos) for componente in linea.componentes for programa in componente.programas)
+    total_actividades = sum(len(proyecto.actividades) for componente in linea.componentes for programa in componente.programas for proyecto in programa.proyectos)
+
+    return render_template('planes/detalles_linea.html', title='Detalles de Línea Estratégica',
+                          linea=linea, plan=linea.plan,
+                          total_programas=total_programas,
+                          total_proyectos=total_proyectos,
+                          total_actividades=total_actividades)
+
 # ==================== COMPONENTES ====================
 
 @planes_bp.route('/lineas/<int:linea_id>/componentes')
@@ -264,7 +319,7 @@ def componentes(linea_id):
     """Ver componentes de una línea estratégica"""
     linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
         LineaEstrategica.id == linea_id,
-        PlanDesarrollo.municipio == current_user
+        PlanDesarrollo.municipio_id == current_user.id
     ).first_or_404()
 
     return render_template('planes/componentes.html', title='Componentes', linea=linea)
@@ -275,7 +330,7 @@ def crear_componente(linea_id):
     """Crear nuevo componente"""
     linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
         LineaEstrategica.id == linea_id,
-        PlanDesarrollo.municipio == current_user
+        PlanDesarrollo.municipio_id == current_user.id
     ).first_or_404()
 
     form = ComponenteForm()
@@ -297,18 +352,156 @@ def crear_componente(linea_id):
 
     return render_template('planes/crear_componente.html', title='Crear Componente', form=form, linea=linea)
 
+@planes_bp.route('/componentes/<int:componente_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_componente(componente_id):
+    """Editar componente existente"""
+    componente = Componente.query.join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Componente.id == componente_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    if not current_user.can_edit_column('CÓD COMPONENTE'):
+        flash('No tienes permisos para editar componentes.', 'danger')
+        return redirect(url_for('planes.componentes', linea_id=componente.linea_estrategica_id))
+
+    form = EditarComponenteForm(obj=componente)
+    if form.validate_on_submit():
+        try:
+            componente.cod_componente = form.cod_componente.data
+            componente.nombre = form.nombre.data
+            componente.descripcion = form.descripcion.data
+            componente.presupuesto_asignado = form.presupuesto_asignado.data
+            componente.prioridad = form.prioridad.data
+
+            db.session.commit()
+            flash(f'Componente "{componente.nombre}" actualizado exitosamente.', 'success')
+            return redirect(url_for('planes.componentes', linea_id=componente.linea_estrategica_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar el componente: {str(e)}', 'danger')
+
+    return render_template('planes/editar_componente.html', title='Editar Componente',
+                          form=form, componente=componente, linea=componente.linea_estrategica)
+
+@planes_bp.route('/componentes/<int:componente_id>/detalles')
+@login_required
+def detalles_componente(componente_id):
+    """Ver detalles completos de un componente"""
+    componente = Componente.query.join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Componente.id == componente_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    # Calcular estadísticas para el template
+    total_proyectos = sum(len(programa.proyectos) for programa in componente.programas)
+    total_actividades = sum(len(proyecto.actividades) for programa in componente.programas for proyecto in programa.proyectos)
+    total_indicadores = sum(len(proyecto.indicadores) for programa in componente.programas for proyecto in programa.proyectos)
+
+    return render_template('planes/detalles_componente.html', title='Detalles del Componente',
+                          componente=componente, linea=componente.linea_estrategica,
+                          total_proyectos=total_proyectos,
+                          total_actividades=total_actividades,
+                          total_indicadores=total_indicadores)
+
 # ==================== PROGRAMAS ====================
 
 @planes_bp.route('/componentes/<int:componente_id>/programas')
 @login_required
 def programas(componente_id):
     """Ver programas de un componente"""
-    componente = Componente.query.join(LineaEstrategica, PlanDesarrollo).filter(
-        Componente.id == componente_id,
-        PlanDesarrollo.municipio == current_user
+    componente = Componente.query.join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Componente.id == componente_id
     ).first_or_404()
 
     return render_template('planes/programas.html', title='Programas PDM', componente=componente)
+
+@planes_bp.route('/componentes/<int:componente_id>/programas/crear', methods=['GET', 'POST'])
+@login_required
+def crear_programa(componente_id):
+    """Crear nuevo programa"""
+    componente = Componente.query.join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Componente.id == componente_id
+    ).first_or_404()
+
+    # Verificar permisos
+    if not current_user.can_edit_column('CÓD PROGRAMA'):
+        flash('No tienes permisos para crear programas.', 'danger')
+        return redirect(url_for('planes.programas', componente_id=componente_id))
+
+    form = ProgramaForm()
+    if form.validate_on_submit():
+        try:
+            programa = Programa(
+                cod_programa=form.cod_programa.data,
+                nombre=form.nombre.data,
+                descripcion=form.descripcion.data,
+                dependencia_responsable=form.dependencia_responsable.data,
+                bpim=form.bpim.data,
+                componente_id=componente_id
+            )
+
+            db.session.add(programa)
+            db.session.commit()
+
+            flash(f'Programa "{programa.nombre}" creado exitosamente.', 'success')
+            return redirect(url_for('planes.programas', componente_id=componente_id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear el programa: {str(e)}', 'danger')
+
+    return render_template('planes/crear_programa.html', title='Crear Programa', form=form, componente=componente)
+
+@planes_bp.route('/programas/<int:programa_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_programa(programa_id):
+    """Editar programa existente"""
+    programa = Programa.query.join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Programa.id == programa_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    if not current_user.can_edit_column('CÓD PROGRAMA'):
+        flash('No tienes permisos para editar programas.', 'danger')
+        return redirect(url_for('planes.programas', componente_id=programa.componente_id))
+
+    form = EditarProgramaForm(obj=programa)
+    if form.validate_on_submit():
+        try:
+            programa.cod_programa = form.cod_programa.data
+            programa.nombre = form.nombre.data
+            programa.descripcion = form.descripcion.data
+            programa.dependencia_responsable = form.dependencia_responsable.data
+            programa.bpim = form.bpim.data
+
+            db.session.commit()
+            flash(f'Programa "{programa.nombre}" actualizado exitosamente.', 'success')
+            return redirect(url_for('planes.programas', componente_id=programa.componente_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar el programa: {str(e)}', 'danger')
+
+    return render_template('planes/editar_programa.html', title='Editar Programa',
+                          form=form, programa=programa, componente=programa.componente)
+
+@planes_bp.route('/programas/<int:programa_id>/detalles')
+@login_required
+def detalles_programa(programa_id):
+    """Ver detalles completos de un programa"""
+    programa = Programa.query.join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Programa.id == programa_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    # Calcular estadísticas para el template
+    total_actividades = sum(len(proyecto.actividades) for proyecto in programa.proyectos)
+    total_indicadores = sum(len(proyecto.indicadores) for proyecto in programa.proyectos)
+
+    return render_template('planes/detalles_programa.html', title='Detalles del Programa',
+                          programa=programa, componente=programa.componente,
+                          total_actividades=total_actividades,
+                          total_indicadores=total_indicadores)
 
 # ==================== PROYECTOS ====================
 
@@ -316,12 +509,214 @@ def programas(componente_id):
 @login_required
 def proyectos(programa_id):
     """Ver proyectos de un programa"""
-    programa = Programa.query.join(Componente, LineaEstrategica, PlanDesarrollo).filter(
-        Programa.id == programa_id,
-        PlanDesarrollo.municipio == current_user
+    programa = Programa.query.join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Programa.id == programa_id
     ).first_or_404()
 
     return render_template('planes/proyectos.html', title='Proyectos', programa=programa)
+
+@planes_bp.route('/programas/<int:programa_id>/proyectos/crear', methods=['GET', 'POST'])
+@login_required
+def crear_proyecto(programa_id):
+    """Crear nuevo proyecto"""
+    programa = Programa.query.join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Programa.id == programa_id
+    ).first_or_404()
+
+    # Verificar permisos
+    if not current_user.can_edit_column('CÓD PROYECTO'):
+        flash('No tienes permisos para crear proyectos.', 'danger')
+        return redirect(url_for('planes.proyectos', programa_id=programa_id))
+
+    form = ProyectoForm()
+    if form.validate_on_submit():
+        try:
+            proyecto = Proyecto(
+                nombre=form.nombre.data,
+                descripcion=form.descripcion.data,
+                presupuesto_total=form.presupuesto_total.data or 0.0,
+                presupuesto_ejecutado=0.0,  # Inicialmente 0
+                ubicacion=form.ubicacion.data,
+                sector=form.sector.data,
+                responsable_ejecucion=form.responsable_ejecucion.data,
+                responsable_seguimiento=form.responsable_seguimiento.data,
+                programa_id=programa_id
+            )
+
+            db.session.add(proyecto)
+            db.session.commit()
+
+            flash(f'Proyecto "{proyecto.nombre}" creado exitosamente.', 'success')
+            return redirect(url_for('planes.proyectos', programa_id=programa_id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear el proyecto: {str(e)}', 'danger')
+
+    return render_template('planes/crear_proyecto.html', title='Crear Proyecto', form=form, programa=programa)
+
+@planes_bp.route('/proyectos/<int:proyecto_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_proyecto(proyecto_id):
+    """Editar proyecto existente"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    if not current_user.can_edit_column('CÓD PROYECTO'):
+        flash('No tienes permisos para editar proyectos.', 'danger')
+        return redirect(url_for('planes.proyectos', programa_id=proyecto.programa_id))
+
+    form = EditarProyectoForm(obj=proyecto)
+    if form.validate_on_submit():
+        try:
+            proyecto.nombre = form.nombre.data
+            proyecto.descripcion = form.descripcion.data
+            proyecto.presupuesto_total = form.presupuesto_total.data or 0.0
+            proyecto.ubicacion = form.ubicacion.data
+            proyecto.sector = form.sector.data
+            proyecto.responsable_ejecucion = form.responsable_ejecucion.data
+            proyecto.responsable_seguimiento = form.responsable_seguimiento.data
+
+            db.session.commit()
+            flash(f'Proyecto "{proyecto.nombre}" actualizado exitosamente.', 'success')
+            return redirect(url_for('planes.proyectos', programa_id=proyecto.programa_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar el proyecto: {str(e)}', 'danger')
+
+    return render_template('planes/editar_proyecto.html', title='Editar Proyecto',
+                          form=form, proyecto=proyecto, programa=proyecto.programa)
+
+@planes_bp.route('/proyectos/<int:proyecto_id>/detalles')
+@login_required
+def detalles_proyecto(proyecto_id):
+    """Ver detalles completos de un proyecto"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    # Calcular estadísticas para el template
+    total_indicadores = len(proyecto.indicadores)
+
+    return render_template('planes/detalles_proyecto.html', title='Detalles del Proyecto',
+                          proyecto=proyecto, programa=proyecto.programa,
+                          total_indicadores=total_indicadores)
+
+# ==================== ACTIVIDADES ====================
+
+@planes_bp.route('/proyectos/<int:proyecto_id>/actividades')
+@login_required
+def actividades(proyecto_id):
+    """Ver actividades de un proyecto"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id
+    ).first_or_404()
+
+    return render_template('planes/actividades.html', title='Actividades', proyecto=proyecto)
+
+@planes_bp.route('/proyectos/<int:proyecto_id>/actividades/crear', methods=['GET', 'POST'])
+@login_required
+def crear_actividad(proyecto_id):
+    """Crear nueva actividad"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id
+    ).first_or_404()
+
+    # Verificar permisos
+    if not current_user.can_edit_column('NOMBRE PROYECTO'):
+        flash('No tienes permisos para crear actividades.', 'danger')
+        return redirect(url_for('planes.actividades', proyecto_id=proyecto_id))
+
+    form = ActividadForm()
+    if form.validate_on_submit():
+        try:
+            actividad = Actividad(
+                nombre=form.nombre.data,
+                descripcion=form.descripcion.data,
+                tipo_actividad=form.tipo_actividad.data,
+                prioridad=form.prioridad.data,
+                presupuesto_asignado=form.presupuesto_asignado.data or 0.0,
+                responsable_ejecucion=form.responsable_ejecucion.data,
+                responsable_supervision=form.responsable_supervision.data,
+                fecha_inicio=form.fecha_inicio.data,
+                fecha_fin=form.fecha_fin.data,
+                progreso_porcentual=form.progreso_porcentual.data or 0.0,
+                observaciones=form.observaciones.data,
+                proyecto_id=proyecto_id
+            )
+
+            db.session.add(actividad)
+            db.session.commit()
+
+            flash(f'Actividad "{actividad.nombre}" creada exitosamente.', 'success')
+            return redirect(url_for('planes.actividades', proyecto_id=proyecto_id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear la actividad: {str(e)}', 'danger')
+
+    return render_template('planes/crear_actividad.html', title='Crear Actividad', form=form, proyecto=proyecto)
+
+@planes_bp.route('/actividades/<int:actividad_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_actividad(actividad_id):
+    """Editar actividad existente"""
+    actividad = Actividad.query.join(Proyecto).join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Actividad.id == actividad_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    if not current_user.can_edit_column('NOMBRE PROYECTO'):  # Usando el mismo permiso que para crear
+        flash('No tienes permisos para editar actividades.', 'danger')
+        return redirect(url_for('planes.actividades', proyecto_id=actividad.proyecto_id))
+
+    form = EditarActividadForm(obj=actividad)
+    if form.validate_on_submit():
+        try:
+            actividad.nombre = form.nombre.data
+            actividad.descripcion = form.descripcion.data
+            actividad.tipo_actividad = form.tipo_actividad.data
+            actividad.prioridad = form.prioridad.data
+            actividad.presupuesto_asignado = form.presupuesto_asignado.data or 0.0
+            actividad.responsable_ejecucion = form.responsable_ejecucion.data
+            actividad.responsable_supervision = form.responsable_supervision.data
+            actividad.fecha_inicio = form.fecha_inicio.data
+            actividad.fecha_fin = form.fecha_fin.data
+            actividad.progreso_porcentual = form.progreso_porcentual.data or 0.0
+            actividad.observaciones = form.observaciones.data
+
+            # Actualizar el estado basado en el progreso
+            if actividad.progreso_porcentual >= 100:
+                actividad.estado = 'completada'
+            elif actividad.progreso_porcentual > 0:
+                actividad.estado = 'en_progreso'
+            else:
+                actividad.estado = 'planificada'
+
+            db.session.commit()
+            flash(f'Actividad "{actividad.nombre}" actualizada exitosamente.', 'success')
+            return redirect(url_for('planes.actividades', proyecto_id=actividad.proyecto_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar la actividad: {str(e)}', 'danger')
+
+    return render_template('planes/editar_actividad.html', title='Editar Actividad',
+                          form=form, actividad=actividad, proyecto=actividad.proyecto)
+
+@planes_bp.route('/actividades/<int:actividad_id>/detalles')
+@login_required
+def detalles_actividad(actividad_id):
+    """Ver detalles completos de una actividad"""
+    actividad = Actividad.query.join(Proyecto).join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Actividad.id == actividad_id,
+        PlanDesarrollo.municipio_id == current_user.id
+    ).first_or_404()
+
+    return render_template('planes/detalles_actividad.html', title='Detalles de la Actividad',
+                          actividad=actividad, proyecto=actividad.proyecto)
 
 # ==================== VISTA EXCEL ====================
 

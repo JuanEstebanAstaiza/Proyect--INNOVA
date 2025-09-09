@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-info fw-bold">
+                        <i class="fas fa-eye me-2"></i>Detalles de la Actividad
+                    </h1>
+                    <p class="text-muted mb-0">Proyecto: {{ proyecto.nombre }}</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('planes.editar_actividad', actividad_id=actividad.id) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-2"></i>Editar
+                    </a>
+                    <a href="{{ url_for('planes.actividades', proyecto_id=proyecto.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Actividades
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información Principal -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>{{ actividad.nombre }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">INFORMACIÓN BÁSICA</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold" style="width: 40%;">Nombre:</td>
+                                    <td>{{ actividad.nombre }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Tipo:</td>
+                                    <td>{{ actividad.tipo_actividad.title() if actividad.tipo_actividad != 'otro' else 'Otro' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Prioridad:</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if actividad.prioridad == 'critica' else 'warning' if actividad.prioridad == 'alta' else 'info' if actividad.prioridad == 'media' else 'secondary' }}">
+                                            {{ actividad.prioridad.title() }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Estado:</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if actividad.estado == 'completada' else 'primary' if actividad.estado == 'en_progreso' else 'secondary' }}">
+                                            {{ actividad.estado.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">PROGRESO Y PRESUPUESTO</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold" style="width: 40%;">Progreso:</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 10px;">
+                                                <div class="progress-bar bg-info" role="progressbar"
+                                                     style="width: {{ actividad.progreso_porcentual or 0 }}%"
+                                                     aria-valuenow="{{ actividad.progreso_porcentual or 0 }}"
+                                                     aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                            <span class="fw-bold">{{ "%.1f"|format(actividad.progreso_porcentual or 0) }}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Presupuesto Asignado:</td>
+                                    <td class="text-success fw-bold">${{ "%.2f"|format(actividad.presupuesto_asignado or 0) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Presupuesto Ejecutado:</td>
+                                    <td class="text-primary fw-bold">${{ "%.2f"|format(actividad.presupuesto_ejecutado or 0) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Presupuesto Restante:</td>
+                                    <td class="text-{{ 'warning' if (actividad.presupuesto_asignado or 0) - (actividad.presupuesto_ejecutado or 0) < 0 else 'info' }} fw-bold">
+                                        ${{ "%.2f"|format((actividad.presupuesto_asignado or 0) - (actividad.presupuesto_ejecutado or 0)) }}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fechas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>Fechas del Proyecto
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="text-center p-3 border-end">
+                                <i class="fas fa-play-circle fa-2x text-success mb-2"></i>
+                                <h6 class="mb-1">Fecha de Inicio</h6>
+                                <p class="text-muted mb-0">
+                                    {% if actividad.fecha_inicio %}
+                                        {{ actividad.fecha_inicio.strftime('%d/%m/%Y') }}
+                                    {% else %}
+                                        No definida
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-center p-3">
+                                <i class="fas fa-stop-circle fa-2x text-danger mb-2"></i>
+                                <h6 class="mb-1">Fecha de Fin</h6>
+                                <p class="text-muted mb-0">
+                                    {% if actividad.fecha_fin %}
+                                        {{ actividad.fecha_fin.strftime('%d/%m/%Y') }}
+                                    {% else %}
+                                        No definida
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Responsables -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-users me-2"></i>Responsables
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="text-center p-3 border-end">
+                                <i class="fas fa-user-tie fa-2x text-primary mb-2"></i>
+                                <h6 class="mb-1">Responsable de Ejecución</h6>
+                                <p class="text-muted mb-0">{{ actividad.responsable_ejecucion or 'Sin asignar' }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-center p-3">
+                                <i class="fas fa-user-check fa-2x text-success mb-2"></i>
+                                <h6 class="mb-1">Responsable de Supervisión</h6>
+                                <p class="text-muted mb-0">{{ actividad.responsable_supervision or 'Sin asignar' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Descripción -->
+    {% if actividad.descripcion %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-align-left me-2"></i>Descripción
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ actividad.descripcion }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Observaciones -->
+    {% if actividad.observaciones %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-comment me-2"></i>Observaciones
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ actividad.observaciones }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Información del Proyecto -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>Información del Proyecto
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td class="fw-bold" style="width: 40%;">Nombre:</td>
+                            <td>{{ proyecto.nombre }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Ubicación:</td>
+                            <td>{{ proyecto.ubicacion or 'Sin asignar' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Sector:</td>
+                            <td>{{ proyecto.sector or 'Sin asignar' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Presupuesto Total:</td>
+                            <td class="text-success fw-bold">${{ "%.2f"|format(proyecto.presupuesto_total or 0) }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del Programa -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-folder me-2"></i>Información del Programa
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td class="fw-bold" style="width: 40%;">Código:</td>
+                            <td>{{ proyecto.programa.cod_programa }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Nombre:</td>
+                            <td>{{ proyecto.programa.nombre }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Dependencia:</td>
+                            <td>{{ proyecto.programa.dependencia_responsable or 'Sin asignar' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Componente:</td>
+                            <td>{{ proyecto.programa.componente.nombre }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicadores Asociados -->
+    {% if actividad.indicadores %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Indicadores Asociados ({{ actividad.indicadores|length }})
+                    </h6>
+                    <a href="{{ url_for('planes.indicadores', actividad_id=actividad.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-1"></i>Ver Todos
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for indicador in actividad.indicadores[:4] %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-2">
+                                        {{ indicador.nombre }}
+                                    </h6>
+                                    <div class="small text-muted mb-2">
+                                        <i class="fas fa-hashtag me-1"></i>{{ indicador.cod_indicador or 'Sin código' }}
+                                        <span class="badge bg-info ms-2">{{ indicador.sentido.title() }}</span>
+                                    </div>
+                                    <div class="small text-muted mb-2">
+                                        <i class="fas fa-ruler me-1"></i>{{ indicador.unidad or 'Sin unidad' }}
+                                    </div>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">Línea Base</small>
+                                            <strong>{{ indicador.linea_base or 0 }}</strong>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">Meta 2024</small>
+                                            <strong>{{ indicador.meta_2024 or 0 }}</strong>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">Meta Total</small>
+                                            <strong>{{ indicador.meta_cuatrienio or 0 }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Fechas de Creación y Actualización -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-calendar me-2"></i>Información del Sistema
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-plus me-1"></i>
+                                <strong>Creado:</strong> {{ actividad.created_at.strftime('%d/%m/%Y %H:%M') if actividad.created_at else 'N/A' }}
+                            </small>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-check me-1"></i>
+                                <strong>Última actualización:</strong> {{ actividad.updated_at.strftime('%d/%m/%Y %H:%M') if actividad.updated_at else 'N/A' }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.table td {
+    padding: 0.25rem 0;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.progress {
+    border-radius: 4px;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.text-primary { color: #2563eb !important; }
+.text-success { color: #059669 !important; }
+.text-info { color: #0ea5e9 !important; }
+.text-warning { color: #d97706 !important; }
+.text-danger { color: #dc2626 !important; }
+</style>
+{% endblock %}

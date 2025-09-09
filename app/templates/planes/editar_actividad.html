@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-warning fw-bold">
+                        <i class="fas fa-edit me-2"></i>Editar Actividad
+                    </h1>
+                    <p class="text-muted mb-0">Proyecto: {{ proyecto.nombre }}</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('planes.detalles_actividad', actividad_id=actividad.id) }}" class="btn btn-info">
+                        <i class="fas fa-eye me-2"></i>Ver Detalles
+                    </a>
+                    <a href="{{ url_for('planes.actividades', proyecto_id=proyecto.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Actividades
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Editar Información de la Actividad
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+
+                        <!-- Nombre -->
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label fw-bold">
+                                <i class="fas fa-tag me-1"></i>Nombre de la Actividad *
+                            </label>
+                            {{ form.nombre(class="form-control", placeholder="Ej: Capacitación en Gestión Municipal") }}
+                            {% if form.nombre.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.nombre.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Nombre descriptivo de la actividad</div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-bold">
+                                <i class="fas fa-align-left me-1"></i>Descripción
+                            </label>
+                            {{ form.descripcion(class="form-control", rows="4", placeholder="Describa los objetivos y alcance de esta actividad...") }}
+                            {% if form.descripcion.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.descripcion.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Descripción detallada de la actividad (opcional)</div>
+                        </div>
+
+                        <!-- Tipo de Actividad -->
+                        <div class="mb-3">
+                            <label for="tipo_actividad" class="form-label fw-bold">
+                                <i class="fas fa-cogs me-1"></i>Tipo de Actividad
+                            </label>
+                            {{ form.tipo_actividad(class="form-select") }}
+                            {% if form.tipo_actividad.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.tipo_actividad.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Categoría de la actividad (opcional)</div>
+                        </div>
+
+                        <!-- Prioridad -->
+                        <div class="mb-3">
+                            <label for="prioridad" class="form-label fw-bold">
+                                <i class="fas fa-star me-1"></i>Prioridad *
+                            </label>
+                            {{ form.prioridad(class="form-select") }}
+                            {% if form.prioridad.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.prioridad.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Nivel de prioridad de la actividad</div>
+                        </div>
+
+                        <!-- Presupuesto Asignado -->
+                        <div class="mb-3">
+                            <label for="presupuesto_asignado" class="form-label fw-bold">
+                                <i class="fas fa-dollar-sign me-1"></i>Presupuesto Asignado
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.presupuesto_asignado(class="form-control", placeholder="0.00") }}
+                            </div>
+                            {% if form.presupuesto_asignado.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.presupuesto_asignado.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Presupuesto asignado a la actividad (opcional)</div>
+                        </div>
+
+                        <!-- Responsables -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="responsable_ejecucion" class="form-label fw-bold">
+                                    <i class="fas fa-user-tie me-1"></i>Responsable de Ejecución
+                                </label>
+                                {{ form.responsable_ejecucion(class="form-control", placeholder="Ej: Ing. María González") }}
+                                {% if form.responsable_ejecucion.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.responsable_ejecucion.errors %}
+                                            <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Persona responsable de la ejecución (opcional)</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="responsable_supervision" class="form-label fw-bold">
+                                    <i class="fas fa-user-check me-1"></i>Responsable de Supervisión
+                                </label>
+                                {{ form.responsable_supervision(class="form-control", placeholder="Ej: Lic. Juan Pérez") }}
+                                {% if form.responsable_supervision.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.responsable_supervision.errors %}
+                                            <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Persona responsable de la supervisión (opcional)</div>
+                            </div>
+                        </div>
+
+                        <!-- Fechas -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_inicio" class="form-label fw-bold">
+                                    <i class="fas fa-calendar-plus me-1"></i>Fecha de Inicio
+                                </label>
+                                {{ form.fecha_inicio(class="form-control", type="date") }}
+                                {% if form.fecha_inicio.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.fecha_inicio.errors %}
+                                            <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Fecha de inicio de la actividad (opcional)</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_fin" class="form-label fw-bold">
+                                    <i class="fas fa-calendar-check me-1"></i>Fecha de Fin
+                                </label>
+                                {{ form.fecha_fin(class="form-control", type="date") }}
+                                {% if form.fecha_fin.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.fecha_fin.errors %}
+                                            <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Fecha de finalización de la actividad (opcional)</div>
+                            </div>
+                        </div>
+
+                        <!-- Progreso -->
+                        <div class="mb-3">
+                            <label for="progreso_porcentual" class="form-label fw-bold">
+                                <i class="fas fa-chart-line me-1"></i>Progreso (%)
+                            </label>
+                            <div class="input-group">
+                                {{ form.progreso_porcentual(class="form-control", placeholder="0", min="0", max="100") }}
+                                <span class="input-group-text">%</span>
+                            </div>
+                            {% if form.progreso_porcentual.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.progreso_porcentual.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Porcentaje de progreso de la actividad (0-100, opcional)</div>
+                        </div>
+
+                        <!-- Observaciones -->
+                        <div class="mb-4">
+                            <label for="observaciones" class="form-label fw-bold">
+                                <i class="fas fa-comment me-1"></i>Observaciones
+                            </label>
+                            {{ form.observaciones(class="form-control", rows="3", placeholder="Observaciones adicionales sobre la actividad...") }}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.observaciones.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Observaciones adicionales sobre la actividad (opcional)</div>
+                        </div>
+
+                        <!-- Información del Proyecto -->
+                        <div class="alert alert-info border-0">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-project-diagram me-2"></i>Información del Proyecto
+                            </h6>
+                            <hr class="my-2">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Nombre:</strong> {{ proyecto.nombre }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Presupuesto:</strong> ${{ "%.2f"|format(proyecto.presupuesto_total or 0) }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Ubicación:</strong> {{ proyecto.ubicacion or 'Sin asignar' }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Resp. Ejecución:</strong> {{ proyecto.responsable_ejecucion or 'Sin asignar' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información actual de la actividad -->
+                        <div class="alert alert-light border">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-history me-2"></i>Información Actual
+                            </h6>
+                            <hr class="my-2">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Nombre Actual:</strong> {{ actividad.nombre }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Tipo Actual:</strong> {{ actividad.tipo_actividad.title() if actividad.tipo_actividad != 'otro' else 'Otro' }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Prioridad Actual:</strong>
+                                    <span class="badge bg-{{ 'danger' if actividad.prioridad == 'critica' else 'warning' if actividad.prioridad == 'alta' else 'info' if actividad.prioridad == 'media' else 'secondary' }}">
+                                        {{ actividad.prioridad.title() }}
+                                    </span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Estado Actual:</strong>
+                                    <span class="badge bg-{{ 'success' if actividad.estado == 'completada' else 'primary' if actividad.estado == 'en_progreso' else 'secondary' }}">
+                                        {{ actividad.estado.replace('_', ' ').title() }}
+                                    </span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Progreso Actual:</strong> {{ "%.1f"|format(actividad.progreso_porcentual or 0) }}%
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Presupuesto:</strong> ${{ "%.2f"|format(actividad.presupuesto_asignado or 0) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('planes.actividades', proyecto_id=proyecto.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-2"></i>Actualizar Actividad
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.form-label {
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.form-control, .form-select {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-secondary {
+    background: #6b7280;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+}
+
+.btn-info {
+    background: #0ea5e9;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-info:hover {
+    background: #0284c7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.alert {
+    border-radius: 6px;
+}
+
+.form-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.input-group-text {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+}
+</style>
+
+<!-- Script para formato de números -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Formato de números en el campo de presupuesto
+    const presupuestoInput = document.getElementById('presupuesto_asignado');
+    if (presupuestoInput) {
+        presupuestoInput.addEventListener('input', function(e) {
+            // Permitir solo números y punto decimal
+            let value = e.target.value.replace(/[^0-9.]/g, '');
+            // Asegurar que solo haya un punto decimal
+            const parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            e.target.value = value;
+        });
+
+        presupuestoInput.addEventListener('blur', function(e) {
+            // Formato con 2 decimales al perder foco
+            if (e.target.value) {
+                const num = parseFloat(e.target.value);
+                if (!isNaN(num)) {
+                    e.target.value = num.toFixed(2);
+                }
+            }
+        });
+    }
+
+    // Validación de progreso
+    const progresoInput = document.getElementById('progreso_porcentual');
+    if (progresoInput) {
+        progresoInput.addEventListener('input', function(e) {
+            let value = parseInt(e.target.value);
+            if (value < 0) value = 0;
+            if (value > 100) value = 100;
+            e.target.value = value || '';
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -4,6 +4,7 @@ from .linea_estrategica import LineaEstrategica
 from .componente import Componente
 from .programa import Programa
 from .proyecto import Proyecto
+from .actividad import Actividad
 from .indicador_producto import IndicadorProducto
 from .ejecucion_trimestral import EjecucionTrimestral
 from .documento import Documento
@@ -23,6 +24,7 @@ __all__ = [
     'Componente',
     'Programa',
     'Proyecto',
+    'Actividad',
     'IndicadorProducto',
     'EjecucionTrimestral',
     'Documento',

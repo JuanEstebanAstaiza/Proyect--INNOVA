@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-tasks me-2"></i>Actividades
+                    </h1>
+                    <p class="text-muted mb-0">Proyecto: {{ proyecto.nombre }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('planes.proyectos', programa_id=proyecto.programa_id) }}" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Proyectos
+                    </a>
+                    {% if current_user.can_edit_column('NOMBRE PROYECTO') %}
+                    <a href="{{ url_for('planes.crear_actividad', proyecto_id=proyecto.id) }}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-2"></i>Crear Actividad
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Proyecto -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-project-diagram fa-2x text-primary mb-2"></i>
+                                <div class="fw-bold">{{ proyecto.nombre[:20] }}{% if proyecto.nombre|length > 20 %}...{% endif %}</div>
+                                <small class="text-muted">Proyecto</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-dollar-sign fa-2x text-success mb-2"></i>
+                                <div class="fw-bold">${{ "%.2f"|format(proyecto.presupuesto_total or 0) }}</div>
+                                <small class="text-muted">Presupuesto</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-tasks fa-2x text-info mb-2"></i>
+                                <div class="fw-bold">{{ proyecto.actividades|length if proyecto.actividades else 0 }}</div>
+                                <small class="text-muted">Actividades</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                                <div class="fw-bold">{{ "%.1f"|format(proyecto.get_progreso() or 0) }}%</div>
+                                <small class="text-muted">Progreso</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Actividades -->
+    <div class="row">
+        <div class="col-12">
+            {% if proyecto.actividades %}
+                <div class="row">
+                    {% for actividad in proyecto.actividades %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header d-flex justify-content-between align-items-center
+                                {% if actividad.prioridad == 'critica' %}bg-danger text-white
+                                {% elif actividad.prioridad == 'alta' %}bg-warning text-dark
+                                {% elif actividad.prioridad == 'media' %}bg-info text-white
+                                {% else %}bg-light text-dark{% endif %}">
+                                <div>
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-task me-2"></i>{{ actividad.nombre[:30] }}{% if actividad.nombre|length > 30 %}...{% endif %}
+                                    </h5>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    {% if actividad.prioridad == 'critica' %}
+                                        <span class="badge bg-danger me-2">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>CRÍTICA
+                                        </span>
+                                    {% elif actividad.prioridad == 'alta' %}
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="fas fa-arrow-up me-1"></i>ALTA
+                                        </span>
+                                    {% elif actividad.prioridad == 'media' %}
+                                        <span class="badge bg-info me-2">
+                                            <i class="fas fa-minus me-1"></i>MEDIA
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary me-2">
+                                            <i class="fas fa-arrow-down me-1"></i>BAJA
+                                        </span>
+                                    {% endif %}
+                                    {% if actividad.estado == 'completada' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>COMPLETADA
+                                        </span>
+                                    {% elif actividad.estado == 'en_progreso' %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-play-circle me-1"></i>EN PROGRESO
+                                        </span>
+                                    {% elif actividad.estado == 'suspendida' %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-pause-circle me-1"></i>SUSPENDIDA
+                                        </span>
+                                    {% elif actividad.estado == 'cancelada' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle me-1"></i>CANCELADA
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-clock me-1"></i>PLANIFICADA
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                {% if actividad.descripcion %}
+                                <p class="card-text text-muted mb-3">{{ actividad.descripcion|truncate(120) }}</p>
+                                {% endif %}
+
+                                <!-- Información de la actividad -->
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <small class="text-muted d-block">Tipo</small>
+                                            <span class="fw-bold text-primary">
+                                                {% if actividad.tipo_actividad == 'construccion' %}
+                                                    <i class="fas fa-building me-1"></i>Construcción
+                                                {% elif actividad.tipo_actividad == 'capacitacion' %}
+                                                    <i class="fas fa-graduation-cap me-1"></i>Capacitación
+                                                {% elif actividad.tipo_actividad == 'compra' %}
+                                                    <i class="fas fa-shopping-cart me-1"></i>Compra
+                                                {% elif actividad.tipo_actividad == 'mantenimiento' %}
+                                                    <i class="fas fa-tools me-1"></i>Mantenimiento
+                                                {% elif actividad.tipo_actividad == 'supervision' %}
+                                                    <i class="fas fa-eye me-1"></i>Supervisión
+                                                {% elif actividad.tipo_actividad == 'evaluacion' %}
+                                                    <i class="fas fa-clipboard-check me-1"></i>Evaluación
+                                                {% elif actividad.tipo_actividad == 'planificacion' %}
+                                                    <i class="fas fa-calendar-alt me-1"></i>Planificación
+                                                {% else %}
+                                                    <i class="fas fa-tasks me-1"></i>{{ actividad.tipo_actividad|title or 'Otro' }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <small class="text-muted d-block">Presupuesto</small>
+                                            <span class="fw-bold text-success">
+                                                ${{ "%.2f"|format(actividad.presupuesto_asignado or 0) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <small class="text-muted d-block">Progreso</small>
+                                            <span class="fw-bold text-primary">
+                                                {{ "%.1f"|format(actividad.progreso_porcentual or 0) }}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Fechas -->
+                                {% if actividad.fecha_inicio or actividad.fecha_fin %}
+                                <div class="small text-muted mb-3">
+                                    <div class="row">
+                                        {% if actividad.fecha_inicio %}
+                                        <div class="col-6">
+                                            <strong>Inicio:</strong><br>
+                                            {{ actividad.fecha_inicio.strftime('%d/%m/%Y') }}
+                                        </div>
+                                        {% endif %}
+                                        {% if actividad.fecha_fin %}
+                                        <div class="col-6">
+                                            <strong>Fin:</strong><br>
+                                            {{ actividad.fecha_fin.strftime('%d/%m/%Y') }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- Barra de progreso -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted">Progreso de la Actividad</small>
+                                        <small class="fw-bold">{{ "%.1f"|format(actividad.progreso_porcentual or 0) }}%</small>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar
+                                            {% if (actividad.progreso_porcentual or 0) >= 80 %}bg-success
+                                            {% elif (actividad.progreso_porcentual or 0) >= 60 %}bg-info
+                                            {% elif (actividad.progreso_porcentual or 0) >= 40 %}bg-warning
+                                            {% else %}bg-danger{% endif %}"
+                                            role="progressbar"
+                                            style="width: {{ actividad.progreso_porcentual or 0 }}%"
+                                            aria-valuenow="{{ actividad.progreso_porcentual or 0 }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Responsables -->
+                                {% if actividad.responsable_ejecucion or actividad.responsable_supervision %}
+                                <div class="mb-3">
+                                    <small class="text-muted d-block mb-2">
+                                        <i class="fas fa-users me-1"></i>Responsables
+                                    </small>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% if actividad.responsable_ejecucion %}
+                                        <span class="badge bg-primary">
+                                            <i class="fas fa-user-cog me-1"></i>{{ actividad.responsable_ejecucion[:15] }}{% if actividad.responsable_ejecucion|length > 15 %}...{% endif %}
+                                        </span>
+                                        {% endif %}
+                                        {% if actividad.responsable_supervision %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-user-check me-1"></i>{{ actividad.responsable_supervision[:15] }}{% if actividad.responsable_supervision|length > 15 %}...{% endif %}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="card-footer bg-light">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        {% if actividad.observaciones %}
+                                        <a href="#" class="btn btn-sm btn-outline-info me-1" title="Ver observaciones">
+                                            <i class="fas fa-comment me-1"></i>Observaciones
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('planes.detalles_actividad', actividad_id=actividad.id) }}" class="btn btn-sm btn-outline-info me-1">
+                                            <i class="fas fa-eye me-1"></i>Detalles
+                                        </a>
+                                        {% if current_user.can_edit_column('NOMBRE PROYECTO') %}
+                                        <a href="{{ url_for('planes.editar_actividad', actividad_id=actividad.id) }}" class="btn btn-sm btn-outline-warning">
+                                            <i class="fas fa-edit me-1"></i>Editar
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <!-- Estado vacío -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-tasks fa-4x text-muted"></i>
+                        </div>
+                        <h4 class="text-muted mb-3">No hay actividades</h4>
+                        <p class="text-muted mb-4">
+                            Este proyecto aún no tiene actividades asignadas.
+                            Crea la primera actividad para comenzar a implementar este proyecto.
+                        </p>
+                        {% if current_user.can_edit_column('NOMBRE PROYECTO') %}
+                        <a href="{{ url_for('planes.crear_actividad', proyecto_id=proyecto.id) }}"
+                           class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus-circle me-2"></i>Crear Primera Actividad
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Resumen Estadístico -->
+    {% if proyecto.actividades %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Resumen de Actividades
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-primary">{{ proyecto.actividades|length }}</div>
+                                <div class="text-muted">Total Actividades</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-success">
+                                    {{ proyecto.actividades|selectattr('estado', 'equalto', 'completada')|list|length }}
+                                </div>
+                                <div class="text-muted">Completadas</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-info">
+                                    {{ proyecto.actividades|selectattr('estado', 'equalto', 'en_progreso')|list|length }}
+                                </div>
+                                <div class="text-muted">En Progreso</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="h4 mb-1 text-warning">
+                                    {% set total_presupuesto = proyecto.actividades|sum(attribute='presupuesto_asignado') or 0 %}
+                                    ${{ "%.1f"|format(total_presupuesto / 1000) }}K
+                                </div>
+                                <div class="text-muted">Presupuesto Total</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.card-footer {
+    border: none;
+    border-radius: 0 0 8px 8px !important;
+    padding: 0.75rem 1.25rem;
+}
+
+.progress {
+    border-radius: 4px;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+}
+
+.text-muted {
+    color: #64748b !important;
+}
+
+.bg-light {
+    background-color: #f8fafc !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-body .row .col-4 {
+        margin-bottom: 1rem;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .d-flex.justify-content-between .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
