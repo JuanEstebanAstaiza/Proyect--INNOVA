@@ -1155,6 +1155,184 @@ def get_entities_for_permission(entity_type):
         print(f"Error obteniendo entidades: {str(e)}")
         return jsonify([]), 500
 
+@admin_bp.route('/api/row-permissions', methods=['POST'])
+@login_required
+def create_row_permission_api():
+    """Crear un nuevo permiso de fila (API endpoint)"""
+    try:
+        # Verificar que hay un plan activo
+        from app.models import PlanDesarrollo
+        active_plan = PlanDesarrollo.query.filter_by(
+            municipio=current_user,
+            estado='activo'
+        ).first()
+
+        if not active_plan:
+            return jsonify({
+                'success': False,
+                'message': 'No hay un plan de desarrollo activo.'
+            }), 400
+
+        # Obtener datos del formulario
+        user_id = request.form.get('user_id', type=int)
+        entity_type = request.form.get('entity_type')
+        entity_id = request.form.get('entity_id', type=int)
+        can_view = request.form.get('can_view') == 'on'
+        can_edit = request.form.get('can_edit') == 'on'
+        description = request.form.get('description', '')
+
+        # Validaciones
+        if not user_id or not entity_type or not entity_id:
+            return jsonify({
+                'success': False,
+                'message': 'Todos los campos obligatorios deben ser completados.'
+            }), 400
+
+        if not can_view and not can_edit:
+            return jsonify({
+                'success': False,
+                'message': 'Debe seleccionar al menos un permiso (ver o editar).'
+            }), 400
+
+        # Verificar que el usuario existe
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado.'
+            }), 404
+
+        # Crear el permiso según el tipo de entidad
+        permission = None
+        if entity_type == 'indicador':
+            indicador = IndicadorProducto.query.get(entity_id)
+            if not indicador:
+                return jsonify({
+                    'success': False,
+                    'message': 'Indicador no encontrado.'
+                }), 404
+            permission = RowPermission(
+                user_id=user_id,
+                plan_id=active_plan.id,
+                indicador_id=entity_id,
+                can_view=can_view,
+                can_edit=can_edit,
+                description=description,
+                assigned_by=current_user.id
+            )
+        elif entity_type == 'proyecto':
+            proyecto = Proyecto.query.get(entity_id)
+            if not proyecto:
+                return jsonify({
+                    'success': False,
+                    'message': 'Proyecto no encontrado.'
+                }), 404
+            permission = RowPermission(
+                user_id=user_id,
+                plan_id=active_plan.id,
+                proyecto_id=entity_id,
+                can_view=can_view,
+                can_edit=can_edit,
+                description=description,
+                assigned_by=current_user.id
+            )
+        elif entity_type == 'programa':
+            programa = Programa.query.get(entity_id)
+            if not programa:
+                return jsonify({
+                    'success': False,
+                    'message': 'Programa no encontrado.'
+                }), 404
+            permission = RowPermission(
+                user_id=user_id,
+                plan_id=active_plan.id,
+                programa_id=entity_id,
+                can_view=can_view,
+                can_edit=can_edit,
+                description=description,
+                assigned_by=current_user.id
+            )
+        elif entity_type == 'componente':
+            componente = Componente.query.get(entity_id)
+            if not componente:
+                return jsonify({
+                    'success': False,
+                    'message': 'Componente no encontrado.'
+                }), 404
+            permission = RowPermission(
+                user_id=user_id,
+                plan_id=active_plan.id,
+                componente_id=entity_id,
+                can_view=can_view,
+                can_edit=can_edit,
+                description=description,
+                assigned_by=current_user.id
+            )
+        elif entity_type == 'linea':
+            linea = LineaEstrategica.query.get(entity_id)
+            if not linea:
+                return jsonify({
+                    'success': False,
+                    'message': 'Línea estratégica no encontrada.'
+                }), 404
+            permission = RowPermission(
+                user_id=user_id,
+                plan_id=active_plan.id,
+                linea_estrategica_id=entity_id,
+                can_view=can_view,
+                can_edit=can_edit,
+                description=description,
+                assigned_by=current_user.id
+            )
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Tipo de entidad no válido.'
+            }), 400
+
+        # Verificar que no exista un permiso duplicado
+        existing_permission = RowPermission.query.filter_by(
+            user_id=user_id,
+            plan_id=active_plan.id,
+            indicador_id=permission.indicador_id,
+            proyecto_id=permission.proyecto_id,
+            programa_id=permission.programa_id,
+            componente_id=permission.componente_id,
+            linea_estrategica_id=permission.linea_estrategica_id
+        ).first()
+
+        if existing_permission:
+            return jsonify({
+                'success': False,
+                'message': 'Ya existe un permiso para este usuario y entidad.'
+            }), 400
+
+        # Guardar el permiso
+        db.session.add(permission)
+        db.session.commit()
+
+        # Registrar en el log de actividad
+        ActivityLog.log_activity(
+            'create_row_permission',
+            f'Creado permiso de fila para {user.get_full_name()}',
+            request.remote_addr,
+            request.headers.get('User-Agent')
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Permiso asignado exitosamente.',
+            'permission_id': permission.id
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creando permiso de fila: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Error interno del servidor. Inténtalo de nuevo.'
+        }), 500
+
 @admin_bp.route('/api/row-permissions/<int:permission_id>', methods=['GET', 'PATCH'])
 @login_required
 def get_or_edit_row_permission(permission_id):

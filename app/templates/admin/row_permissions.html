@@ -94,11 +94,11 @@
                                             </div>
                                         </div>
                                         <div class="d-flex gap-2">
-                                            <button class="btn btn-sm btn-primary" onclick="editPermission({{ permission.id }})" title="Editar permiso" style="background-color: #007bff !important; border-color: #007bff !important; color: white !important;">
+                                            <button class="btn btn-sm edit-permission-btn" onclick="editPermission({{ permission.id }})" title="Editar permiso">
                                                 <i class="fas fa-edit me-1"></i>
                                                 <span class="d-none d-sm-inline">Editar</span>
                                             </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deletePermission({{ permission.id }})" title="Eliminar permiso" style="background-color: #dc3545 !important; border-color: #dc3545 !important; color: white !important;">
+                                            <button class="btn btn-sm delete-permission-btn" onclick="deletePermission({{ permission.id }})" title="Eliminar permiso">
                                                 <i class="fas fa-trash me-1"></i>
                                                 <span class="d-none d-sm-inline">Eliminar</span>
                                             </button>
@@ -282,7 +282,7 @@
 <script>
 // Variables globales
 let entitiesData = {};
-let currentPlanId = {{ active_plan.id if active_plan else 'null' }};
+let currentPlanId = {{ active_plan.id if active_plan else 'null' | tojson }};
 
 // Cargar entidades cuando se selecciona el tipo
 document.getElementById('entityTypeSelect').addEventListener('change', function() {
@@ -418,6 +418,19 @@ style.textContent = `
         color: white !important;
     }
 
+    /* Estilos específicos para botones de permisos */
+    .edit-permission-btn {
+        background-color: #007bff !important;
+        border-color: #007bff !important;
+        color: white !important;
+    }
+
+    .delete-permission-btn {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: white !important;
+    }
+
     .card .btn-primary:hover {
         background-color: #0056b3 !important;
         border-color: #0056b3 !important;
@@ -472,6 +485,8 @@ document.head.appendChild(style);
 
 // Función para editar un permiso
 async function editPermission(permissionId) {
+    console.log('🔍 Iniciando edición del permiso:', permissionId);
+
     try {
         // Mostrar loading
         const button = event.target.closest('button');
@@ -479,22 +494,34 @@ async function editPermission(permissionId) {
         button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Cargando...';
         button.disabled = true;
 
+        console.log('📡 Realizando petición GET a:', `/admin/api/row-permissions/${permissionId}`);
+
         // Obtener datos del permiso
         const response = await fetch(`/admin/api/row-permissions/${permissionId}`);
+        console.log('📡 Respuesta HTTP:', response.status, response.statusText);
+
         if (!response.ok) {
-            throw new Error('Error al cargar el permiso');
+            console.error('❌ Error HTTP:', response.status, response.statusText);
+            throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
+        console.log('📄 Datos recibidos:', data);
+
+        // Verificar que la respuesta tenga el formato esperado
+        if (!data.success) {
+            console.error('❌ Respuesta no exitosa:', data);
+            throw new Error(data.message || 'Respuesta no exitosa del servidor');
+        }
 
         // Cambiar el título del modal
-        document.querySelector('#permissionModal .modal-title').innerHTML = '<i class="fas fa-edit me-2"></i>Editar Permiso de Fila';
+        document.querySelector('#assignPermissionModal .modal-title').innerHTML = '<i class="fas fa-edit me-2"></i>Editar Permiso de Fila';
 
         // Cambiar el texto del botón submit
         document.getElementById('submitBtn').innerHTML = '<i class="fas fa-save me-2"></i>Actualizar Permiso';
 
         // Cambiar la acción del formulario
-        const form = document.getElementById('permissionForm');
+        const form = document.getElementById('assignPermissionForm');
         form.action = `/admin/api/row-permissions/${permissionId}`;
 
         // Agregar método PATCH al formulario (para edición)
@@ -507,20 +534,24 @@ async function editPermission(permissionId) {
         }
         methodInput.value = 'PATCH';
 
+        console.log('🔄 Llamando a populateEditForm con datos:', data);
         // Llenar el formulario con los datos existentes
         populateEditForm(data);
 
+        console.log('📱 Mostrando modal...');
         // Mostrar el modal
-        const modal = new bootstrap.Modal(document.getElementById('permissionModal'));
+        const modal = new bootstrap.Modal(document.getElementById('assignPermissionModal'));
         modal.show();
 
         // Restaurar el botón
         button.innerHTML = originalHtml;
         button.disabled = false;
 
+        console.log('✅ Edición iniciada correctamente');
+
     } catch (error) {
-        console.error('Error al cargar permiso para edición:', error);
-        alert('Error al cargar el permiso para edición. Inténtalo de nuevo.');
+        console.error('❌ Error completo al cargar permiso para edición:', error);
+        alert('Error al cargar el permiso para edición: ' + error.message);
 
         // Restaurar el botón
         const button = event.target.closest('button');
@@ -531,33 +562,61 @@ async function editPermission(permissionId) {
 
 // Función para poblar el formulario con datos de edición
 function populateEditForm(permissionData) {
+    console.log('🔧 Poblando formulario con datos:', permissionData);
+
+    // Verificar que tengamos los datos necesarios
+    if (!permissionData || !permissionData.user_id) {
+        console.error('❌ Datos inválidos para poblar formulario:', permissionData);
+        throw new Error('Datos del permiso inválidos o incompletos');
+    }
+
     // Seleccionar el usuario
     const userSelect = document.getElementById('userSelect');
+    console.log('👤 Seleccionando usuario:', permissionData.user_id);
     userSelect.value = permissionData.user_id;
 
     // Determinar el tipo de entidad basado en qué campo de ID está presente
     let entityType = '';
     let entityId = null;
 
+    console.log('🔍 Determinando tipo de entidad...');
+    console.log('📊 IDs disponibles:', {
+        indicador_id: permissionData.indicador_id,
+        proyecto_id: permissionData.proyecto_id,
+        programa_id: permissionData.programa_id,
+        componente_id: permissionData.componente_id,
+        linea_estrategica_id: permissionData.linea_estrategica_id
+    });
+
     if (permissionData.indicador_id) {
         entityType = 'indicador';
         entityId = permissionData.indicador_id;
+        console.log('📈 Entidad tipo: indicador, ID:', entityId);
     } else if (permissionData.proyecto_id) {
         entityType = 'proyecto';
         entityId = permissionData.proyecto_id;
+        console.log('📁 Entidad tipo: proyecto, ID:', entityId);
     } else if (permissionData.programa_id) {
         entityType = 'programa';
         entityId = permissionData.programa_id;
+        console.log('📋 Entidad tipo: programa, ID:', entityId);
     } else if (permissionData.componente_id) {
         entityType = 'componente';
         entityId = permissionData.componente_id;
+        console.log('🧩 Entidad tipo: componente, ID:', entityId);
     } else if (permissionData.linea_estrategica_id) {
         entityType = 'linea';
         entityId = permissionData.linea_estrategica_id;
+        console.log('🎯 Entidad tipo: linea, ID:', entityId);
+    } else {
+        console.warn('⚠️ No se encontró tipo de entidad válido');
+        entityType = '';
+        entityId = null;
     }
 
     // Seleccionar el tipo de entidad
     const entityTypeSelect = document.getElementById('entityTypeSelect');
+    console.log('🎛️ Seleccionando tipo de entidad:', entityType);
     entityTypeSelect.value = entityType;
 
     // Cargar las entidades del tipo seleccionado
@@ -577,11 +636,15 @@ function populateEditForm(permissionData) {
     }
 
     // Configurar permisos
+    console.log('🔐 Configurando permisos - Ver:', permissionData.can_view, 'Editar:', permissionData.can_edit);
     document.getElementById('canView').checked = permissionData.can_view;
     document.getElementById('canEdit').checked = permissionData.can_edit;
 
     // Configurar descripción
+    console.log('📝 Configurando descripción:', permissionData.description);
     document.getElementById('description').value = permissionData.description || '';
+
+    console.log('✅ Formulario poblado correctamente');
 }
 
 // Función para eliminar un permiso
@@ -625,7 +688,7 @@ async function deletePermission(permissionId) {
 }
 
 // Función para manejar el envío del formulario
-document.getElementById('permissionForm').addEventListener('submit', async function(e) {
+document.getElementById('assignPermissionForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
     const form = this;
@@ -656,7 +719,7 @@ document.getElementById('permissionForm').addEventListener('submit', async funct
             alert(result.message || 'Operación completada exitosamente.');
 
             // Cerrar modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('permissionModal'));
+            const modal = bootstrap.Modal.getInstance(document.getElementById('assignPermissionModal'));
             modal.hide();
 
             // Recargar página para actualizar lista
@@ -676,15 +739,15 @@ document.getElementById('permissionForm').addEventListener('submit', async funct
 });
 
 // Función para resetear el modal cuando se cierra
-document.getElementById('permissionModal').addEventListener('hidden.bs.modal', function() {
+document.getElementById('assignPermissionModal').addEventListener('hidden.bs.modal', function() {
     // Restaurar título original
-    document.querySelector('#permissionModal .modal-title').innerHTML = '<i class="fas fa-plus me-2"></i>Asignar Nuevo Permiso';
+    document.querySelector('#assignPermissionModal .modal-title').innerHTML = '<i class="fas fa-plus me-2"></i>Asignar Nuevo Permiso';
 
     // Restaurar botón submit
     document.getElementById('submitBtn').innerHTML = '<i class="fas fa-save me-2"></i>Asignar Permiso';
 
     // Restaurar acción del formulario
-    const form = document.getElementById('permissionForm');
+    const form = document.getElementById('assignPermissionForm');
     form.action = '/admin/api/row-permissions';
 
     // Remover método PATCH si existe
