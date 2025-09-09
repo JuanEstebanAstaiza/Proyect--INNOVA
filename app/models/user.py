@@ -114,19 +114,149 @@ class User(UserMixin, db.Model):
 
         return False
 
-    def can_edit_row(self, indicador_id):
+    def can_edit_row(self, indicador_id, plan_id=None):
         """Verifica si el usuario puede editar una fila específica"""
         if self.is_admin():
             return True  # Los admins pueden editar todas las filas
 
         # Verificar permisos específicos de fila
         from app.models.row_permission import RowPermission
+
+        # Si no se especifica plan_id, buscar en todos los planes activos del usuario
+        if plan_id is None:
+            from app.models.plan_desarrollo import PlanDesarrollo
+            active_plan = PlanDesarrollo.query.filter_by(
+                municipio=self,
+                estado='activo'
+            ).first()
+            if active_plan:
+                plan_id = active_plan.id
+            else:
+                return False
+
         permission = RowPermission.query.filter_by(
             user_id=self.id,
-            indicador_id=indicador_id
+            plan_id=plan_id,
+            indicador_id=indicador_id,
+            is_active=True
         ).first()
 
         return permission and permission.can_edit
+
+    def can_view_row(self, indicador_id, plan_id=None):
+        """Verifica si el usuario puede ver una fila específica"""
+        if self.is_admin():
+            return True  # Los admins pueden ver todas las filas
+
+        # Verificar permisos específicos de fila
+        from app.models.row_permission import RowPermission
+
+        # Si no se especifica plan_id, buscar en todos los planes activos del usuario
+        if plan_id is None:
+            from app.models.plan_desarrollo import PlanDesarrollo
+            active_plan = PlanDesarrollo.query.filter_by(
+                municipio=self,
+                estado='activo'
+            ).first()
+            if active_plan:
+                plan_id = active_plan.id
+            else:
+                return False
+
+        permission = RowPermission.query.filter_by(
+            user_id=self.id,
+            plan_id=plan_id,
+            indicador_id=indicador_id,
+            is_active=True
+        ).first()
+
+        return permission and permission.can_view
+
+    def can_edit_entity(self, entity_id, entity_type, plan_id=None):
+        """Verifica si el usuario puede editar una entidad específica"""
+        if self.is_admin():
+            return True
+
+        from app.models.row_permission import RowPermission
+
+        # Si no se especifica plan_id, buscar en todos los planes activos del usuario
+        if plan_id is None:
+            from app.models.plan_desarrollo import PlanDesarrollo
+            active_plan = PlanDesarrollo.query.filter_by(
+                municipio=self,
+                estado='activo'
+            ).first()
+            if active_plan:
+                plan_id = active_plan.id
+            else:
+                return False
+
+        # Mapear tipo de entidad a campo de ID
+        entity_field_map = {
+            'indicador': 'indicador_id',
+            'proyecto': 'proyecto_id',
+            'programa': 'programa_id',
+            'componente': 'componente_id',
+            'linea': 'linea_estrategica_id'
+        }
+
+        entity_field = entity_field_map.get(entity_type)
+        if not entity_field:
+            return False
+
+        # Crear filtro dinámico
+        filter_kwargs = {
+            'user_id': self.id,
+            'plan_id': plan_id,
+            'is_active': True
+        }
+        filter_kwargs[entity_field] = entity_id
+
+        permission = RowPermission.query.filter_by(**filter_kwargs).first()
+        return permission and permission.can_edit
+
+    def can_view_entity(self, entity_id, entity_type, plan_id=None):
+        """Verifica si el usuario puede ver una entidad específica"""
+        if self.is_admin():
+            return True
+
+        from app.models.row_permission import RowPermission
+
+        # Si no se especifica plan_id, buscar en todos los planes activos del usuario
+        if plan_id is None:
+            from app.models.plan_desarrollo import PlanDesarrollo
+            active_plan = PlanDesarrollo.query.filter_by(
+                municipio=self,
+                estado='activo'
+            ).first()
+            if active_plan:
+                plan_id = active_plan.id
+            else:
+                return False
+
+        # Mapear tipo de entidad a campo de ID
+        entity_field_map = {
+            'indicador': 'indicador_id',
+            'proyecto': 'proyecto_id',
+            'programa': 'programa_id',
+            'componente': 'componente_id',
+            'linea': 'linea_estrategica_id'
+        }
+
+        entity_field = entity_field_map.get(entity_type)
+        if not entity_field:
+            return False
+
+        # Crear filtro dinámico
+        filter_kwargs = {
+            'user_id': self.id,
+            'plan_id': plan_id,
+            'is_active': True
+        }
+        filter_kwargs[entity_field] = entity_id
+
+        permission = RowPermission.query.filter_by(**filter_kwargs).first()
+        return permission and permission.can_view
 
     def get_editable_columns(self):
         """Retorna todas las columnas que el usuario puede editar"""

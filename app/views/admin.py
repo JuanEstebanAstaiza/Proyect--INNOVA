@@ -4,7 +4,7 @@ from sqlalchemy import desc, func
 from datetime import datetime, timedelta
 from app import db
 from app.models import (User, ActivityLog, ActiveSession, Role, ColumnPermission, RowPermission, UserRole,
-                       IndicadorProducto, LineaEstrategica, Componente, Programa, Proyecto)
+                       IndicadorProducto, LineaEstrategica, Componente, Programa, Proyecto, PlanDesarrollo)
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -728,8 +728,8 @@ def remove_role_from_user(user_id, role_id):
     flash(f'Rol "{role.name}" removido exitosamente de {user.username}.', 'success')
     return redirect(url_for('admin.user_roles'))
 
-@admin_bp.route('/row-permissions')
-def row_permissions():
+@admin_bp.route('/user-row-permissions')
+def user_row_permissions():
     """Gestión de permisos de fila por usuario"""
     # Obtener usuarios con permisos de fila
     users_with_permissions = db.session.query(User).join(RowPermission).distinct().all()
@@ -896,3 +896,391 @@ def get_roles_stats():
 def roles_guide():
     """Guía completa de roles y permisos"""
     return render_template('admin/roles_guide.html', title='Guía de Roles y Permisos')
+
+# =============================================
+# ENDPOINTS PARA PERMISOS DE FILA
+# =============================================
+
+@admin_bp.route('/row-permissions')
+@login_required
+def manage_row_permissions():
+    """Página principal de gestión de permisos de fila"""
+    # Verificar si hay un plan activo
+    from app.models import PlanDesarrollo
+    active_plan = PlanDesarrollo.query.filter_by(
+        municipio=current_user,
+        estado='activo'
+    ).first()
+
+    if not active_plan:
+        flash('No hay un plan de desarrollo activo. Los permisos de fila solo están disponibles cuando hay un plan activo.', 'warning')
+        return redirect(url_for('admin.dashboard'))
+
+    # Obtener todos los permisos de fila para el plan activo
+    row_permissions_list = RowPermission.query.filter_by(
+        plan_id=active_plan.id,
+        is_active=True
+    ).order_by(RowPermission.created_at.desc()).all()
+
+    # Obtener todos los usuarios para el selector
+    all_users = User.query.filter_by(is_active=True).order_by(User.first_name, User.last_name).all()
+
+    return render_template('admin/row_permissions.html',
+                         title='Permisos de Fila',
+                         row_permissions=row_permissions_list,
+                         active_plan=active_plan,
+                         all_users=all_users)
+
+@admin_bp.route('/row-permissions/create', methods=['POST'])
+@login_required
+def create_row_permission():
+    """Asignar un nuevo permiso de fila"""
+    try:
+        # Verificar que hay un plan activo
+        from app.models import PlanDesarrollo
+        active_plan = PlanDesarrollo.query.filter_by(
+            municipio=current_user,
+            estado='activo'
+        ).first()
+
+        if not active_plan:
+            return jsonify({
+                'success': False,
+                'message': 'No hay un plan de desarrollo activo.'
+            }), 400
+
+        # Obtener datos del formulario
+        user_id = request.form.get('user_id', type=int)
+        entity_type = request.form.get('entity_type')
+        entity_id = request.form.get('entity_id', type=int)
+        can_view = request.form.get('can_view') == 'on'
+        can_edit = request.form.get('can_edit') == 'on'
+        description = request.form.get('description', '')
+
+        # Validaciones
+        if not user_id or not entity_type or not entity_id:
+            return jsonify({
+                'success': False,
+                'message': 'Todos los campos requeridos deben ser completados.'
+            }), 400
+
+        if not can_view and not can_edit:
+            return jsonify({
+                'success': False,
+                'message': 'Debe seleccionar al menos un permiso (ver o editar).'
+            }), 400
+
+        # Verificar que el usuario existe
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado.'
+            }), 404
+
+        # Crear el permiso de fila
+        row_permission = RowPermission(
+            user_id=user_id,
+            plan_id=active_plan.id,
+            permission_scope=entity_type,
+            can_view=can_view,
+            can_edit=can_edit,
+            description=description,
+            assigned_by=current_user.id
+        )
+
+        # Asignar la entidad específica según el tipo
+        if entity_type == 'indicador':
+            row_permission.indicador_id = entity_id
+        elif entity_type == 'proyecto':
+            row_permission.proyecto_id = entity_id
+        elif entity_type == 'programa':
+            row_permission.programa_id = entity_id
+        elif entity_type == 'componente':
+            row_permission.componente_id = entity_id
+        elif entity_type == 'linea':
+            row_permission.linea_estrategica_id = entity_id
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Tipo de entidad no válido.'
+            }), 400
+
+        # Verificar que no existe un permiso duplicado
+        existing_permission = RowPermission.query.filter_by(
+            user_id=user_id,
+            plan_id=active_plan.id,
+            indicador_id=row_permission.indicador_id,
+            proyecto_id=row_permission.proyecto_id,
+            programa_id=row_permission.programa_id,
+            componente_id=row_permission.componente_id,
+            linea_estrategica_id=row_permission.linea_estrategica_id,
+            is_active=True
+        ).first()
+
+        if existing_permission:
+            return jsonify({
+                'success': False,
+                'message': 'Ya existe un permiso activo para esta entidad y usuario.'
+            }), 400
+
+        # Guardar el permiso
+        db.session.add(row_permission)
+        db.session.commit()
+
+        # Registrar en el log de actividad
+        ActivityLog.log_activity(
+            'assign_row_permission',
+            f'Asignado permiso de fila a {user.get_full_name()} para {entity_type}',
+            request.remote_addr,
+            request.headers.get('User-Agent')
+        )
+
+        return jsonify({
+            'success': True,
+            'message': f'Permiso asignado exitosamente a {user.get_full_name()}.',
+            'permission_id': row_permission.id
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error asignando permiso de fila: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Error interno del servidor. Inténtalo de nuevo.'
+        }), 500
+
+@admin_bp.route('/api/row-permissions/entities/<entity_type>')
+@login_required
+def get_entities_for_permission(entity_type):
+    """Obtener entidades disponibles para asignar permisos"""
+    try:
+        plan_id = request.args.get('plan_id', type=int)
+        if not plan_id:
+            return jsonify([]), 400
+
+        # Verificar que el plan existe y pertenece al usuario
+        from app.models import PlanDesarrollo
+        plan = PlanDesarrollo.query.filter_by(
+            id=plan_id,
+            municipio=current_user
+        ).first()
+
+        if not plan:
+            return jsonify([]), 403
+
+        entities = []
+
+        if entity_type == 'indicador':
+            indicadores = IndicadorProducto.query.join(Proyecto).join(Programa).join(Componente).join(LineaEstrategica).filter(
+                LineaEstrategica.plan_id == plan_id
+            ).all()
+
+            for indicador in indicadores:
+                entities.append({
+                    'id': indicador.id,
+                    'name': f"{indicador.cod_indicador} - {indicador.nombre}",
+                    'hierarchy': [
+                        ('Línea Estratégica', indicador.proyecto.programa.componente.linea_estrategica.nombre, indicador.proyecto.programa.componente.linea_estrategica.id),
+                        ('Componente', indicador.proyecto.programa.componente.nombre, indicador.proyecto.programa.componente.id),
+                        ('Programa', indicador.proyecto.programa.nombre, indicador.proyecto.programa.id),
+                        ('Proyecto', indicador.proyecto.nombre, indicador.proyecto.id),
+                        ('Indicador', indicador.nombre, indicador.id)
+                    ]
+                })
+
+        elif entity_type == 'proyecto':
+            proyectos = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).filter(
+                LineaEstrategica.plan_id == plan_id
+            ).all()
+
+            for proyecto in proyectos:
+                entities.append({
+                    'id': proyecto.id,
+                    'name': proyecto.nombre,
+                    'hierarchy': [
+                        ('Línea Estratégica', proyecto.programa.componente.linea_estrategica.nombre, proyecto.programa.componente.linea_estrategica.id),
+                        ('Componente', proyecto.programa.componente.nombre, proyecto.programa.componente.id),
+                        ('Programa', proyecto.programa.nombre, proyecto.programa.id),
+                        ('Proyecto', proyecto.nombre, proyecto.id)
+                    ]
+                })
+
+        elif entity_type == 'programa':
+            programas = Programa.query.join(Componente).join(LineaEstrategica).filter(
+                LineaEstrategica.plan_id == plan_id
+            ).all()
+
+            for programa in programas:
+                entities.append({
+                    'id': programa.id,
+                    'name': f"{programa.cod_programa} - {programa.nombre}",
+                    'hierarchy': [
+                        ('Línea Estratégica', programa.componente.linea_estrategica.nombre, programa.componente.linea_estrategica.id),
+                        ('Componente', programa.componente.nombre, programa.componente.id),
+                        ('Programa', programa.nombre, programa.id)
+                    ]
+                })
+
+        elif entity_type == 'componente':
+            componentes = Componente.query.join(LineaEstrategica).filter(
+                LineaEstrategica.plan_id == plan_id
+            ).all()
+
+            for componente in componentes:
+                entities.append({
+                    'id': componente.id,
+                    'name': f"{componente.cod_componente} - {componente.nombre}",
+                    'hierarchy': [
+                        ('Línea Estratégica', componente.linea_estrategica.nombre, componente.linea_estrategica.id),
+                        ('Componente', componente.nombre, componente.id)
+                    ]
+                })
+
+        elif entity_type == 'linea':
+            lineas = LineaEstrategica.query.filter_by(plan_id=plan_id).all()
+
+            for linea in lineas:
+                entities.append({
+                    'id': linea.id,
+                    'name': f"{linea.cod_linea} - {linea.nombre}",
+                    'hierarchy': [
+                        ('Línea Estratégica', linea.nombre, linea.id)
+                    ]
+                })
+
+        return jsonify(entities)
+
+    except Exception as e:
+        print(f"Error obteniendo entidades: {str(e)}")
+        return jsonify([]), 500
+
+@admin_bp.route('/api/row-permissions/<int:permission_id>', methods=['GET', 'PATCH'])
+@login_required
+def get_or_edit_row_permission(permission_id):
+    """Obtener o editar un permiso de fila existente"""
+    try:
+        permission = RowPermission.query.get(permission_id)
+        if not permission:
+            return jsonify({
+                'success': False,
+                'message': 'Permiso no encontrado.'
+            }), 404
+
+        # Verificar que el permiso pertenece al plan del usuario actual
+        plan = PlanDesarrollo.query.filter_by(
+            id=permission.plan_id,
+            municipio=current_user
+        ).first()
+
+        if not plan:
+            return jsonify({
+                'success': False,
+                'message': 'No tienes permisos para acceder a este permiso.'
+            }), 403
+
+        # Manejar solicitud GET (obtener datos para edición)
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'user_id': permission.user_id,
+                'plan_id': permission.plan_id,
+                'indicador_id': permission.indicador_id,
+                'proyecto_id': permission.proyecto_id,
+                'programa_id': permission.programa_id,
+                'componente_id': permission.componente_id,
+                'linea_estrategica_id': permission.linea_estrategica_id,
+                'can_view': permission.can_view,
+                'can_edit': permission.can_edit,
+                'description': permission.description,
+                'permission_scope': permission.permission_scope,
+                'is_active': permission.is_active
+            })
+
+        # Manejar solicitud PATCH (actualizar permiso)
+        elif request.method == 'PATCH':
+            # Actualizar permisos
+            permission.can_view = request.form.get('can_view') == 'on'
+            permission.can_edit = request.form.get('can_edit') == 'on'
+            permission.description = request.form.get('description', '')
+            permission.updated_at = datetime.utcnow()
+
+            if not permission.can_view and not permission.can_edit:
+                return jsonify({
+                    'success': False,
+                    'message': 'Debe seleccionar al menos un permiso (ver o editar).'
+                }), 400
+
+            db.session.commit()
+
+            # Registrar en el log de actividad
+            ActivityLog.log_activity(
+                'edit_row_permission',
+                f'Editado permiso de fila para {permission.user.get_full_name()}',
+                request.remote_addr,
+                request.headers.get('User-Agent')
+            )
+
+            return jsonify({
+                'success': True,
+                'message': 'Permiso actualizado exitosamente.'
+            })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error procesando permiso de fila: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Error interno del servidor. Inténtalo de nuevo.'
+        }), 500
+
+@admin_bp.route('/api/row-permissions/<int:permission_id>', methods=['DELETE'])
+@login_required
+def delete_row_permission(permission_id):
+    """Eliminar un permiso de fila"""
+    try:
+        permission = RowPermission.query.get(permission_id)
+        if not permission:
+            return jsonify({
+                'success': False,
+                'message': 'Permiso no encontrado.'
+            }), 404
+
+        # Verificar que el permiso pertenece al plan del usuario actual
+        from app.models import PlanDesarrollo
+        plan = PlanDesarrollo.query.filter_by(
+            id=permission.plan_id,
+            municipio=current_user
+        ).first()
+
+        if not plan:
+            return jsonify({
+                'success': False,
+                'message': 'No tienes permisos para eliminar este permiso.'
+            }), 403
+
+        # Marcar como inactivo (no eliminar físicamente)
+        permission.is_active = False
+        permission.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        # Registrar en el log de actividad
+        ActivityLog.log_activity(
+            'delete_row_permission',
+            f'Eliminado permiso de fila para {permission.user.get_full_name()}',
+            request.remote_addr,
+            request.headers.get('User-Agent')
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Permiso eliminado exitosamente.'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error eliminando permiso de fila: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Error interno del servidor. Inténtalo de nuevo.'
+        }), 500

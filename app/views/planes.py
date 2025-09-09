@@ -744,7 +744,7 @@ def ver_excel(plan_id):
                     indicador = proyecto.indicadores[0] if proyecto.indicadores else None
 
                     # Verificar si el usuario puede editar esta fila específica
-                    can_edit_row = current_user.can_edit_row(indicador.id if indicador else 0) if indicador else False
+                    can_edit_row = current_user.can_edit_row(indicador.id if indicador else 0, plan.id) if indicador else False
 
                     # Obtener ejecuciones trimestrales del 2024
                     ejecuciones_2024 = []
