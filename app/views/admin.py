@@ -18,28 +18,54 @@ def require_admin():
 
 @admin_bp.route('/dashboard')
 def dashboard():
-    """Admin dashboard with overview statistics"""
+    """Admin dashboard with overview statistics including JWT"""
     # Get statistics
     total_users = User.query.count()
     active_users = User.query.filter_by(is_active=True).count()
     admin_users = User.query.filter_by(role='admin').count()
     recent_activities = ActivityLog.query.order_by(desc(ActivityLog.timestamp)).limit(10).all()
-    active_sessions = ActiveSession.query.filter_by(is_active=True).all()
+
+    # Obtener sesiones activas con validación JWT
+    raw_active_sessions = ActiveSession.query.filter_by(is_active=True).all()
+    valid_sessions = []
+    invalid_sessions = []
+
+    for session in raw_active_sessions:
+        if session.validate_jwt() and not session.is_jwt_expired():
+            valid_sessions.append(session)
+        else:
+            # Marcar sesiones inválidas como inactivas
+            session.is_active = False
+            invalid_sessions.append(session)
+
+    # Commit cambios si hay sesiones inválidas
+    if invalid_sessions:
+        db.session.commit()
+
     inactive_sessions = ActiveSession.get_inactive_sessions()
+
+    # Estadísticas JWT
+    jwt_stats = {
+        'valid_sessions': len(valid_sessions),
+        'invalid_sessions': len(invalid_sessions),
+        'total_jwt_sessions': len(raw_active_sessions),
+        'jwt_validation_rate': (len(valid_sessions) / len(raw_active_sessions) * 100) if raw_active_sessions else 0
+    }
 
     stats = {
         'total_users': total_users,
         'active_users': active_users,
         'admin_users': admin_users,
-        'total_sessions': len(active_sessions),
-        'inactive_sessions': len(inactive_sessions)
+        'total_sessions': len(valid_sessions),  # Solo sesiones válidas
+        'inactive_sessions': len(inactive_sessions),
+        'jwt_stats': jwt_stats
     }
 
     return render_template('admin/dashboard.html',
                          title='Panel de Administrador',
                          stats=stats,
                          recent_activities=recent_activities,
-                         active_sessions=active_sessions,
+                         active_sessions=valid_sessions,  # Usar valid_sessions en lugar de active_sessions
                          inactive_sessions=inactive_sessions)
 
 @admin_bp.route('/users')
@@ -117,13 +143,33 @@ def activities():
 
 @admin_bp.route('/sessions')
 def sessions():
-    """Active sessions monitor"""
-    active_sessions = ActiveSession.query.filter_by(is_active=True).all()
+    """Active sessions monitor with JWT validation"""
+    # Obtener todas las sesiones marcadas como activas
+    raw_sessions = ActiveSession.query.filter_by(is_active=True).all()
+
+    # Filtrar sesiones con JWT válido (sesiones únicas por usuario)
+    active_sessions = []
+    invalid_sessions = []
+
+    for session in raw_sessions:
+        if session.validate_jwt() and not session.is_jwt_expired():
+            active_sessions.append(session)
+        else:
+            # Marcar sesiones inválidas como inactivas
+            session.is_active = False
+            invalid_sessions.append(session)
+
+    # Commit cambios si hay sesiones inválidas
+    if invalid_sessions:
+        db.session.commit()
+
+    # Obtener sesiones inactivas (sin validación adicional ya que están inactivas)
     inactive_sessions = ActiveSession.get_inactive_sessions()
 
     # Calculate statistics
     total_active = len(active_sessions)
     total_inactive = len(inactive_sessions)
+    total_invalid = len(invalid_sessions)
 
     # Count sessions with alerts (>30 minutes inactive)
     critical_alerts = sum(1 for session in inactive_sessions if session.get_inactive_duration() > 30)
@@ -136,22 +182,86 @@ def sessions():
         avg_duration = 0
 
     return render_template('admin/sessions.html',
-                         title='Monitoreo de Sesiones',
+                         title='Monitoreo de Sesiones JWT',
                          active_sessions=active_sessions,
                          inactive_sessions=inactive_sessions,
+                         invalid_sessions=invalid_sessions,
                          total_active=total_active,
                          total_inactive=total_inactive,
+                         total_invalid=total_invalid,
                          critical_alerts=critical_alerts,
-                         avg_duration=avg_duration)
+                         avg_duration=avg_duration,
+                         jwt_enabled=True)
 
 @admin_bp.route('/api/sessions/update/<session_id>', methods=['POST'])
 def update_session_activity(session_id):
-    """API endpoint to update session activity"""
+    """API endpoint to update session activity with JWT validation"""
     session = ActiveSession.query.filter_by(session_id=session_id, is_active=True).first()
-    if session:
-        session.update_activity()
-        return jsonify({'status': 'success'})
-    return jsonify({'status': 'error', 'message': 'Session not found'}), 404
+
+    if not session:
+        return jsonify({'status': 'error', 'message': 'Session not found'}), 404
+
+    # Validar JWT antes de actualizar actividad
+    if not session.validate_jwt():
+        # JWT inválido - marcar sesión como inactiva
+        session.is_active = False
+        db.session.commit()
+        return jsonify({'status': 'error', 'message': 'Invalid JWT token'}), 401
+
+    if session.is_jwt_expired():
+        # JWT expirado - marcar sesión como inactiva
+        session.is_active = False
+        db.session.commit()
+        return jsonify({'status': 'error', 'message': 'JWT token expired'}), 401
+
+    # JWT válido - actualizar actividad
+    session.update_activity()
+    return jsonify({
+        'status': 'success',
+        'jwt_valid': True,
+        'last_activity': session.last_activity.isoformat()
+    })
+
+@admin_bp.route('/api/sessions/force-logout/<user_id>', methods=['POST'])
+@login_required
+def force_user_logout(user_id):
+    """API endpoint to force logout all sessions of a specific user"""
+    if not current_user.is_admin():
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+
+    try:
+        user_id_int = int(user_id)
+        closed_count = ActiveSession.force_logout_user(user_id_int)
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Closed {closed_count} sessions for user {user_id}',
+            'sessions_closed': closed_count
+        })
+
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'Invalid user ID'}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@admin_bp.route('/api/sessions/cleanup-expired', methods=['POST'])
+@login_required
+def cleanup_expired_sessions():
+    """API endpoint to cleanup expired JWT sessions"""
+    if not current_user.is_admin():
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+
+    try:
+        cleaned_count = ActiveSession.cleanup_expired_jwt_sessions()
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Cleaned up {cleaned_count} expired JWT sessions',
+            'sessions_cleaned': cleaned_count
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @admin_bp.route('/api/sessions/inactive-alerts')
 def get_inactive_alerts():
@@ -314,18 +424,23 @@ def user_heartbeat():
     try:
         data = request.get_json() or {}
 
-        # Buscar sesión activa
-        session_id = request.cookies.get('session', str(hash(str(current_user.id) + str(request.remote_addr))))
-        active_session = ActiveSession.query.filter_by(
-            user_id=current_user.id,
-            session_id=session_id
-        ).first()
+        # Buscar sesión activa usando JWT
+        from flask import session as flask_session
+        jwt_token = flask_session.get('jwt_token')
+        session_id = flask_session.get('session_id')
 
-        if active_session:
-            # Actualizar actividad si no ha sido muy reciente
-            time_since_activity = data.get('time_since_activity', 0)
-            if time_since_activity > 60:  # Solo actualizar si ha pasado más de 1 minuto
-                active_session.update_activity()
+        if jwt_token and session_id:
+            # Validar sesión JWT
+            is_valid, active_session = ActiveSession.validate_session_jwt(session_id, jwt_token)
+
+            if is_valid and active_session:
+                # Actualizar actividad si no ha sido muy reciente
+                time_since_activity = data.get('time_since_activity', 0)
+                if time_since_activity > 60:  # Solo actualizar si ha pasado más de 1 minuto
+                    active_session.update_activity()
+            else:
+                # Sesión JWT inválida - no hacer nada, dejará de actualizarse
+                pass
 
         return jsonify({
             'status': 'success',

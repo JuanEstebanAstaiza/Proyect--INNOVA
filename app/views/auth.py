@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 try:
     from werkzeug.urls import url_parse
@@ -7,8 +7,37 @@ except ImportError:
 from app import db
 from app.models import User
 from app.forms.auth import LoginForm, RegistrationForm
+from app.models.active_session import ActiveSession
+from app.models.activity_log import ActivityLog
+import uuid
+import json
+from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+def get_device_info():
+    """
+    Recopila información del dispositivo y navegador para fingerprinting
+    """
+    user_agent = request.headers.get('User-Agent', '')
+
+    # Información básica del dispositivo
+    device_info = {
+        'user_agent': user_agent,
+        'platform': request.headers.get('Sec-Ch-Ua-Platform', '').strip('"'),
+        'language': request.headers.get('Accept-Language', '').split(',')[0] if request.headers.get('Accept-Language') else '',
+        'timezone': request.headers.get('Timezone', ''),
+        'screen_resolution': request.form.get('screen_resolution', ''),
+        'cookie_enabled': True,  # Asumimos que sí porque están usando la app
+        'ip_address': request.remote_addr,
+        'timestamp': datetime.utcnow().isoformat(),
+        'session_id': str(uuid.uuid4())  # ID único para esta sesión
+    }
+
+    # Limpiar valores vacíos
+    device_info = {k: v for k, v in device_info.items() if v and v != ''}
+
+    return device_info
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -31,36 +60,33 @@ def login():
         # Actualizar último login
         user.update_last_login()
 
-        # Registrar actividad de login
-        from app.models.activity_log import ActivityLog
+        # Recopilar información del dispositivo
+        device_info = get_device_info()
+
+        # Generar ID único para la sesión
+        session_id = str(uuid.uuid4())
+
+        # Crear sesión con JWT (invalida sesiones anteriores del mismo usuario)
+        active_session = ActiveSession.create_session_with_jwt(
+            user_id=user.id,
+            session_id=session_id,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            device_info=device_info
+        )
+
+        # Almacenar información de la sesión en Flask session
+        session['jwt_token'] = active_session.jwt_token
+        session['session_id'] = session_id
+        session['device_fingerprint'] = active_session.device_fingerprint
+
+        # Registrar actividad de login con JWT
         ActivityLog.log_activity(
             'login',
-            f'Inicio de sesión exitoso desde {request.remote_addr}',
+            f'Inicio de sesión exitoso desde {request.remote_addr} (JWT: {active_session.jwt_token[:20]}...)',
             request.remote_addr,
             request.headers.get('User-Agent')
         )
-
-        # Crear o actualizar sesión activa
-        from app.models.active_session import ActiveSession
-        session_id = request.cookies.get('session', str(hash(str(user.id) + str(request.remote_addr))))
-        active_session = ActiveSession.query.filter_by(
-            user_id=user.id,
-            session_id=session_id
-        ).first()
-
-        if not active_session:
-            active_session = ActiveSession(
-                user_id=user.id,
-                session_id=session_id,
-                ip_address=request.remote_addr,
-                user_agent=request.headers.get('User-Agent')
-            )
-            db.session.add(active_session)
-        else:
-            active_session.is_active = True
-            active_session.update_activity()
-
-        db.session.commit()
 
         next_page = request.args.get('next')
         if not next_page or url_parse(next_page).netloc != '':
@@ -72,25 +98,33 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    # Registrar actividad de logout antes de cerrar sesión
-    from app.models.activity_log import ActivityLog
+    # Obtener información de la sesión JWT
+    jwt_token = session.get('jwt_token')
+    session_id = session.get('session_id')
+
+    # Registrar actividad de logout
     ActivityLog.log_activity(
         'logout',
-        f'Cierre de sesión desde {request.remote_addr}',
+        f'Cierre de sesión desde {request.remote_addr} (JWT: {jwt_token[:20] if jwt_token else "N/A"}...)',
         request.remote_addr,
         request.headers.get('User-Agent')
     )
 
-    # Marcar sesión como inactiva
-    from app.models.active_session import ActiveSession
-    session_id = request.cookies.get('session', str(hash(str(current_user.id) + str(request.remote_addr))))
-    active_session = ActiveSession.query.filter_by(
-        user_id=current_user.id,
-        session_id=session_id
-    ).first()
-    if active_session:
-        active_session.is_active = False
-        db.session.commit()
+    # Marcar sesión JWT como inactiva si existe
+    if jwt_token and session_id:
+        active_session = ActiveSession.query.filter_by(
+            user_id=current_user.id,
+            session_id=session_id,
+            jwt_token=jwt_token
+        ).first()
+        if active_session:
+            active_session.is_active = False
+            db.session.commit()
+
+    # Limpiar datos de sesión
+    session.pop('jwt_token', None)
+    session.pop('session_id', None)
+    session.pop('device_fingerprint', None)
 
     logout_user()
     flash('Ha cerrado sesión exitosamente.', 'success')

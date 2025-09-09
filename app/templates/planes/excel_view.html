@@ -107,69 +107,69 @@
                             <tr>
                                 <!-- Información básica de la estructura -->
                                 {% if can_view_column('CÓD LINEA') %}
-                                <th class="text-center col-estructura" style="min-width: 80px;">CÓD<br>LÍNEA</th>
+                                <th class="text-center col-estructura" style="min-width: 80px;" title="Código de Línea Estratégica">CÓD<br>LÍNEA</th>
                                 {% endif %}
                                 {% if can_view_column('LINEAS ESTRATEGICAS') %}
-                                <th class="text-center col-estructura" style="min-width: 200px;">LÍNEAS<br>ESTRATÉGICAS</th>
+                                <th class="text-center col-estructura" style="min-width: 200px;" title="Líneas Estratégicas del Plan">LÍNEAS<br>ESTRATÉGICAS</th>
                                 {% endif %}
                                 {% if can_view_column('CÓD COMPONENTE') %}
-                                <th class="text-center col-estructura" style="min-width: 100px;">CÓD<br>COMPONENTE</th>
+                                <th class="text-center col-estructura" style="min-width: 100px;" title="Código de Componente">CÓD<br>COMPONENTE</th>
                                 {% endif %}
                                 {% if can_view_column('COMPONENTES') %}
-                                <th class="text-center col-estructura" style="min-width: 200px;">COMPONENTES</th>
+                                <th class="text-center col-estructura" style="min-width: 200px;" title="Componentes del Plan">COMPONENTES</th>
                                 {% endif %}
                                 {% if can_view_column('CÓD PROGRAMA') %}
-                                <th class="text-center col-estructura" style="min-width: 100px;">CÓD<br>PROGRAMA</th>
+                                <th class="text-center col-estructura" style="min-width: 100px;" title="Código de Programa">CÓD<br>PROGRAMA</th>
                                 {% endif %}
                                 {% if can_view_column('PROGRAMA PDM') %}
-                                <th class="text-center col-estructura" style="min-width: 200px;">PROGRAMA<br>PDM</th>
+                                <th class="text-center col-estructura" style="min-width: 200px;" title="Programa PDM">PROGRAMA<br>PDM</th>
                                 {% endif %}
                                 {% if can_view_column('DEPENDENCIA RESPOSABLE') %}
-                                <th class="text-center col-estructura" style="min-width: 150px;">DEPENDENCIA<br>RESPONSABLE</th>
+                                <th class="text-center col-estructura" style="min-width: 150px;" title="Dependencia Responsable">DEPENDENCIA<br>RESPONSABLE</th>
                                 {% endif %}
                                 {% if can_view_column('BPIM') %}
-                                <th class="text-center col-estructura" style="min-width: 100px;">BPIM</th>
+                                <th class="text-center col-estructura" style="min-width: 100px;" title="BPIM">BPIM</th>
                                 {% endif %}
                                 {% if can_view_column('NOMBRE PROYECTO') %}
-                                <th class="text-center col-estructura" style="min-width: 200px;">NOMBRE<br>PROYECTO</th>
+                                <th class="text-center col-estructura" style="min-width: 200px;" title="Nombre del Proyecto">NOMBRE<br>PROYECTO</th>
                                 {% endif %}
-                                <th class="text-center col-indicadores" style="min-width: 150px;">INDICADORES</th>
-                                <th class="text-center col-indicadores" style="min-width: 120px;">CÓD<br>INDICADOR</th>
-                                <th class="text-center col-indicadores" style="min-width: 200px;">INDICADOR DE<br>PRODUCTO</th>
-                                <th class="text-center col-indicadores" style="min-width: 120px;">TIPO DE<br>INDICADOR</th>
-                                <th class="text-center col-indicadores" style="min-width: 100px;">LÍNEA<br>BASE</th>
-                                <th class="text-center col-indicadores" style="min-width: 100px;">SENTIDO</th>
-                                <th class="text-center col-indicadores" style="min-width: 120px;">TIPOLOGÍA</th>
-                                <th class="text-center col-indicadores" style="min-width: 100px;">UNIDAD</th>
-                                <th class="text-center col-indicadores" style="min-width: 120px;">META<br>CUATRIENIO</th>
-                                <th class="text-center col-indicadores" style="min-width: 100px;">META<br>2024</th>
+                                <th class="text-center col-indicadores" style="min-width: 150px;" title="Indicadores del Proyecto">INDICADORES</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;" title="Código del Indicador">CÓD<br>INDICADOR</th>
+                                <th class="text-center col-indicadores" style="min-width: 200px;" title="Indicador de Producto">INDICADOR<br>PRODUCTO</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;" title="Tipo de Indicador">TIPO<br>INDICADOR</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;" title="Línea Base">LÍNEA<br>BASE</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;" title="Sentido del Indicador">SENTIDO</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;" title="Tipología">TIPOLOGÍA</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;" title="Unidad de Medida">UNIDAD</th>
+                                <th class="text-center col-indicadores" style="min-width: 120px;" title="Meta del Cuatrienio">META<br>CUATRIENIO</th>
+                                <th class="text-center col-indicadores" style="min-width: 100px;" title="Meta 2024">META<br>2024</th>
 
                                 <!-- Columnas de ejecución trimestral -->
-                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>I TRIMESTRE</th>
-                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>I TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>I TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>I TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 100px;" title="Ejecución Primer Trimestre">EJECUCIÓN<br>Q1</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;" title="% Cumplimiento Primer Trimestre">% CUMP<br>Q1</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;" title="Población Impactada Q1">POBLACIÓN<br>Q1</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;" title="Observación Primer Trimestre">OBS<br>Q1</th>
 
-                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>II TRIMESTRE</th>
-                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>II TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>II TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>II TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 100px;" title="Ejecución Segundo Trimestre">EJECUCIÓN<br>Q2</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;" title="% Cumplimiento Segundo Trimestre">% CUMP<br>Q2</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;" title="Población Impactada Q2">POBLACIÓN<br>Q2</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;" title="Observación Segundo Trimestre">OBS<br>Q2</th>
 
-                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>III TRIMESTRE</th>
-                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>III TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>III TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>III TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 100px;" title="Ejecución Tercer Trimestre">EJECUCIÓN<br>Q3</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;" title="% Cumplimiento Tercer Trimestre">% CUMP<br>Q3</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;" title="Población Impactada Q3">POBLACIÓN<br>Q3</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;" title="Observación Tercer Trimestre">OBS<br>Q3</th>
 
-                                <th class="text-center col-ejecucion" style="min-width: 100px;">EJECUCIÓN<br>IV TRIMESTRE</th>
-                                <th class="text-center col-cumplimiento" style="min-width: 100px;">% CUMPLIMIENTO<br>IV TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>IV TRIMESTRE</th>
-                                <th class="text-center col-ejecucion" style="min-width: 150px;">OBSERVACIÓN<br>IV TRIMESTRE</th>
+                                <th class="text-center col-ejecucion" style="min-width: 100px;" title="Ejecución Cuarto Trimestre">EJECUCIÓN<br>Q4</th>
+                                <th class="text-center col-cumplimiento" style="min-width: 100px;" title="% Cumplimiento Cuarto Trimestre">% CUMP<br>Q4</th>
+                                <th class="text-center col-ejecucion" style="min-width: 120px;" title="Población Impactada Q4">POBLACIÓN<br>Q4</th>
+                                <th class="text-center col-ejecucion" style="min-width: 150px;" title="Observación Cuarto Trimestre">OBS<br>Q4</th>
 
                                 <!-- Columnas acumuladas -->
-                                <th class="text-center col-acumulado" style="min-width: 120px;">EJECUCIÓN<br>ACUMULADA</th>
-                                <th class="text-center col-acumulado" style="min-width: 120px;">% CUMPLIMIENTO<br>ACUMULADO</th>
-                                <th class="text-center col-acumulado" style="min-width: 120px;">POBLACIÓN IMPACTADA<br>ACUMULADA</th>
-                                <th class="text-center col-acumulado" style="min-width: 150px;">OBSERVACIÓN<br>ACUMULADA</th>
+                                <th class="text-center col-acumulado" style="min-width: 120px;" title="Ejecución Total Acumulada">TOTAL<br>EJECUTADO</th>
+                                <th class="text-center col-acumulado" style="min-width: 120px;" title="% Cumplimiento Total">% TOTAL<br>CUMPLIDO</th>
+                                <th class="text-center col-acumulado" style="min-width: 120px;" title="Población Total Impactada">TOTAL<br>POBLACIÓN</th>
+                                <th class="text-center col-acumulado" style="min-width: 150px;" title="Observaciones Generales">OBSERVACIONES<br>GENERALES</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -573,28 +573,145 @@ document.addEventListener('keydown', function(e) {
 <style>
 /* Estilos específicos para la vista Excel */
 .excel-cell {
-    border: none;
-    padding: 2px 4px;
-    font-size: 0.85rem;
-    min-height: 30px;
+    border: 1px solid #dee2e6 !important;
+    padding: 3px 6px;
+    font-size: 0.875rem;
+    min-height: 32px;
+    background-color: #ffffff !important;
+    color: #212529 !important;
 }
 
 .excel-cell:focus {
     outline: 2px solid #007bff;
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    background-color: #f8f9fa !important;
 }
 
+/* Asegurar que todas las celdas de datos tengan fondo claro */
+.table td {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+/* Celdas de solo lectura con fondo ligeramente diferente */
+.table td.bg-light {
+    background-color: #f8f9fa !important;
+    color: #495057 !important;
+}
+
+.table td.bg-warning {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+}
+
+/* Estilos para inputs dentro de celdas */
+.table td input[type="text"],
+.table td input[type="number"],
+.table td select {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border: 1px solid #ced4da !important;
+}
+
+.table td input[type="text"]:focus,
+.table td input[type="number"]:focus,
+.table td select:focus {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border-color: #80bdff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Mejora significativa de los títulos de las columnas */
 .table th {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 8px 4px;
+    font-size: 0.9rem !important;
+    font-weight: 800 !important;
+    padding: 14px 8px !important;
     vertical-align: middle;
     white-space: nowrap;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important;
+    color: #ffffff !important;
+    border: 2px solid #495057 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    position: relative;
+    z-index: 10;
+}
+
+/* Títulos más específicos para mejor legibilidad */
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.table thead th::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(52, 73, 94, 0.9) 0%, rgba(44, 62, 80, 0.95) 100%);
+    z-index: -1;
+}
+
+.table thead th::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #3498db, #2ecc71, #f39c12, #e74c3c);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Mejorar la legibilidad en hover */
+.table th:hover {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
 }
 
 .table td {
-    padding: 2px 4px;
+    padding: 3px 6px;
     vertical-align: middle;
+    border: 1px solid #dee2e6;
+    background-color: #ffffff !important;
+    color: #212529 !important;
+}
+
+/* Estilos específicos para diferentes tipos de columnas */
+.col-estructura th {
+    background-color: #495057 !important;
+    border-left: 3px solid #007bff !important;
+}
+
+.col-indicadores th {
+    background-color: #6c757d !important;
+    border-left: 3px solid #28a745 !important;
+}
+
+.col-ejecucion th {
+    background-color: #5a6268 !important;
+    border-left: 3px solid #ffc107 !important;
+}
+
+.col-cumplimiento th {
+    background-color: #545b62 !important;
+    border-left: 3px solid #17a2b8 !important;
+}
+
+.col-acumulado th {
+    background-color: #343a40 !important;
+    border-left: 3px solid #dc3545 !important;
+    font-weight: 900 !important;
+    font-size: 0.9rem !important;
 }
 
 .table-responsive {
@@ -616,28 +733,163 @@ document.addEventListener('keydown', function(e) {
     text-align: right;
 }
 
+/* Celdas con colores específicos - asegurar buen contraste */
 .bg-light {
     background-color: #f8f9fa !important;
+    color: #495057 !important;
+}
+
+.bg-light input,
+.bg-light select {
+    background-color: #f8f9fa !important;
+    color: #495057 !important;
 }
 
 .bg-warning {
     background-color: #fff3cd !important;
+    color: #856404 !important;
+}
+
+.bg-warning input,
+.bg-warning select {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+}
+
+/* Tooltips informativos para títulos */
+.table th[title] {
+    cursor: help;
+}
+
+/* Mejorar contraste para accesibilidad */
+@media (prefers-contrast: high) {
+    .table th {
+        background: #000000 !important;
+        color: #ffffff !important;
+        border: 3px solid #ffffff !important;
+    }
+}
+
+/* Estilos para modo oscuro */
+@media (prefers-color-scheme: dark) {
+    .table th {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+        color: #ffffff !important;
+        border-color: #404040 !important;
+    }
+
+    .table td {
+        background-color: #2d2d2d !important;
+        color: #ffffff !important;
+        border-color: #404040 !important;
+    }
+
+    /* Celdas con colores específicos en modo oscuro */
+    .bg-light {
+        background-color: #343a40 !important;
+        color: #adb5bd !important;
+    }
+
+    .bg-light input,
+    .bg-light select {
+        background-color: #343a40 !important;
+        color: #adb5bd !important;
+        border-color: #495057 !important;
+    }
+
+    .bg-warning {
+        background-color: #533f00 !important;
+        color: #ffda6a !important;
+    }
+
+    .bg-warning input,
+    .bg-warning select {
+        background-color: #533f00 !important;
+        color: #ffda6a !important;
+        border-color: #6c5b00 !important;
+    }
+
+    /* Inputs en modo oscuro */
+    .table td input[type="text"],
+    .table td input[type="number"],
+    .table td select {
+        background-color: #2d2d2d !important;
+        color: #ffffff !important;
+        border-color: #495057 !important;
+    }
+
+    .table td input[type="text"]:focus,
+    .table td input[type="number"]:focus,
+    .table td select:focus {
+        background-color: #2d2d2d !important;
+        color: #ffffff !important;
+        border-color: #0d6efd !important;
+    }
+
+    /* Celdas Excel en modo oscuro */
+    .excel-cell {
+        background-color: #2d2d2d !important;
+        color: #ffffff !important;
+        border-color: #404040 !important;
+    }
+
+    .excel-cell:focus {
+        background-color: #343a40 !important;
+    }
 }
 
 /* Responsive para móviles */
 @media (max-width: 768px) {
     .excel-cell {
-        font-size: 0.75rem;
-        padding: 1px 2px;
+        font-size: 0.8rem;
+        padding: 2px 4px;
+        min-height: 35px;
     }
 
     .table th {
-        font-size: 0.65rem;
-        padding: 4px 2px;
+        font-size: 0.75rem !important;
+        padding: 8px 4px !important;
+        writing-mode: horizontal-tb;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    .table th br {
+        display: none;
     }
 
     .table td {
+        padding: 2px 4px;
+    }
+}
+
+/* Para pantallas muy pequeñas */
+@media (max-width: 576px) {
+    .table th {
+        font-size: 0.7rem !important;
+        padding: 6px 3px !important;
+    }
+
+    .excel-cell {
+        font-size: 0.75rem;
         padding: 1px 2px;
+        min-height: 30px;
+    }
+}
+
+/* Asegurar legibilidad en todas las condiciones */
+.table th {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Estilos para impresión */
+@media print {
+    .table th {
+        background: #000000 !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
     }
 }
 </style>

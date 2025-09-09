@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.forms.auth import ProfileEditForm, ChangePasswordForm
 from app.models import ActiveSession
+import uuid
 
 main_bp = Blueprint('main', __name__)
 
@@ -112,24 +113,49 @@ def update_user_activity():
     try:
         data = request.get_json() or {}
 
-        # Buscar o crear sesión activa para el usuario
-        session_id = request.cookies.get('session', str(hash(str(current_user.id) + str(request.remote_addr))))
-        active_session = ActiveSession.query.filter_by(
-            user_id=current_user.id,
-            session_id=session_id
-        ).first()
+        # Buscar sesión activa para el usuario usando JWT
+        jwt_token = session.get('jwt_token')
+        session_id = session.get('session_id')
 
-        if not active_session:
-            active_session = ActiveSession(
+        if jwt_token and session_id:
+            # Validar la sesión JWT existente
+            is_valid, active_session = ActiveSession.validate_session_jwt(session_id, jwt_token)
+
+            if is_valid and active_session:
+                # Sesión JWT válida - actualizar actividad
+                active_session.update_activity()
+            else:
+                # Sesión JWT inválida - crear nueva sesión con JWT
+                from app.views.auth import get_device_info
+                device_info = get_device_info()
+
+                active_session = ActiveSession.create_session_with_jwt(
+                    user_id=current_user.id,
+                    session_id=str(uuid.uuid4()),
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent'),
+                    device_info=device_info
+                )
+
+                # Actualizar la sesión Flask con los nuevos datos
+                session['jwt_token'] = active_session.jwt_token
+                session['session_id'] = active_session.session_id
+        else:
+            # No hay sesión JWT - crear nueva
+            from app.views.auth import get_device_info
+            device_info = get_device_info()
+
+            active_session = ActiveSession.create_session_with_jwt(
                 user_id=current_user.id,
-                session_id=session_id,
+                session_id=str(uuid.uuid4()),
                 ip_address=request.remote_addr,
                 user_agent=request.headers.get('User-Agent'),
-                device_info=data
+                device_info=device_info
             )
-            db.session.add(active_session)
-        else:
-            active_session.update_activity()
+
+            # Actualizar la sesión Flask con los nuevos datos
+            session['jwt_token'] = active_session.jwt_token
+            session['session_id'] = active_session.session_id
 
         db.session.commit()
 
