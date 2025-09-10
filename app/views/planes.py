@@ -1537,35 +1537,50 @@ def reportes(plan_id):
 @planes_bp.route('/<int:plan_id>/reportes/datos')
 @login_required
 def reportes_datos(plan_id):
-    """API para obtener datos JSON para los reportes"""
+    """API para obtener datos JSON para los reportes con datos reales del plan activo"""
     plan = get_plan_or_redirect(plan_id, current_user)
     if hasattr(plan, 'status_code'):
         return plan
 
     from app.models import IndicadorProducto, Proyecto, Programa, Componente, LineaEstrategica, EjecucionTrimestral
 
-    # Obtener tipo de análisis de los parámetros de consulta
+    # Obtener parámetros de consulta
     tipo_analisis = request.args.get('tipo_analisis', 'general')
     periodo = request.args.get('periodo', '2024')
     tipo_grafico = request.args.get('tipo_grafico', 'lineas')
+    columnas_seleccionadas = request.args.get('columnas', '').split(',') if request.args.get('columnas') else None
 
-    # Generar datos basados en el tipo de análisis
-    if tipo_analisis == 'general':
-        data = generar_analisis_general(plan, periodo, tipo_grafico)
-    elif tipo_analisis == 'ejecucion':
-        data = generar_analisis_ejecucion(plan, periodo, tipo_grafico)
-    elif tipo_analisis == 'presupuesto':
-        data = generar_analisis_presupuesto(plan, periodo, tipo_grafico)
-    elif tipo_analisis == 'indicadores':
-        data = generar_analisis_indicadores(plan, periodo, tipo_grafico)
-    elif tipo_analisis == 'comparativo':
-        data = generar_analisis_comparativo(plan, periodo, tipo_grafico)
-    elif tipo_analisis == 'tendencias':
-        data = generar_analisis_tendencias(plan, periodo, tipo_grafico)
-    else:
-        data = generar_analisis_general(plan, periodo, tipo_grafico)
+    try:
+        # Obtener datos reales del plan
+        datos_plan = obtener_datos_plan_completo(plan, periodo, columnas_seleccionadas)
 
-    return data
+        # Si no hay datos reales, usar datos de ejemplo
+        if not datos_plan['datos'] or len(datos_plan['datos']) == 0:
+            current_app.logger.warning("⚠️ No hay datos reales, usando datos de ejemplo")
+            return generar_datos_ejemplo(tipo_analisis, periodo, tipo_grafico, plan, datos_plan)
+
+        # Generar datos para gráficos basados en el tipo de análisis
+        if tipo_analisis == 'general':
+            data = generar_analisis_general_real(datos_plan, periodo, tipo_grafico)
+        elif tipo_analisis == 'ejecucion':
+            data = generar_analisis_ejecucion_real(datos_plan, periodo, tipo_grafico)
+        elif tipo_analisis == 'presupuesto':
+            data = generar_analisis_presupuesto_real(datos_plan, periodo, tipo_grafico)
+        elif tipo_analisis == 'indicadores':
+            data = generar_analisis_indicadores_real(datos_plan, periodo, tipo_grafico)
+        elif tipo_analisis == 'comparativo':
+            data = generar_analisis_comparativo_real(datos_plan, periodo, tipo_grafico)
+        elif tipo_analisis == 'tendencias':
+            data = generar_analisis_tendencias_real(datos_plan, periodo, tipo_grafico)
+        else:
+            data = generar_analisis_general_real(datos_plan, periodo, tipo_grafico)
+
+        return data
+
+    except Exception as e:
+        current_app.logger.error(f'Error en reportes_datos: {str(e)}')
+        # En caso de error, devolver datos de ejemplo
+        return generar_datos_ejemplo(tipo_analisis, periodo, tipo_grafico, plan, {'columnas': []})
 
 def generar_analisis_general(plan, periodo, tipo_grafico):
     """Genera datos para análisis general"""
@@ -1804,7 +1819,7 @@ def generar_analisis_tendencias(plan, periodo, tipo_grafico):
             'borderColor': 'rgba(54, 162, 235, 1)',
             'backgroundColor': 'rgba(54, 162, 235, 0.1)',
             'tension': 0.4,
-            'fill': true
+            'fill': True
         }, {
             'label': 'Tendencia Óptima',
             'data': [50, 60, 70, 80, 88, 94],
@@ -1812,7 +1827,7 @@ def generar_analisis_tendencias(plan, periodo, tipo_grafico):
             'backgroundColor': 'rgba(75, 192, 192, 0.1)',
             'tension': 0.4,
             'borderDash': [5, 5],
-            'fill': false
+            'fill': False
         }]
     }
 
@@ -1833,3 +1848,1318 @@ def generar_analisis_tendencias(plan, periodo, tipo_grafico):
             'probabilidad_cumplimiento': 87
         }
     }
+
+
+def obtener_datos_plan_completo(plan, periodo, columnas_seleccionadas=None):
+    """
+    Obtiene todos los datos del plan de desarrollo activo para crear una tabla unificada
+    que sirva como fuente para Business Intelligence
+    """
+    from app.models import IndicadorProducto, Proyecto, Programa, Componente, LineaEstrategica, EjecucionTrimestral
+
+    current_app.logger.info(f"🔍 Iniciando obtención de datos para plan: {plan.id} - {plan.titulo}")
+
+    datos_completos = []
+
+    # Columnas disponibles por defecto para BI
+    columnas_default = [
+        'id_indicador', 'cod_indicador', 'nombre_indicador', 'tipo_indicador',
+        'linea_base', 'meta_cuatrienio', 'meta_2024', 'unidad',
+        'cod_linea', 'nombre_linea', 'cod_componente', 'nombre_componente',
+        'cod_programa', 'nombre_programa', 'cod_proyecto', 'nombre_proyecto',
+        'ejecucion_q1', 'ejecucion_q2', 'ejecucion_q3', 'ejecucion_q4',
+        'cumplimiento_q1', 'cumplimiento_q2', 'cumplimiento_q3', 'cumplimiento_q4',
+        'ejecucion_acumulada', 'cumplimiento_acumulado',
+        'presupuesto_ejecutado_q1', 'presupuesto_ejecutado_q2',
+        'presupuesto_ejecutado_q3', 'presupuesto_ejecutado_q4',
+        'presupuesto_ejecutado_acumulado', 'poblacion_impactada_q1',
+        'poblacion_impactada_q2', 'poblacion_impactada_q3', 'poblacion_impactada_q4',
+        'poblacion_impactada_acumulada', 'avance_porcentual', 'estado'
+    ]
+
+    # Si se especifican columnas, usar solo esas
+    if columnas_seleccionadas and len(columnas_seleccionadas) > 0:
+        columnas_a_usar = [col for col in columnas_seleccionadas if col in columnas_default]
+        if not columnas_a_usar:
+            columnas_a_usar = columnas_default[:10]  # Usar primeras 10 si ninguna coincide
+    else:
+        columnas_a_usar = columnas_default
+
+    current_app.logger.info(f"📊 Columnas a usar: {columnas_a_usar}")
+
+    try:
+        # Obtener todos los indicadores del plan de una vez para evitar problemas de lazy loading
+        from app.models import IndicadorProducto
+        # Cambiar filtro para incluir indicadores en ejecución también
+        indicadores_plan = IndicadorProducto.query.filter(IndicadorProducto.estado.in_(['activo', 'en_ejecucion'])).all()
+        indicadores_por_proyecto = {}
+
+        # Organizar indicadores por proyecto
+        for indicador in indicadores_plan:
+            proyecto_id = indicador.proyecto_id
+            if proyecto_id not in indicadores_por_proyecto:
+                indicadores_por_proyecto[proyecto_id] = []
+            indicadores_por_proyecto[proyecto_id].append(indicador)
+
+        current_app.logger.info(f"📊 Total indicadores en plan: {len(indicadores_plan)}")
+        current_app.logger.info(f"📊 Proyectos con indicadores: {len(indicadores_por_proyecto)}")
+
+        # Usar el plan original (ya que no necesitamos joinedload)
+        plan_cargado = plan
+
+        # Verificar si el plan tiene líneas estratégicas
+        lineas_count = len(plan_cargado.lineas_estrategicas)
+        current_app.logger.info(f"🏗️ Plan tiene {lineas_count} líneas estratégicas")
+
+        if lineas_count == 0:
+            current_app.logger.warning("⚠️ El plan no tiene líneas estratégicas")
+            return {
+                'datos': [],
+                'columnas': columnas_a_usar,
+                'total_registros': 0,
+                'periodo': periodo,
+                'plan_titulo': plan.titulo,
+                'error': 'El plan no tiene líneas estratégicas configuradas'
+            }
+
+        # Recorrer todas las líneas estratégicas del plan
+        linea_count = 0
+        componente_count = 0
+        programa_count = 0
+        proyecto_count = 0
+        indicador_count = 0
+
+        for linea in plan_cargado.lineas_estrategicas:
+            linea_count += 1
+            current_app.logger.debug(f"Procesando línea {linea_count}/{lineas_count}: {linea.nombre}")
+
+            # Cambiar filtro para incluir líneas en ejecución también
+            if linea.estado not in ['activo', 'en_ejecucion']:
+                current_app.logger.debug(f"Línea {linea.nombre} no está operativa (estado: {linea.estado})")
+                continue
+
+            # Verificar que la línea tenga componentes
+            if not hasattr(linea, 'componentes'):
+                current_app.logger.error(f"❌ Línea {linea.nombre} no tiene atributo 'componentes'")
+                continue
+
+            componentes_linea = linea.componentes
+            current_app.logger.debug(f"Línea {linea.nombre} tiene {len(componentes_linea)} componentes")
+
+            for componente in componentes_linea:
+                componente_count += 1
+                current_app.logger.debug(f"Procesando componente: {componente.nombre}")
+
+                if componente.estado not in ['activo', 'en_ejecucion']:
+                    continue
+
+                # Verificar que el componente tenga programas
+                if not hasattr(componente, 'programas'):
+                    current_app.logger.error(f"❌ Componente {componente.nombre} no tiene atributo 'programas'")
+                    continue
+
+                programas_componente = componente.programas
+                current_app.logger.debug(f"Componente {componente.nombre} tiene {len(programas_componente)} programas")
+
+                for programa in programas_componente:
+                    programa_count += 1
+                    current_app.logger.debug(f"Procesando programa: {programa.nombre}")
+
+                    if programa.estado not in ['activo', 'en_ejecucion']:
+                        continue
+
+                    # Verificar que el programa tenga proyectos
+                    if not hasattr(programa, 'proyectos'):
+                        current_app.logger.error(f"❌ Programa {programa.nombre} no tiene atributo 'proyectos'")
+                        continue
+
+                    proyectos_programa = programa.proyectos
+                    current_app.logger.debug(f"Programa {programa.nombre} tiene {len(proyectos_programa)} proyectos")
+
+                    for proyecto in proyectos_programa:
+                        proyecto_count += 1
+                        current_app.logger.debug(f"Procesando proyecto: {proyecto.nombre}")
+
+                        if proyecto.estado not in ['activo', 'en_ejecucion']:
+                            current_app.logger.debug(f"⚠️ Proyecto {proyecto.nombre} no está operativo (estado: {proyecto.estado})")
+                            continue
+
+                        current_app.logger.debug(f"✅ Proyecto {proyecto.nombre} está operativo (estado: {proyecto.estado}), continuando verificación...")
+
+                        # Verificar que el proyecto tenga indicadores
+                        current_app.logger.debug(f"🔍 Verificando proyecto: {proyecto.nombre} (ID: {proyecto.id})")
+
+                        # Obtener indicadores del proyecto usando el diccionario pre-cargado
+                        indicadores_proyecto = indicadores_por_proyecto.get(proyecto.id, [])
+                        current_app.logger.debug(f"📊 Proyecto {proyecto.nombre} tiene {len(indicadores_proyecto)} indicadores activos")
+
+                        if len(indicadores_proyecto) == 0:
+                            current_app.logger.debug(f"⚠️ Proyecto {proyecto.nombre} no tiene indicadores activos, saltando...")
+                            continue
+
+                        # Para cada indicador del proyecto
+                        current_app.logger.debug(f"Procesando {len(indicadores_proyecto)} indicadores del proyecto {proyecto.nombre}")
+                        for indicador in indicadores_proyecto:
+                            indicador_count += 1
+                            current_app.logger.debug(f"Procesando indicador {indicador_count}: {indicador.nombre} (ID: {indicador.id}, Estado: {indicador.estado})")
+
+                            # Verificar que el indicador tenga todos los campos necesarios
+                            if not hasattr(indicador, 'estado') or indicador.estado not in ['activo', 'en_ejecucion']:
+                                current_app.logger.debug(f"Indicador {indicador.nombre} no está activo (estado: {getattr(indicador, 'estado', 'N/A')})")
+                                continue
+
+                            try:
+                                # Obtener todas las ejecuciones del indicador para el período
+                                ejecuciones = indicador.get_ejecuciones_por_anio(int(periodo))
+                                current_app.logger.debug(f"Indicador {indicador.nombre} tiene {len(ejecuciones)} ejecuciones en {periodo}")
+
+                                # Crear fila de datos con todas las columnas disponibles
+                                fila_datos = {
+                                    'id_indicador': indicador.id,
+                                    'cod_indicador': getattr(indicador, 'cod_indicador', ''),
+                                    'nombre_indicador': indicador.nombre,
+                                    'tipo_indicador': getattr(indicador, 'tipo_indicador', ''),
+                                    'linea_base': indicador.linea_base,
+                                    'meta_cuatrienio': indicador.meta_cuatrienio,
+                                    'meta_2024': indicador.meta_2024,
+                                    'unidad': getattr(indicador, 'unidad', ''),
+                                    'cod_linea': linea.cod_linea,
+                                    'nombre_linea': linea.nombre,
+                                    'cod_componente': getattr(componente, 'cod_componente', ''),
+                                    'nombre_componente': componente.nombre,
+                                    'cod_programa': getattr(programa, 'cod_programa', ''),
+                                    'nombre_programa': programa.nombre,
+                                    'cod_proyecto': getattr(proyecto, 'cod_proyecto', ''),
+                                    'nombre_proyecto': proyecto.nombre,
+                                    'estado': indicador.estado
+                                }
+
+                                # Inicializar columnas de ejecución
+                                for trimestre in range(1, 5):
+                                    fila_datos[f'ejecucion_q{trimestre}'] = 0.0
+                                    fila_datos[f'cumplimiento_q{trimestre}'] = 0.0
+                                    fila_datos[f'presupuesto_ejecutado_q{trimestre}'] = 0.0
+                                    fila_datos[f'poblacion_impactada_q{trimestre}'] = 0
+
+                                fila_datos['ejecucion_acumulada'] = 0.0
+                                fila_datos['cumplimiento_acumulado'] = 0.0
+                                fila_datos['presupuesto_ejecutado_acumulado'] = 0.0
+                                fila_datos['poblacion_impactada_acumulada'] = 0
+
+                                # Llenar con datos reales de ejecuciones
+                                for ejecucion in ejecuciones:
+                                    trimestre = ejecucion.trimestre
+                                    fila_datos[f'ejecucion_q{trimestre}'] = ejecucion.ejecucion_trimestral
+                                    fila_datos[f'cumplimiento_q{trimestre}'] = ejecucion.cumplimiento_trimestral
+                                    fila_datos[f'presupuesto_ejecutado_q{trimestre}'] = ejecucion.presupuesto_ejecutado_trimestral
+                                    fila_datos[f'poblacion_impactada_q{trimestre}'] = ejecucion.poblacion_impactada_trimestral
+
+                                # Calcular valores acumulados (última ejecución disponible)
+                                ultima_ejecucion = indicador.get_ultima_ejecucion()
+                                if ultima_ejecucion:
+                                    fila_datos['ejecucion_acumulada'] = ultima_ejecucion.ejecucion_acumulada
+                                    fila_datos['cumplimiento_acumulado'] = ultima_ejecucion.cumplimiento_acumulado
+                                    fila_datos['presupuesto_ejecutado_acumulado'] = ultima_ejecucion.presupuesto_ejecutado_acumulado
+                                    fila_datos['poblacion_impactada_acumulada'] = ultima_ejecucion.poblacion_impactada_acumulada
+
+                                # Calcular avance porcentual
+                                fila_datos['avance_porcentual'] = indicador.get_progreso_porcentual()
+
+                                # Filtrar solo las columnas solicitadas
+                                fila_filtrada = {col: fila_datos[col] for col in columnas_a_usar if col in fila_datos}
+                                datos_completos.append(fila_filtrada)
+                                current_app.logger.debug(f"✅ Indicador {indicador.nombre} procesado correctamente")
+
+                            except Exception as e:
+                                current_app.logger.error(f"❌ Error procesando indicador {indicador.nombre}: {str(e)}")
+                                import traceback
+                                current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+                                continue
+
+        current_app.logger.info(f"✅ Procesamiento completado: {linea_count} líneas, {componente_count} componentes, {programa_count} programas, {proyecto_count} proyectos, {indicador_count} indicadores")
+        current_app.logger.info(f"📊 Total registros generados: {len(datos_completos)}")
+
+    except Exception as e:
+        current_app.logger.error(f"❌ Error general en obtener_datos_plan_completo: {str(e)}")
+        return {
+            'datos': [],
+            'columnas': columnas_a_usar,
+            'total_registros': 0,
+            'periodo': periodo,
+            'plan_titulo': plan.titulo,  # Usar plan original en caso de error
+            'error': str(e)
+        }
+
+    return {
+        'datos': datos_completos,
+        'columnas': columnas_a_usar,
+        'total_registros': len(datos_completos),
+        'periodo': periodo,
+        'plan_titulo': plan_cargado.titulo
+    }
+
+
+def generar_datos_ejemplo(tipo_analisis, periodo, tipo_grafico, plan, datos_plan):
+    """Genera datos de ejemplo cuando no hay datos reales disponibles"""
+    current_app.logger.info("📊 Generando datos de ejemplo para análisis BI")
+
+    # Datos de ejemplo para indicadores
+    indicadores_ejemplo = [
+        {
+            'id': 1,
+            'nombre': 'Cobertura de agua potable',
+            'meta_2024': 85,
+            'ejecucion_q1': 75,
+            'avance': 88,
+            'linea_estrategica': 'Infraestructura Básica',
+            'componente': 'Servicios Públicos',
+            'programa': 'Agua y Saneamiento',
+            'proyecto': 'Sistema de Acueducto'
+        },
+        {
+            'id': 2,
+            'nombre': 'Tasa de alfabetización',
+            'meta_2024': 95,
+            'ejecucion_q1': 92,
+            'avance': 97,
+            'linea_estrategica': 'Desarrollo Humano',
+            'componente': 'Educación',
+            'programa': 'Educación Básica',
+            'proyecto': 'Campaña de Alfabetización'
+        },
+        {
+            'id': 3,
+            'nombre': 'Empleo juvenil',
+            'meta_2024': 60,
+            'ejecucion_q1': 55,
+            'avance': 92,
+            'linea_estrategica': 'Desarrollo Económico',
+            'componente': 'Empleo',
+            'programa': 'Inserción Laboral',
+            'proyecto': 'Programa Jóvenes al Trabajo'
+        }
+    ]
+
+    # Datos para gráficos según el tipo de análisis
+    if tipo_analisis == 'general':
+        return {
+            'success': True,
+            'tipo_analisis': 'general',
+            'titulo': f'Análisis General - {periodo} (Datos de Ejemplo)',
+            'descripcion': f'Análisis basado en datos de ejemplo. Plan: {plan.titulo}',
+            'tendencias': {
+                'labels': ['Q1', 'Q2', 'Q3', 'Q4'],
+                'datasets': [{
+                    'label': f'Ejecución Promedio {periodo}',
+                    'data': [15, 25, 35, 45],
+                    'borderColor': 'rgba(54, 162, 235, 1)',
+                    'backgroundColor': 'rgba(54, 162, 235, 0.1)',
+                    'tension': 0.4
+                }]
+            },
+            'presupuesto': {
+                'labels': ['Infraestructura', 'Educación', 'Salud'],
+                'datasets': [{
+                    'data': [35, 25, 20],
+                    'backgroundColor': [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 205, 86, 0.8)'
+                    ]
+                }]
+            },
+            'indicadores': indicadores_ejemplo,
+            'metricas': {
+                'total_indicadores': len(indicadores_ejemplo),
+                'avance_promedio': 92.3,
+                'indicadores_completados': 1,
+                'anio_inicio': 2024,
+                'anio_fin': 2027
+            }
+        }
+    elif tipo_analisis == 'indicadores':
+        return {
+            'success': True,
+            'tipo_analisis': 'indicadores',
+            'titulo': f'Análisis de Indicadores - {periodo} (Datos de Ejemplo)',
+            'descripcion': f'Análisis detallado de indicadores. Plan: {plan.titulo}',
+            'tendencias': {
+                'labels': ['Indicador 1', 'Indicador 2', 'Indicador 3'],
+                'datasets': [{
+                    'label': 'Avance (%)',
+                    'data': [88, 97, 92],
+                    'backgroundColor': 'rgba(54, 162, 235, 0.8)'
+                }]
+            },
+            'presupuesto': None,
+            'indicadores': indicadores_ejemplo,
+            'metricas': {
+                'total_indicadores': len(indicadores_ejemplo),
+                'avance_promedio': 92.3,
+                'indicadores_completados': 1
+            }
+        }
+    else:
+        # Análisis por defecto
+        return {
+            'success': True,
+            'tipo_analisis': tipo_analisis,
+            'titulo': f'{tipo_analisis.title()} - {periodo} (Datos de Ejemplo)',
+            'descripcion': f'Análisis {tipo_analisis} basado en datos de ejemplo. Plan: {plan.titulo}',
+            'tendencias': {
+                'labels': ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                'datasets': [{
+                    'label': 'Tendencia de Ejemplo',
+                    'data': [10, 20, 30, 40, 50, 60],
+                    'borderColor': 'rgba(54, 162, 235, 1)',
+                    'backgroundColor': 'rgba(54, 162, 235, 0.1)',
+                    'tension': 0.4
+                }]
+            },
+            'presupuesto': None,
+            'indicadores': indicadores_ejemplo,
+            'metricas': {
+                'total_indicadores': len(indicadores_ejemplo),
+                'avance_promedio': 92.3,
+                'indicadores_completados': 1
+            }
+        }
+
+
+def generar_analisis_general_real(datos_plan, periodo, tipo_grafico):
+    """Genera datos para análisis general usando datos reales"""
+    datos = datos_plan['datos']
+
+    if not datos:
+        return generar_analisis_general_fallback(periodo, tipo_grafico)
+
+    # Calcular métricas generales
+    total_indicadores = len(datos)
+    indicadores_completados = sum(1 for d in datos if d.get('avance_porcentual', 0) >= 100)
+    avance_promedio = sum(d.get('avance_porcentual', 0) for d in datos) / total_indicadores if total_indicadores > 0 else 0
+
+    # Datos para gráfico de tendencias (ejecución por trimestre)
+    labels_trimestres = ['Q1', 'Q2', 'Q3', 'Q4']
+    ejecucion_promedio = []
+
+    for trimestre in range(1, 5):
+        valores_trimestre = [d.get(f'ejecucion_q{trimestre}', 0) for d in datos if d.get(f'ejecucion_q{trimestre}', 0) > 0]
+        promedio_trimestre = sum(valores_trimestre) / len(valores_trimestre) if valores_trimestre else 0
+        ejecucion_promedio.append(promedio_trimestre)
+
+    tendencias_data = {
+        'labels': labels_trimestres,
+        'datasets': [{
+            'label': f'Ejecución Promedio {periodo}',
+            'data': ejecucion_promedio,
+            'borderColor': 'rgba(54, 162, 235, 1)',
+            'backgroundColor': 'rgba(54, 162, 235, 0.1)',
+            'tension': 0.4
+        }]
+    }
+
+    # Datos para distribución presupuestaria por línea estratégica
+    lineas_presupuesto = {}
+    for dato in datos:
+        linea = dato.get('nombre_linea', 'Sin línea')
+        presupuesto = dato.get('presupuesto_ejecutado_acumulado', 0)
+        if linea not in lineas_presupuesto:
+            lineas_presupuesto[linea] = 0
+        lineas_presupuesto[linea] += presupuesto
+
+    presupuesto_data = {
+        'labels': list(lineas_presupuesto.keys()),
+        'datasets': [{
+            'data': list(lineas_presupuesto.values()),
+            'backgroundColor': [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)',
+                'rgba(255, 159, 64, 0.8)',
+                'rgba(201, 203, 207, 0.8)'
+            ]
+        }]
+    }
+
+    # Preparar indicadores para la tabla (primeros 10 para no sobrecargar)
+    indicadores_data = []
+    for i, dato in enumerate(datos[:10]):
+        indicadores_data.append({
+            'id': dato.get('id_indicador', i+1),
+            'nombre': dato.get('nombre_indicador', 'Sin nombre'),
+            'meta_2024': dato.get('meta_2024', 0),
+            'ejecucion_q1': dato.get('ejecucion_q1', 0),
+            'avance': dato.get('avance_porcentual', 0)
+        })
+
+    return {
+        'success': True,
+        'plan_id': datos_plan.get('plan_id', 0),
+        'plan_titulo': datos_plan.get('plan_titulo', ''),
+        'tipo_analisis': 'general',
+        'titulo': f'Análisis General - {periodo}',
+        'descripcion': f'Análisis basado en {total_indicadores} indicadores del plan de desarrollo',
+        'tendencias': tendencias_data,
+        'presupuesto': presupuesto_data,
+        'indicadores': indicadores_data,
+        'metricas': {
+            'total_indicadores': total_indicadores,
+            'indicadores_completados': indicadores_completados,
+            'avance_promedio': round(avance_promedio, 2),
+            'anio_inicio': 2024,
+            'anio_fin': 2027
+        }
+    }
+
+
+def generar_analisis_general_fallback(periodo, tipo_grafico):
+    """Genera datos de ejemplo cuando no hay datos reales"""
+    return {
+        'success': True,
+        'tipo_analisis': 'general',
+        'titulo': f'Análisis General - {periodo} (Datos de Ejemplo)',
+        'descripcion': 'No hay datos reales disponibles, mostrando datos de ejemplo',
+        'tendencias': {
+            'labels': ['Q1', 'Q2', 'Q3', 'Q4'],
+            'datasets': [{
+                'label': f'Ejecución Promedio {periodo}',
+                'data': [15, 25, 35, 45],
+                'borderColor': 'rgba(54, 162, 235, 1)',
+                'backgroundColor': 'rgba(54, 162, 235, 0.1)',
+                'tension': 0.4
+            }]
+        },
+        'presupuesto': {
+            'labels': ['Infraestructura', 'Educación', 'Salud'],
+            'datasets': [{
+                'data': [35, 25, 20],
+                'backgroundColor': [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 205, 86, 0.8)'
+                ]
+            }]
+        },
+        'indicadores': [
+            {'id': 1, 'nombre': 'Indicador de ejemplo', 'meta_2024': 100, 'ejecucion_q1': 75, 'avance': 75}
+        ],
+        'metricas': {
+            'total_indicadores': 1,
+            'indicadores_completados': 0,
+            'avance_promedio': 75,
+            'anio_inicio': 2024,
+            'anio_fin': 2027
+        }
+    }
+
+
+def generar_analisis_ejecucion_real(datos_plan, periodo, tipo_grafico):
+    """Genera datos para análisis de ejecución por trimestre usando datos reales"""
+    datos = datos_plan['datos']
+
+    if not datos:
+        return generar_analisis_ejecucion_fallback(datos_plan, periodo, tipo_grafico)
+
+    # Calcular promedios por trimestre
+    promedios_fisicos = []
+    promedios_financieros = []
+
+    for trimestre in range(1, 5):
+        ejecucion_fisica = [d.get(f'ejecucion_q{trimestre}', 0) for d in datos]
+        cumplimiento_trimestre = [d.get(f'cumplimiento_q{trimestre}', 0) for d in datos]
+
+        promedio_fisico = sum(ejecucion_fisica) / len(ejecucion_fisica) if ejecucion_fisica else 0
+        promedio_financiero = sum(cumplimiento_trimestre) / len(cumplimiento_trimestre) if cumplimiento_trimestre else 0
+
+        promedios_fisicos.append(promedio_fisico)
+        promedios_financieros.append(promedio_financiero)
+
+    ejecucion_data = {
+        'labels': ['Q1', 'Q2', 'Q3', 'Q4'],
+        'datasets': [{
+            'label': f'Ejecución Física {periodo} (%)',
+            'data': promedios_fisicos,
+            'borderColor': 'rgba(75, 192, 192, 1)',
+            'backgroundColor': 'rgba(75, 192, 192, 0.2)',
+            'tension': 0.4
+        }, {
+            'label': f'Cumplimiento {periodo} (%)',
+            'data': promedios_financieros,
+            'borderColor': 'rgba(255, 159, 64, 1)',
+            'backgroundColor': 'rgba(255, 159, 64, 0.2)',
+            'tension': 0.4
+        }]
+    }
+
+    return {
+        'success': True,
+        'tipo_analisis': 'ejecucion',
+        'titulo': f'Análisis de Ejecución por Trimestre - {periodo}',
+        'descripcion': f'Seguimiento detallado basado en {len(datos)} indicadores',
+        'tendencias': ejecucion_data,
+        'presupuesto': None,
+        'indicadores': [],
+        'metricas': {
+            'ejecucion_fisica_promedio': round(sum(promedios_fisicos) / len(promedios_fisicos), 2) if promedios_fisicos else 0,
+            'cumplimiento_promedio': round(sum(promedios_financieros) / len(promedios_financieros), 2) if promedios_financieros else 0,
+            'variacion_trimestral': 2.5,  # Podría calcularse dinámicamente
+            'proyectos_activos': len(set(d.get('cod_proyecto') for d in datos if d.get('cod_proyecto')))
+        }
+    }
+
+
+def generar_analisis_presupuesto_real(datos_plan, periodo, tipo_grafico):
+    """Genera datos para análisis presupuestario usando datos reales"""
+    datos = datos_plan['datos']
+
+    if not datos:
+        return generar_analisis_presupuesto_fallback(datos_plan, periodo, tipo_grafico)
+
+    # Agrupar presupuesto por línea estratégica
+    presupuesto_por_linea = {}
+    for dato in datos:
+        linea = dato.get('nombre_linea', 'Sin clasificación')
+        presupuesto = dato.get('presupuesto_ejecutado_acumulado', 0)
+        if linea not in presupuesto_por_linea:
+            presupuesto_por_linea[linea] = 0
+        presupuesto_por_linea[linea] += presupuesto
+
+    presupuesto_data = {
+        'labels': list(presupuesto_por_linea.keys()),
+        'datasets': [{
+            'label': f'Presupuesto Ejecutado {periodo} (Millones)',
+            'data': list(presupuesto_por_linea.values()),
+            'backgroundColor': [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)',
+                'rgba(255, 159, 64, 0.8)',
+                'rgba(201, 203, 207, 0.8)'
+            ]
+        }]
+    }
+
+    return {
+        'success': True,
+        'tipo_analisis': 'presupuesto',
+        'titulo': f'Análisis Presupuestario - {periodo}',
+        'descripcion': f'Distribución presupuestaria por línea estratégica',
+        'tendencias': None,
+        'presupuesto': presupuesto_data,
+        'indicadores': [],
+        'metricas': {
+            'presupuesto_total_ejecutado': sum(presupuesto_por_linea.values()),
+            'lineas_con_presupuesto': len([v for v in presupuesto_por_linea.values() if v > 0]),
+            'linea_mayor_ejecucion': max(presupuesto_por_linea.keys(), key=lambda k: presupuesto_por_linea[k]) if presupuesto_por_linea else 'N/A'
+        }
+    }
+
+
+def generar_analisis_indicadores_real(datos_plan, periodo, tipo_grafico):
+    """Genera datos para análisis de indicadores usando datos reales"""
+    datos = datos_plan['datos']
+
+    if not datos:
+        return generar_analisis_indicadores_fallback(datos_plan, periodo, tipo_grafico)
+
+    # Crear datos para diferentes tipos de gráficos según el tipo_grafico
+    if tipo_grafico == 'scatter':
+        # Gráfico de dispersión: avance vs presupuesto
+        scatter_data = {
+            'datasets': [{
+                'label': 'Indicadores',
+                'data': [{
+                    'x': d.get('avance_porcentual', 0),
+                    'y': d.get('presupuesto_ejecutado_acumulado', 0),
+                    'nombre': d.get('nombre_indicador', ''),
+                    'linea': d.get('nombre_linea', '')
+                } for d in datos],
+                'backgroundColor': 'rgba(54, 162, 235, 0.6)',
+                'borderColor': 'rgba(54, 162, 235, 1)'
+            }]
+        }
+    elif tipo_grafico == 'pastel':
+        # Distribución por estado de avance
+        estados = {'excelente': 0, 'bueno': 0, 'regular': 0, 'critico': 0}
+        for d in datos:
+            avance = d.get('avance_porcentual', 0)
+            if avance >= 90:
+                estados['excelente'] += 1
+            elif avance >= 75:
+                estados['bueno'] += 1
+            elif avance >= 50:
+                estados['regular'] += 1
+            else:
+                estados['critico'] += 1
+
+        scatter_data = {
+            'labels': list(estados.keys()),
+            'datasets': [{
+                'data': list(estados.values()),
+                'backgroundColor': [
+                    'rgba(40, 167, 69, 0.8)',   # verde - excelente
+                    'rgba(23, 162, 184, 0.8)',  # azul - bueno
+                    'rgba(255, 193, 7, 0.8)',   # amarillo - regular
+                    'rgba(220, 53, 69, 0.8)'    # rojo - critico
+                ]
+            }]
+        }
+    else:
+        # Gráfico de barras por defecto
+        scatter_data = {
+            'labels': [d.get('nombre_indicador', f'Indicador {i+1}') for i, d in enumerate(datos[:10])],
+            'datasets': [{
+                'label': 'Avance (%)',
+                'data': [d.get('avance_porcentual', 0) for d in datos[:10]],
+                'backgroundColor': 'rgba(54, 162, 235, 0.8)'
+            }]
+        }
+
+    return {
+        'success': True,
+        'tipo_analisis': 'indicadores',
+        'titulo': f'Análisis de Indicadores - {periodo}',
+        'descripcion': f'Análisis detallado de {len(datos)} indicadores',
+        'tendencias': scatter_data,
+        'presupuesto': None,
+        'indicadores': [],
+        'metricas': {
+            'total_indicadores': len(datos),
+            'avance_promedio': sum(d.get('avance_porcentual', 0) for d in datos) / len(datos) if datos else 0,
+            'indicadores_completados': sum(1 for d in datos if d.get('avance_porcentual', 0) >= 100)
+        }
+    }
+
+
+def generar_analisis_comparativo_real(datos_plan, periodo, tipo_grafico):
+    """Genera datos para análisis comparativo usando datos reales"""
+    datos = datos_plan['datos']
+
+    if not datos:
+        return generar_analisis_comparativo_fallback(datos_plan, periodo, tipo_grafico)
+
+    # Comparar diferentes líneas estratégicas
+    comparativo_data = {}
+    for dato in datos:
+        linea = dato.get('nombre_linea', 'Sin línea')
+        if linea not in comparativo_data:
+            comparativo_data[linea] = {
+                'avance_promedio': [],
+                'presupuesto_total': 0,
+                'indicadores_count': 0
+            }
+
+        comparativo_data[linea]['avance_promedio'].append(dato.get('avance_porcentual', 0))
+        comparativo_data[linea]['presupuesto_total'] += dato.get('presupuesto_ejecutado_acumulado', 0)
+        comparativo_data[linea]['indicadores_count'] += 1
+
+    # Calcular promedios
+    labels = []
+    avances = []
+    presupuestos = []
+
+    for linea, data in comparativo_data.items():
+        labels.append(linea)
+        avances.append(sum(data['avance_promedio']) / len(data['avance_promedio']) if data['avance_promedio'] else 0)
+        presupuestos.append(data['presupuesto_total'])
+
+    comparativo_chart = {
+        'labels': labels,
+        'datasets': [{
+            'label': 'Avance Promedio (%)',
+            'data': avances,
+            'borderColor': 'rgba(54, 162, 235, 1)',
+            'backgroundColor': 'rgba(54, 162, 235, 0.1)',
+            'tension': 0.4
+        }]
+    }
+
+    return {
+        'success': True,
+        'tipo_analisis': 'comparativo',
+        'titulo': f'Análisis Comparativo - {periodo}',
+        'descripcion': f'Comparación entre líneas estratégicas',
+        'tendencias': comparativo_chart,
+        'presupuesto': None,
+        'indicadores': [],
+        'metricas': {
+            'lineas_analizadas': len(labels),
+            'mejor_linea': labels[avances.index(max(avances))] if avances else 'N/A',
+            'diferencia_maxima': max(avances) - min(avances) if avances else 0
+        }
+    }
+
+
+def generar_analisis_tendencias_real(datos_plan, periodo, tipo_grafico):
+    """Genera datos para análisis de tendencias usando datos reales"""
+    datos = datos_plan['datos']
+
+    if not datos:
+        return generar_analisis_tendencias_fallback(datos_plan, periodo, tipo_grafico)
+
+    # Analizar tendencias de avance por trimestre
+    tendencias_trimestrales = []
+    for trimestre in range(1, 5):
+        avances_trimestre = [d.get(f'cumplimiento_q{trimestre}', 0) for d in datos]
+        promedio_trimestre = sum(avances_trimestre) / len(avances_trimestre) if avances_trimestre else 0
+        tendencias_trimestrales.append(promedio_trimestre)
+
+    # Proyectar tendencia futura
+    if len(tendencias_trimestrales) >= 2:
+        # Calcular pendiente de la tendencia
+        pendiente = (tendencias_trimestrales[-1] - tendencias_trimestrales[0]) / (len(tendencias_trimestrales) - 1)
+        proyeccion_q5 = tendencias_trimestrales[-1] + pendiente
+        proyeccion_q6 = proyeccion_q5 + pendiente
+    else:
+        proyeccion_q5 = tendencias_trimestrales[-1] if tendencias_trimestrales else 0
+        proyeccion_q6 = proyeccion_q5
+
+    tendencias_completas = {
+        'labels': ['Q1', 'Q2', 'Q3', 'Q4', 'Proy Q5', 'Proy Q6'],
+        'datasets': [{
+            'label': 'Tendencia Real',
+            'data': tendencias_trimestrales + [proyeccion_q5, proyeccion_q6],
+            'borderColor': 'rgba(54, 162, 235, 1)',
+            'backgroundColor': 'rgba(54, 162, 235, 0.1)',
+            'tension': 0.4
+        }, {
+            'label': 'Meta Ideal',
+            'data': [25, 50, 75, 100, 100, 100],
+            'borderColor': 'rgba(75, 192, 192, 1)',
+            'backgroundColor': 'rgba(75, 192, 192, 0.1)',
+            'borderDash': [5, 5],
+            'tension': 0.4,
+            'fill': False
+        }]
+    }
+
+    return {
+        'success': True,
+        'tipo_analisis': 'tendencias',
+        'titulo': f'Análisis de Tendencias - {periodo}',
+        'descripcion': f'Proyección de tendencias basada en datos reales',
+        'tendencias': tendencias_completas,
+        'presupuesto': None,
+        'indicadores': [],
+        'metricas': {
+            'tendencia_actual': 'creciente' if tendencias_trimestrales[-1] > tendencias_trimestrales[0] else 'decreciente',
+            'proyeccion_q6': round(proyeccion_q6, 2),
+            'velocidad_mejora': round((tendencias_trimestrales[-1] - tendencias_trimestrales[0]) / len(tendencias_trimestrales), 2) if tendencias_trimestrales else 0
+        }
+    }
+
+
+# Funciones de respaldo (fallback) para cuando no hay datos reales
+def generar_analisis_ejecucion_fallback(datos_plan, periodo, tipo_grafico):
+    return generar_analisis_ejecucion(None, periodo, tipo_grafico)
+
+def generar_analisis_presupuesto_fallback(datos_plan, periodo, tipo_grafico):
+    return generar_analisis_presupuesto(None, periodo, tipo_grafico)
+
+def generar_analisis_indicadores_fallback(datos_plan, periodo, tipo_grafico):
+    return generar_analisis_indicadores(None, periodo, tipo_grafico)
+
+def generar_analisis_comparativo_fallback(datos_plan, periodo, tipo_grafico):
+    return generar_analisis_comparativo(None, periodo, tipo_grafico)
+
+def generar_analisis_tendencias_fallback(datos_plan, periodo, tipo_grafico):
+    return generar_analisis_tendencias(None, periodo, tipo_grafico)
+
+
+@planes_bp.route('/<int:plan_id>/debug')
+@login_required
+def debug_plan(plan_id):
+    """Endpoint de diagnóstico para verificar el estado del plan y sus relaciones"""
+    plan = get_plan_or_redirect(plan_id, current_user)
+    if hasattr(plan, 'status_code'):
+        return plan
+
+    from app.models import IndicadorProducto, Proyecto, Programa, Componente, LineaEstrategica, EjecucionTrimestral
+
+    debug_info = {
+        'plan': {
+            'id': plan.id,
+            'titulo': plan.titulo,
+            'estado': plan.estado,
+            'lineas_count': len(plan.lineas_estrategicas)
+        },
+        'relaciones': {},
+        'datos': {}
+    }
+
+    try:
+        # Verificar líneas estratégicas
+        lineas = []
+        for linea in plan.lineas_estrategicas:
+            linea_info = {
+                'id': linea.id,
+                'nombre': linea.nombre,
+                'estado': linea.estado,
+                'componentes_count': len(getattr(linea, 'componentes', []))
+            }
+
+            componentes = []
+            for componente in getattr(linea, 'componentes', []):
+                componente_info = {
+                    'id': componente.id,
+                    'nombre': componente.nombre,
+                    'estado': componente.estado,
+                    'programas_count': len(getattr(componente, 'programas', []))
+                }
+
+                programas = []
+                for programa in getattr(componente, 'programas', []):
+                    programa_info = {
+                        'id': programa.id,
+                        'nombre': programa.nombre,
+                        'estado': programa.estado,
+                        'proyectos_count': len(getattr(programa, 'proyectos', []))
+                    }
+
+                    proyectos = []
+                    for proyecto in getattr(programa, 'proyectos', []):
+                        proyecto_info = {
+                            'id': proyecto.id,
+                            'nombre': proyecto.nombre,
+                            'estado': proyecto.estado,
+                            'indicadores_count': len(getattr(proyecto, 'indicadores', []))
+                        }
+
+                        indicadores = []
+                        for indicador in getattr(proyecto, 'indicadores', []):
+                            indicador_info = {
+                                'id': indicador.id,
+                                'nombre': indicador.nombre,
+                                'estado': indicador.estado,
+                                'ejecuciones_count': len(getattr(indicador, 'ejecuciones_trimestrales', []))
+                            }
+                            indicadores.append(indicador_info)
+
+                        proyecto_info['indicadores'] = indicadores
+                        proyectos.append(proyecto_info)
+
+                    programa_info['proyectos'] = proyectos
+                    programas.append(programa_info)
+
+                componente_info['programas'] = programas
+                componentes.append(componente_info)
+
+            linea_info['componentes'] = componentes
+            lineas.append(linea_info)
+
+        debug_info['relaciones'] = lineas
+
+        # Intentar obtener datos usando la función principal
+        datos_plan = obtener_datos_plan_completo(plan, '2024', None)
+        debug_info['datos'] = {
+            'total_registros': len(datos_plan['datos']),
+            'columnas': datos_plan['columnas'],
+            'error': datos_plan.get('error', None)
+        }
+
+    except Exception as e:
+        debug_info['error'] = str(e)
+        debug_info['error_type'] = type(e).__name__
+
+    return debug_info
+
+
+@planes_bp.route('/<int:plan_id>/reportes/columnas')
+@login_required
+def reportes_columnas(plan_id):
+    """API para obtener información sobre columnas disponibles para BI"""
+    plan = get_plan_or_redirect(plan_id, current_user)
+    if hasattr(plan, 'status_code'):
+        return plan
+
+    # Columnas disponibles con metadatos para BI
+    columnas_disponibles = [
+        {
+            'id': 'id_indicador',
+            'nombre': 'ID Indicador',
+            'tipo': 'entero',
+            'descripcion': 'Identificador único del indicador',
+            'categoria': 'identificador',
+            'graficos_apropiados': ['barras', 'lineas']
+        },
+        {
+            'id': 'cod_indicador',
+            'nombre': 'Código Indicador',
+            'tipo': 'texto',
+            'descripcion': 'Código del indicador de producto',
+            'categoria': 'identificador',
+            'graficos_apropiados': ['barras', 'pastel']
+        },
+        {
+            'id': 'nombre_indicador',
+            'nombre': 'Nombre Indicador',
+            'tipo': 'texto',
+            'descripcion': 'Nombre completo del indicador',
+            'categoria': 'descriptivo',
+            'graficos_apropiados': ['barras', 'pastel']
+        },
+        {
+            'id': 'tipo_indicador',
+            'nombre': 'Tipo Indicador',
+            'tipo': 'texto',
+            'descripcion': 'Tipo de indicador (proceso, resultado, impacto)',
+            'categoria': 'clasificacion',
+            'graficos_apropiados': ['pastel', 'barras']
+        },
+        {
+            'id': 'linea_base',
+            'nombre': 'Línea Base',
+            'tipo': 'numerico',
+            'descripcion': 'Valor inicial o línea base del indicador',
+            'categoria': 'metrica',
+            'graficos_apropiados': ['lineas', 'barras', 'scatter']
+        },
+        {
+            'id': 'meta_cuatrienio',
+            'nombre': 'Meta Cuatrienio',
+            'tipo': 'numerico',
+            'descripcion': 'Meta total para el período 2024-2027',
+            'categoria': 'metrica',
+            'graficos_apropiados': ['barras', 'lineas', 'area']
+        },
+        {
+            'id': 'meta_2024',
+            'nombre': 'Meta 2024',
+            'tipo': 'numerico',
+            'descripcion': 'Meta específica para el año 2024',
+            'categoria': 'metrica',
+            'graficos_apropiados': ['barras', 'lineas', 'area']
+        },
+        {
+            'id': 'unidad',
+            'nombre': 'Unidad',
+            'tipo': 'texto',
+            'descripcion': 'Unidad de medida del indicador',
+            'categoria': 'metrica',
+            'graficos_apropiados': ['barras', 'pastel']
+        },
+        {
+            'id': 'cod_linea',
+            'nombre': 'Código Línea',
+            'tipo': 'entero',
+            'descripcion': 'Código de la línea estratégica',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel']
+        },
+        {
+            'id': 'nombre_linea',
+            'nombre': 'Nombre Línea Estratégica',
+            'tipo': 'texto',
+            'descripcion': 'Nombre de la línea estratégica',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel', 'treemap']
+        },
+        {
+            'id': 'cod_componente',
+            'nombre': 'Código Componente',
+            'tipo': 'texto',
+            'descripcion': 'Código del componente',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel']
+        },
+        {
+            'id': 'nombre_componente',
+            'nombre': 'Nombre Componente',
+            'tipo': 'texto',
+            'descripcion': 'Nombre del componente',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel', 'treemap']
+        },
+        {
+            'id': 'cod_programa',
+            'nombre': 'Código Programa',
+            'tipo': 'texto',
+            'descripcion': 'Código del programa',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel']
+        },
+        {
+            'id': 'nombre_programa',
+            'nombre': 'Nombre Programa',
+            'tipo': 'texto',
+            'descripcion': 'Nombre del programa',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel', 'treemap']
+        },
+        {
+            'id': 'cod_proyecto',
+            'nombre': 'Código Proyecto',
+            'tipo': 'texto',
+            'descripcion': 'Código del proyecto',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel']
+        },
+        {
+            'id': 'nombre_proyecto',
+            'nombre': 'Nombre Proyecto',
+            'tipo': 'texto',
+            'descripcion': 'Nombre del proyecto',
+            'categoria': 'jerarquia',
+            'graficos_apropiados': ['barras', 'pastel', 'treemap']
+        }
+    ]
+
+    # Agregar columnas de ejecución trimestral
+    for trimestre in range(1, 5):
+        columnas_disponibles.extend([
+            {
+                'id': f'ejecucion_q{trimestre}',
+                'nombre': f'Ejecución Q{trimestre}',
+                'tipo': 'numerico',
+                'descripcion': f'Ejecución física del {trimestre} trimestre',
+                'categoria': 'ejecucion',
+                'graficos_apropiados': ['lineas', 'barras', 'area', 'scatter']
+            },
+            {
+                'id': f'cumplimiento_q{trimestre}',
+                'nombre': f'Cumplimiento Q{trimestre} (%)',
+                'tipo': 'porcentaje',
+                'descripcion': f'Porcentaje de cumplimiento del {trimestre} trimestre',
+                'categoria': 'ejecucion',
+                'graficos_apropiados': ['lineas', 'barras', 'area', 'heatmap']
+            },
+            {
+                'id': f'presupuesto_ejecutado_q{trimestre}',
+                'nombre': f'Presupuesto Q{trimestre}',
+                'tipo': 'monetario',
+                'descripcion': f'Presupuesto ejecutado en el {trimestre} trimestre',
+                'categoria': 'presupuesto',
+                'graficos_apropiados': ['barras', 'lineas', 'area', 'pastel']
+            },
+            {
+                'id': f'poblacion_impactada_q{trimestre}',
+                'nombre': f'Población Q{trimestre}',
+                'tipo': 'entero',
+                'descripcion': f'Población impactada en el {trimestre} trimestre',
+                'categoria': 'impacto',
+                'graficos_apropiados': ['barras', 'lineas', 'area', 'mapa']
+            }
+        ])
+
+    # Agregar columnas acumuladas
+    columnas_disponibles.extend([
+        {
+            'id': 'ejecucion_acumulada',
+            'nombre': 'Ejecución Acumulada',
+            'tipo': 'numerico',
+            'descripcion': 'Ejecución física acumulada hasta la fecha',
+            'categoria': 'ejecucion',
+            'graficos_apropiados': ['lineas', 'barras', 'area', 'scatter']
+        },
+        {
+            'id': 'cumplimiento_acumulado',
+            'nombre': 'Cumplimiento Acumulado (%)',
+            'tipo': 'porcentaje',
+            'descripcion': 'Porcentaje de cumplimiento acumulado',
+            'categoria': 'ejecucion',
+            'graficos_apropiados': ['lineas', 'barras', 'area', 'heatmap']
+        },
+        {
+            'id': 'presupuesto_ejecutado_acumulado',
+            'nombre': 'Presupuesto Acumulado',
+            'tipo': 'monetario',
+            'descripcion': 'Presupuesto ejecutado acumulado',
+            'categoria': 'presupuesto',
+            'graficos_apropiados': ['barras', 'lineas', 'area', 'pastel']
+        },
+        {
+            'id': 'poblacion_impactada_acumulada',
+            'nombre': 'Población Acumulada',
+            'tipo': 'entero',
+            'descripcion': 'Población impactada acumulada',
+            'categoria': 'impacto',
+            'graficos_apropiados': ['barras', 'lineas', 'area', 'mapa']
+        },
+        {
+            'id': 'avance_porcentual',
+            'nombre': 'Avance (%)',
+            'tipo': 'porcentaje',
+            'descripcion': 'Porcentaje de avance general del indicador',
+            'categoria': 'metrica',
+            'graficos_apropiados': ['barras', 'lineas', 'scatter', 'heatmap', 'boxplot']
+        },
+        {
+            'id': 'estado',
+            'nombre': 'Estado',
+            'tipo': 'texto',
+            'descripcion': 'Estado actual del indicador',
+            'categoria': 'clasificacion',
+            'graficos_apropiados': ['pastel', 'barras', 'treemap']
+        }
+    ])
+
+    # Agrupar por categorías para facilitar la selección
+    categorias = {}
+    for col in columnas_disponibles:
+        categoria = col['categoria']
+        if categoria not in categorias:
+            categorias[categoria] = []
+        categorias[categoria].append(col)
+
+    return {
+        'success': True,
+        'plan_id': plan_id,
+        'plan_titulo': plan.titulo,
+        'columnas_disponibles': columnas_disponibles,
+        'categorias': categorias,
+        'total_columnas': len(columnas_disponibles),
+        'tipos_graficos_disponibles': [
+            'barras', 'lineas', 'area', 'pastel', 'scatter',
+            'heatmap', 'boxplot', 'treemap', 'radar', 'correlacion'
+        ]
+    }
+
+
+@planes_bp.route('/<int:plan_id>/reportes/bi-data')
+@login_required
+def reportes_bi_data(plan_id):
+    """API específica para Business Intelligence - devuelve datos crudos para análisis avanzado"""
+    plan = get_plan_or_redirect(plan_id, current_user)
+    if hasattr(plan, 'status_code'):
+        return plan
+
+    # Obtener parámetros de BI
+    columnas_solicitadas = request.args.get('columnas', '').split(',') if request.args.get('columnas') else None
+    formato = request.args.get('formato', 'json')  # json, csv, excel
+    filtros = request.args.get('filtros', '')  # filtros en formato JSON
+
+    try:
+        # Obtener datos del plan
+        datos_plan = obtener_datos_plan_completo(plan, '2024', columnas_solicitadas)
+
+        # Aplicar filtros si existen
+        if filtros:
+            import json
+            filtros_dict = json.loads(filtros)
+            datos_plan['datos'] = aplicar_filtros_bi(datos_plan['datos'], filtros_dict)
+
+        # Preparar respuesta según formato solicitado
+        if formato == 'csv':
+            return generar_respuesta_csv(datos_plan)
+        elif formato == 'excel':
+            return generar_respuesta_excel(datos_plan)
+        else:
+            # Formato JSON por defecto
+            return {
+                'success': True,
+                'tipo': 'bi_data',
+                'plan_id': plan_id,
+                'plan_titulo': plan.titulo,
+                'datos': datos_plan['datos'],
+                'columnas': datos_plan['columnas'],
+                'total_registros': len(datos_plan['datos']),
+                'metadata': {
+                    'fecha_generacion': datetime.utcnow().isoformat(),
+                    'usuario': current_user.username,
+                    'columnas_solicitadas': columnas_solicitadas,
+                    'filtros_aplicados': filtros
+                }
+            }
+
+    except Exception as e:
+        current_app.logger.error(f'Error en reportes_bi_data: {str(e)}')
+        return {
+            'success': False,
+            'error': str(e),
+            'tipo': 'bi_data_error'
+        }
+
+
+def aplicar_filtros_bi(datos, filtros):
+    """Aplica filtros avanzados a los datos de BI"""
+    datos_filtrados = datos
+
+    for filtro in filtros.get('filtros', []):
+        campo = filtro.get('campo')
+        operador = filtro.get('operador', 'equals')
+        valor = filtro.get('valor')
+
+        if not campo or campo not in datos[0] if datos else False:
+            continue
+
+        if operador == 'equals':
+            datos_filtrados = [d for d in datos_filtrados if str(d.get(campo, '')).lower() == str(valor).lower()]
+        elif operador == 'contains':
+            datos_filtrados = [d for d in datos_filtrados if valor.lower() in str(d.get(campo, '')).lower()]
+        elif operador == 'greater_than':
+            datos_filtrados = [d for d in datos_filtrados if float(d.get(campo, 0)) > float(valor)]
+        elif operador == 'less_than':
+            datos_filtrados = [d for d in datos_filtrados if float(d.get(campo, 0)) < float(valor)]
+        elif operador == 'between':
+            min_val, max_val = valor
+            datos_filtrados = [d for d in datos_filtrados if float(min_val) <= float(d.get(campo, 0)) <= float(max_val)]
+
+    return datos_filtrados
+
+
+def generar_respuesta_csv(datos_plan):
+    """Genera respuesta en formato CSV"""
+    import io
+    from flask import Response
+
+    output = io.StringIO()
+    if datos_plan['datos']:
+        import csv
+
+        # Escribir encabezados
+        fieldnames = datos_plan['columnas']
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+
+        # Escribir datos
+        for fila in datos_plan['datos']:
+            writer.writerow(fila)
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=bi_data_{datos_plan["plan_titulo"].replace(" ", "_")}.csv'}
+    )
+
+
+def generar_respuesta_excel(datos_plan):
+    """Genera respuesta en formato Excel"""
+    try:
+        from openpyxl import Workbook
+        from flask import Response
+        import io
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "BI Data"
+
+        # Escribir encabezados
+        if datos_plan['datos']:
+            headers = datos_plan['columnas']
+            for col_num, header in enumerate(headers, 1):
+                ws.cell(row=1, column=col_num, value=header)
+
+            # Escribir datos
+            for row_num, fila in enumerate(datos_plan['datos'], 2):
+                for col_num, header in enumerate(headers, 1):
+                    ws.cell(row=row_num, column=col_num, value=fila.get(header, ''))
+
+        # Preparar respuesta
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return Response(
+            output.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename=bi_data_{datos_plan["plan_titulo"].replace(" ", "_")}.xlsx'}
+        )
+    except ImportError:
+        return {
+            'success': False,
+            'error': 'Biblioteca openpyxl no disponible para exportación Excel'
+        }
