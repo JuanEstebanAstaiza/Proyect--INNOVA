@@ -55,18 +55,31 @@ def get_plan_or_redirect(plan_id, current_user, redirect_endpoint='planes.index'
 @login_required
 def index():
     """Lista todos los planes del usuario actual"""
-    # Para usuarios normales, mostrar solo el plan activo o el más reciente
-    if not current_user.is_admin():
+    # Determinar si el usuario puede ver planes de otros municipios
+    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+
+    if not puede_ver_global:
+        # Para usuarios normales (viewers), mostrar solo el plan activo de su municipio
         plan_activo = PlanDesarrollo.get_plan_activo_o_primero(current_user)
         planes = [plan_activo] if plan_activo else []
         mostrar_todos = False
     else:
-        # Para administradores, mostrar todos los planes
-        planes = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
-            PlanDesarrollo.estado.desc(),  # Activos primero
-            PlanDesarrollo.created_at.desc()  # Luego por fecha de creación
-        ).all()
-        mostrar_todos = True
+        # Para administradores y editores, mostrar el plan activo global primero
+        plan_activo_global = PlanDesarrollo.query.filter_by(estado='activo').first()
+        if plan_activo_global:
+            # Si hay plan activo global, mostrarlo junto con los planes del municipio del usuario
+            planes_municipio = PlanDesarrollo.query.filter_by(municipio=current_user).all()
+            # Evitar duplicados
+            planes = [plan_activo_global] if plan_activo_global not in planes_municipio else []
+            planes.extend(planes_municipio)
+            mostrar_todos = True
+        else:
+            # Si no hay plan activo global, mostrar los del municipio del usuario
+            planes = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
+                PlanDesarrollo.estado.desc(),  # Activos primero
+                PlanDesarrollo.created_at.desc()  # Luego por fecha de creación
+            ).all()
+            mostrar_todos = True
 
     return render_template('planes/index.html', title='Mis Planes de Desarrollo',
                          planes=planes, mostrar_todos=mostrar_todos)
@@ -969,22 +982,22 @@ def importar_excel(plan_id):
         import pandas as pd
     except ImportError:
         flash('La funcionalidad de Excel requiere instalar pandas. Contacte al administrador.', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
 
     if 'excel_file' not in request.files:
         flash('No se encontró el archivo.', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
     file = request.files['excel_file']
     if file.filename == '':
         flash('No se seleccionó ningún archivo.', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
     if not file.filename.endswith(('.xlsx', '.xls')):
         flash('El archivo debe ser un Excel (.xlsx o .xls).', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
     try:
         # Leer el archivo Excel
@@ -1124,7 +1137,7 @@ def importar_excel(plan_id):
         db.session.rollback()
         flash(f'Error al procesar el archivo Excel: {str(e)}', 'error')
 
-    return redirect(url_for('planes.excel', plan_id=plan_id))
+    return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
 @planes_bp.route('/<int:plan_id>/guardar-excel', methods=['POST'])
 @login_required
@@ -1374,6 +1387,16 @@ def editar_celda_excel(plan_id):
         )
 
         db.session.add(edit_justification)
+        db.session.flush()  # Para obtener el ID de la justificación
+
+        # Crear archivo de auditoría
+        try:
+            from audit_file_system import create_audit_file
+            audit_file_path = create_audit_file(edit_justification)
+            if audit_file_path:
+                print(f"Archivo de auditoría creado: {audit_file_path}")
+        except Exception as e:
+            print(f"Error creando archivo de auditoría: {e}")
 
         # Actualizar el valor en la base de datos
         if indicador:

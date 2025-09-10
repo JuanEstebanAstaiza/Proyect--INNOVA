@@ -143,6 +143,13 @@
                 <!-- Segunda fila de accesos rápidos -->
                 <div class="row mt-3">
                     <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('audit.admin_audit_dashboard') }}" class="btn btn-danger w-100 d-flex flex-column align-items-center justify-content-center py-4">
+                            <i class="fas fa-shield-alt fa-2x mb-2 text-white"></i>
+                            <span class="fw-semibold text-white">Panel de Auditoría</span>
+                            <small class="text-white-50">Archivos de todos los usuarios</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
                         <a href="{{ url_for('admin.sessions') }}" class="btn btn-secondary w-100 d-flex flex-column align-items-center justify-content-center py-4">
                             <i class="fas fa-desktop fa-2x mb-2 text-white"></i>
                             <span class="fw-semibold text-white">Monitorear Sesiones</span>

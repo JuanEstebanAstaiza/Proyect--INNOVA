@@ -56,6 +56,12 @@
     <i class="fas fa-info-circle me-2"></i>
     <strong>Modo Solo Lectura:</strong> No tienes permisos para editar ninguna columna. Solo puedes visualizar la información.
 </div>
+{% else %}
+<div class="alert alert-success">
+    <i class="fas fa-edit me-2"></i>
+    <strong>Modo de Edición Seguro:</strong> Para editar una celda, haz <strong>doble clic</strong> sobre ella.
+    Se abrirá un panel de edición que requiere justificación para guardar los cambios.
+</div>
 {% endif %}
 
 <!-- Barra de herramientas Excel -->
@@ -177,55 +183,55 @@
                             <tr data-row-id="{{ loop.index }}">
                                 <!-- Información básica de la estructura -->
                                 <td class="text-center">
-                                    <input type="number" class="form-control form-control-sm excel-cell"
+                                    <input type="number" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.cod_linea }}" data-column="cod_linea">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.lineas_estrategicas }}" data-column="lineas_estrategicas">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.cod_componente }}" data-column="cod_componente">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.componentes }}" data-column="componentes">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.cod_programa }}" data-column="cod_programa">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.programa_pdm }}" data-column="programa_pdm">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.dependencia_responsable }}" data-column="dependencia_responsable">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.bpim }}" data-column="bpim">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.nombre_proyecto }}" data-column="nombre_proyecto">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.indicadores }}" data-column="indicadores">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.cod_indicador_de_producto }}" data-column="cod_indicador_de_producto">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.indicador_de_producto }}" data-column="indicador_de_producto">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.tipo_de_indicador }}" data-column="tipo_de_indicador">
                                 </td>
                                 <td class="text-end">
@@ -240,11 +246,11 @@
                                     </select>
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.tipologia }}" data-column="tipologia">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row.unidad }}" data-column="unidad">
                                 </td>
                                 <td class="text-end">
@@ -269,12 +275,12 @@
                                            data-column="cumplimiento_{{ trimestre }}_trimestre">
                                 </td>
                                 <td class="text-end bg-light">
-                                    <input type="number" class="form-control form-control-sm excel-cell"
+                                    <input type="number" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row['poblacion_impactada_' + trimestre|string + '_trimestre'] }}"
                                            data-column="poblacion_impactada_{{ trimestre }}_trimestre">
                                 </td>
                                 <td class="bg-light">
-                                    <input type="text" class="form-control form-control-sm excel-cell"
+                                    <input type="text" class="form-control form-control-sm excel-cell" readonly
                                            value="{{ row['observacion_' + trimestre|string + '_trimestre'] }}"
                                            data-column="observacion_{{ trimestre }}_trimestre">
                                 </td>
@@ -317,6 +323,7 @@
             </div>
             <div class="modal-body">
                 <form action="{{ url_for('planes.importar_excel', plan_id=plan.id) }}" method="POST" enctype="multipart/form-data" id="importForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
                         <label for="excel_file" class="form-label">Seleccionar archivo Excel</label>
                         <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
@@ -554,6 +561,10 @@ let celdaSeleccionada = null;
 function abrirModalEdicion(celda, columnName, rowData) {
     celdaSeleccionada = celda;
 
+    // Quitar readonly de la celda para permitir edición en el modal
+    celda.removeAttribute('readonly');
+    celda.classList.add('editing-cell');
+
     // Llenar información del modal
     document.getElementById('editColumn').value = getColumnDisplayName(columnName);
     document.getElementById('editCurrentValue').value = celda.value || '';
@@ -570,6 +581,15 @@ function abrirModalEdicion(celda, columnName, rowData) {
 
     // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('editModal'));
+
+    // Agregar evento para cuando se cierre el modal
+    const modalElement = document.getElementById('editModal');
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        // Volver a poner readonly cuando se cierre el modal
+        celda.setAttribute('readonly', 'readonly');
+        celda.classList.remove('editing-cell');
+    }, { once: true }); // Usar once para que solo se ejecute una vez
+
     modal.show();
 }
 
@@ -723,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Agregar tooltip para indicar que se puede hacer doble clic
-        cell.title = 'Doble clic para editar con justificación';
+        cell.title = 'Doble clic para editar con justificación (modo seguro)';
     });
 });
 
@@ -804,7 +824,20 @@ document.addEventListener('keydown', function(e) {
     background-color: #ffffff !important;
     color: #212529 !important;
     border-color: #80bdff !important;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Estilo para celdas en modo edición (sin readonly) */
+.editing-cell {
+    background-color: #fff3cd !important; /* Color amarillo claro */
+    border-color: #ffc107 !important; /* Borde amarillo */
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25) !important;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25); }
+    50% { box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.25); }
+    100% { box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25); }
 }
 
 /* Mejora significativa de los títulos de las columnas */

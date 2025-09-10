@@ -1,0 +1,34 @@
+AUDITORÍA DE CAMBIO - PLAN DE DESARROLLO
+==================================================
+
+INFORMACIÓN GENERAL
+====================
+Fecha y Hora: 2025-09-09 12:40:19
+Usuario: auditor_pruebas (auditor.pruebas@example.com)
+Plan: Plan de Desarrollo TEST 2024-2027 (ID: 1)
+
+DETALLES DEL CAMBIO
+====================
+Columna Editada: Meta 2024
+Valor Anterior: 50.0
+Valor Nuevo: 75.0
+
+JUSTIFICACIÓN
+===============
+Ajuste de meta basado en análisis de capacidad operativa. Se incrementa la meta considerando la mejora en procesos y recursos disponibles para el proyecto.
+
+ARCHIVOS ANEXADOS
+==================
+No se anexaron archivos de soporte.
+
+
+INFORMACIÓN DEL INDICADOR
+=========================
+Indicador: Indicador 1 - Cobertura del Proyecto
+Código: IND-110-1
+Proyecto: Proyecto 1 - Programa 1 - Compone...
+Programa: Programa 1 - Componente 1 - Desarrollo...
+
+
+==================================================
+FIN DEL REGISTRO DE AUDITORÍA

@@ -16,6 +16,9 @@ class Config:
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max file size
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 
+    # Configuración de archivos de auditoría
+    AUDIT_FILES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'audit_files')
+
     # Extensiones permitidas para archivos
     ALLOWED_EXTENSIONS = {
         'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',

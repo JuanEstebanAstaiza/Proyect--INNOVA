@@ -4,8 +4,12 @@ from datetime import datetime
 class LineaEstrategica(db.Model):
     __tablename__ = 'lineas_estrategicas'
 
+    __table_args__ = (
+        db.UniqueConstraint('plan_id', 'cod_linea', name='unique_plan_cod_linea'),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
-    cod_linea = db.Column(db.Integer, nullable=False, unique=True)
+    cod_linea = db.Column(db.Integer, nullable=False)
     nombre = db.Column(db.String(200), nullable=False)
     descripcion = db.Column(db.Text)
 

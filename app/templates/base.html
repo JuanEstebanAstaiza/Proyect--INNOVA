@@ -42,6 +42,9 @@
                             <li><a class="dropdown-item" href="{{ url_for('main.profile') }}">
                                 <i class="fas fa-user-edit me-2 text-secondary"></i> Mi Perfil
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('audit.audit_dashboard') }}">
+                                <i class="fas fa-file-alt me-2 text-info"></i> Panel de Auditoría
+                            </a></li>
                             {% if current_user.is_admin() %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('admin.dashboard') }}">

@@ -39,11 +39,13 @@ def create_app(config_name=None):
     from app.views.main import main_bp
     from app.views.planes import planes_bp
     from app.views.admin import admin_bp
+    from app.views.audit import audit_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(planes_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(audit_bp)
 
     # Crear tablas de la base de datos e inicializar datos por defecto
     with app.app_context():

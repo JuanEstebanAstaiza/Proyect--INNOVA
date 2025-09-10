@@ -1,0 +1,42 @@
+AUDITORÍA DE CAMBIO - PLAN DE DESARROLLO
+==================================================
+
+INFORMACIÓN GENERAL
+===================
+Fecha y Hora: 2024-12-19 14:30:45
+Usuario: administrador (admin@example.com)
+Plan: Plan de Desarrollo TEST 2024-2027 (ID: 1)
+
+DETALLES DEL CAMBIO
+===================
+Columna Editada: Meta 2024
+Valor Anterior: 150.0
+Valor Nuevo: 200.0
+
+JUSTIFICACIÓN
+=============
+Se incrementa la meta del indicador debido al aumento en la demanda de servicios y la mejora en la capacidad operativa del proyecto. Los recursos adicionales han sido aprobados por la dirección municipal.
+
+ARCHIVOS ANEXADOS
+=================
+Archivo: presupuesto_aprobado_2024.pdf
+Tamaño: 2457600 bytes
+Ubicación: uploads/justifications/20241219_1_admin_presupuesto_aprobado_2024.pdf
+URL de descarga: /uploads/justifications/20241219_1_admin_presupuesto_aprobado_2024.pdf
+
+Archivo: analisis_demanda.xlsx
+Tamaño: 1843200 bytes
+Ubicación: uploads/justifications/20241219_1_admin_analisis_demanda.xlsx
+URL de descarga: /uploads/justifications/20241219_1_admin_analisis_demanda.xlsx
+
+INFORMACIÓN DEL INDICADOR
+=========================
+Indicador: Número de emprendedores capacitados
+Código: IP-001
+Proyecto: Centro de Emprendimiento Municipal
+Programa: Programa de Apoyo a Emprendimientos
+Componente: Fortalecimiento del Sector Productivo
+Línea Estratégica: Desarrollo Económico Sostenible
+
+==================================================
+FIN DEL REGISTRO DE AUDITORÍA
