@@ -31,12 +31,25 @@ class LineaEstrategica(db.Model):
 
     def get_progreso_general(self):
         """Calcula el progreso general de la línea estratégica basado en sus componentes"""
-        componentes = self.componentes
-        if not componentes:
-            return 0.0
+        try:
+            componentes = self.componentes
+            if not componentes:
+                return 0.0
 
-        total_progreso = sum(componente.get_progreso() for componente in componentes)
-        return total_progreso / len(componentes)
+            # Obtener valores válidos de progreso
+            progresos_validos = []
+            for componente in componentes:
+                progreso = componente.get_progreso()
+                if progreso is not None and progreso >= 0:
+                    progresos_validos.append(progreso)
+
+            if progresos_validos:
+                total_progreso = sum(progresos_validos)
+                return total_progreso / len(progresos_validos)
+
+            return 0.0
+        except (TypeError, ZeroDivisionError, AttributeError):
+            return 0.0
 
     def get_presupuesto_ejecutado(self):
         """Calcula el presupuesto ejecutado de todos los componentes"""

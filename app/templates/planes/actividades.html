@@ -355,7 +355,11 @@
                         <div class="col-md-3 mb-3">
                             <div class="border rounded p-3">
                                 <div class="h4 mb-1 text-warning">
-                                    {% set total_presupuesto = proyecto.actividades|sum(attribute='presupuesto_asignado') or 0 %}
+                                    {% set total_presupuesto = namespace(value=0) %}
+                                    {% for actividad in proyecto.actividades %}
+                                        {% set total_presupuesto.value = total_presupuesto.value + (actividad.presupuesto_asignado or 0) %}
+                                    {% endfor %}
+                                    {% set total_presupuesto = total_presupuesto.value %}
                                     ${{ "%.1f"|format(total_presupuesto / 1000) }}K
                                 </div>
                                 <div class="text-muted">Presupuesto Total</div>

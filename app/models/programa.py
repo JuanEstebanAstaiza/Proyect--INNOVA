@@ -32,12 +32,25 @@ class Programa(db.Model):
 
     def get_progreso(self):
         """Calcula el progreso del programa basado en sus proyectos"""
-        proyectos = self.proyectos
-        if not proyectos:
-            return 0.0
+        try:
+            proyectos = self.proyectos
+            if not proyectos:
+                return 0.0
 
-        total_progreso = sum(proyecto.get_progreso() for proyecto in proyectos)
-        return total_progreso / len(proyectos)
+            # Obtener valores válidos de progreso
+            progresos_validos = []
+            for proyecto in proyectos:
+                progreso = proyecto.get_progreso()
+                if progreso is not None and progreso >= 0:
+                    progresos_validos.append(progreso)
+
+            if progresos_validos:
+                total_progreso = sum(progresos_validos)
+                return total_progreso / len(progresos_validos)
+
+            return 0.0
+        except (TypeError, ZeroDivisionError, AttributeError):
+            return 0.0
 
     def get_presupuesto_ejecutado(self):
         """Calcula el presupuesto ejecutado de todos los proyectos"""

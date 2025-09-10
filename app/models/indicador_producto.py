@@ -38,15 +38,19 @@ class IndicadorProducto(db.Model):
 
     def get_progreso_porcentual(self):
         """Calcula el progreso porcentual del indicador"""
-        if self.meta_cuatrienio <= 0:
+        try:
+            if not self.meta_cuatrienio or self.meta_cuatrienio <= 0:
+                return 0.0
+
+            # Obtener la ejecución acumulada más reciente
+            ultima_ejecucion = self.get_ultima_ejecucion()
+            if ultima_ejecucion and ultima_ejecucion.ejecucion_acumulada is not None:
+                progreso = (ultima_ejecucion.ejecucion_acumulada / self.meta_cuatrienio) * 100
+                return min(max(progreso, 0.0), 100.0)
+
             return 0.0
-
-        # Obtener la ejecución acumulada más reciente
-        ultima_ejecucion = self.get_ultima_ejecucion()
-        if ultima_ejecucion and ultima_ejecucion.ejecucion_acumulada is not None:
-            return min((ultima_ejecucion.ejecucion_acumulada / self.meta_cuatrienio) * 100, 100)
-
-        return 0.0
+        except (TypeError, ZeroDivisionError, AttributeError):
+            return 0.0
 
     def get_ultima_ejecucion(self):
         """Obtiene la última ejecución trimestral registrada"""

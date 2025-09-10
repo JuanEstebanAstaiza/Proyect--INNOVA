@@ -259,7 +259,7 @@
                                 <div class="d-flex justify-content-between">
                                     <div>
                                         {% if proyecto.indicadores %}
-                                        <a href="#" class="btn btn-sm btn-outline-primary me-1">
+                                        <a href="{{ url_for('planes.indicadores_proyecto', proyecto_id=proyecto.id) }}" class="btn btn-sm btn-outline-primary me-1">
                                             <i class="fas fa-chart-bar me-1"></i>Indicadores
                                         </a>
                                         {% endif %}
@@ -344,7 +344,11 @@
                         <div class="col-md-3 mb-3">
                             <div class="border rounded p-3">
                                 <div class="h4 mb-1 text-info">
-                                    {% set total_presupuesto = programa.proyectos|sum(attribute='presupuesto_total') or 0 %}
+                                    {% set total_presupuesto = namespace(value=0) %}
+                                    {% for proyecto in programa.proyectos %}
+                                        {% set total_presupuesto.value = total_presupuesto.value + (proyecto.presupuesto_total or 0) %}
+                                    {% endfor %}
+                                    {% set total_presupuesto = total_presupuesto.value %}
                                     ${{ "%.1f"|format(total_presupuesto / 1000) }}K
                                 </div>
                                 <div class="text-muted">Presupuesto Total</div>

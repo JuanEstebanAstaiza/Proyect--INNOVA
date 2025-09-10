@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header con navegación -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('planes.index') }}">Planes</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('planes.ver', plan_id=proyecto.programa.componente.linea_estrategica.plan_id) }}">{{ proyecto.programa.componente.linea_estrategica.plan.titulo }}</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('planes.lineas', plan_id=proyecto.programa.componente.linea_estrategica.plan_id) }}">Líneas Estratégicas</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('planes.componentes', linea_id=proyecto.programa.componente.linea_estrategica_id) }}">Componentes</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('planes.programas', componente_id=proyecto.programa.componente_id) }}">Programas PDM</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('planes.proyectos', programa_id=proyecto.programa_id) }}">Proyectos</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('planes.indicadores_proyecto', proyecto_id=proyecto.id) }}">Indicadores</a>
+                    </li>
+                    <li class="breadcrumb-item active">Detalles</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-chart-line me-2"></i>Detalles del Indicador
+                    </h1>
+                    <p class="text-muted mb-0">{{ indicador.nombre }}</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-2"></i>Inicio
+                    </a>
+                    <a href="{{ url_for('planes.indicadores_proyecto', proyecto_id=proyecto.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Indicadores
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Indicador -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center
+                    {% if indicador.sentido == 'positivo' %}bg-success text-white
+                    {% elif indicador.sentido == 'negativo' %}bg-danger text-white
+                    {% else %}bg-info text-white{% endif %}">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            {% if indicador.cod_indicador %}
+                                {{ indicador.cod_indicador }} - {{ indicador.nombre }}
+                            {% else %}
+                                {{ indicador.nombre }}
+                            {% endif %}
+                        </h5>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        {% if indicador.estado == 'activo' %}
+                            <span class="badge bg-success me-2">
+                                <i class="fas fa-circle me-1"></i>ACTIVO
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary me-2">
+                                <i class="fas fa-pause-circle me-1"></i>INACTIVO
+                            </span>
+                        {% endif %}
+                        <span class="badge
+                            {% if indicador.sentido == 'positivo' %}bg-success
+                            {% elif indicador.sentido == 'negativo' %}bg-danger
+                            {% else %}bg-info{% endif %}">
+                            <i class="fas fa-arrow-{% if indicador.sentido == 'positivo' %}up{% elif indicador.sentido == 'negativo' %}down{% else %}right{% endif %} me-1"></i>
+                            {{ indicador.sentido|title or 'Neutral' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <!-- Información básica -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Información Básica
+                            </h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Código</label>
+                                        <p class="mb-0">{{ indicador.cod_indicador or 'Sin código' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Tipo</label>
+                                        <p class="mb-0">{{ indicador.tipo_indicador or 'Sin tipo' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Unidad</label>
+                                        <p class="mb-0">{{ indicador.unidad or 'Sin unidad' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Tipología</label>
+                                        <p class="mb-0">{{ indicador.tipologia or 'Sin tipología' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-target me-2"></i>Metas y Líneas Base
+                            </h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Línea Base</label>
+                                        <p class="mb-0">{{ indicador.linea_base or 0 }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Meta 2024</label>
+                                        <p class="mb-0">{{ indicador.meta_2024 or 0 }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Meta Cuatrienio</label>
+                                        <p class="mb-0">{{ indicador.meta_cuatrienio or 0 }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Estado</label>
+                                        <p class="mb-0">
+                                            <span class="badge {% if indicador.estado == 'activo' %}bg-success{% else %}bg-secondary{% endif %}">
+                                                {{ indicador.estado|title }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if indicador.descripcion %}
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-align-left me-2"></i>Descripción
+                        </h6>
+                        <p class="mb-0">{{ indicador.descripcion }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Progreso actual -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-chart-line me-2"></i>Progreso Actual
+                            </h6>
+                            <div class="card border-0 bg-light">
+                                <div class="card-body text-center">
+                                    <div class="h2 mb-2 text-primary">{{ "%.1f"|format(indicador.get_progreso_porcentual()) }}%</div>
+                                    <p class="text-muted mb-0">Progreso alcanzado</p>
+                                    <div class="progress mt-3" style="height: 10px;">
+                                        <div class="progress-bar
+                                            {% set progreso = indicador.get_progreso_porcentual() %}
+                                            {% if progreso >= 80 %}bg-success
+                                            {% elif progreso >= 60 %}bg-info
+                                            {% elif progreso >= 40 %}bg-warning
+                                            {% else %}bg-danger{% endif %}"
+                                            role="progressbar"
+                                            style="width: {{ progreso }}%"
+                                            aria-valuenow="{{ progreso }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-clock me-2"></i>Información Temporal
+                            </h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Creado</label>
+                                        <p class="mb-0">{{ indicador.created_at.strftime('%d/%m/%Y') }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Actualizado</label>
+                                        <p class="mb-0">{{ indicador.updated_at.strftime('%d/%m/%Y') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de Ejecuciones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Historial de Ejecuciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% set ejecuciones = indicador.get_ejecuciones_por_anio(2024) %}
+                    {% if ejecuciones %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Trimestre</th>
+                                        <th>Ejecución Acumul.</th>
+                                        <th>% Avance</th>
+                                        <th>Meta Trimestral</th>
+                                        <th>% Cumplimiento</th>
+                                        <th>Fecha Medición</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ejecucion in ejecuciones %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-primary">T{{ ejecucion.trimestre }}</span>
+                                        </td>
+                                        <td class="fw-bold">{{ "%.2f"|format(ejecucion.ejecucion_acumulada or 0) }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                    <div class="progress-bar
+                                                        {% set porcentaje = (ejecucion.ejecucion_acumulada or 0) / indicador.meta_cuatrienio * 100 if indicador.meta_cuatrienio > 0 else 0 %}
+                                                        {% if porcentaje >= 100 %}bg-success
+                                                        {% elif porcentaje >= 75 %}bg-info
+                                                        {% elif porcentaje >= 50 %}bg-warning
+                                                        {% else %}bg-danger{% endif %}"
+                                                        style="width: {{ porcentaje }}%">
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">{{ "%.1f"|format(porcentaje) }}%</small>
+                                            </div>
+                                        </td>
+                                        <td>{{ "%.2f"|format(ejecucion.meta_trimestral or 0) }}</td>
+                                        <td>
+                                            {% set cumplimiento = 0 %}
+                                            {% if ejecucion.meta_trimestral and ejecucion.meta_trimestral > 0 %}
+                                                {% if ejecucion.trimestre == 1 %}
+                                                    {% set cumplimiento = (ejecucion.ejecucion_acumulada or 0) / ejecucion.meta_trimestral * 100 %}
+                                                {% else %}
+                                                    {# Calcular la ejecución trimestral específica #}
+                                                    {% set ejecucion_anterior = ejecuciones[loop.index0 - 1] if loop.index0 > 0 else None %}
+                                                    {% set ejecucion_trimestral = (ejecucion.ejecucion_acumulada or 0) - (ejecucion_anterior.ejecucion_acumulada or 0) if ejecucion_anterior else (ejecucion.ejecucion_acumulada or 0) %}
+                                                    {% set cumplimiento = ejecucion_trimestral / ejecucion.meta_trimestral * 100 %}
+                                                {% endif %}
+                                            {% endif %}
+                                            <span class="badge
+                                                {% if cumplimiento >= 100 %}bg-success
+                                                {% elif cumplimiento >= 80 %}bg-info
+                                                {% elif cumplimiento >= 60 %}bg-warning
+                                                {% else %}bg-danger{% endif %}">
+                                                {{ "%.1f"|format(cumplimiento) }}%
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if ejecucion.fecha_medicion %}
+                                                {{ ejecucion.fecha_medicion.strftime('%d/%m/%Y') }}
+                                            {% else %}
+                                                <span class="text-muted">Sin fecha</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <div class="mb-3">
+                                <i class="fas fa-chart-line fa-3x text-muted"></i>
+                            </div>
+                            <h5 class="text-muted">No hay ejecuciones registradas</h5>
+                            <p class="text-muted mb-0">
+                                Este indicador aún no tiene mediciones trimestrales registradas para 2024.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos adicionales -->
+<style>
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+}
+
+.text-muted {
+    color: #64748b !important;
+}
+
+.bg-light {
+    background-color: #f8fafc !important;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.progress {
+    border-radius: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .d-flex.justify-content-between .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

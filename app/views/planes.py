@@ -231,7 +231,7 @@ def desactivar_plan(plan_id):
 @login_required
 def lineas(plan_id):
     """Ver líneas estratégicas de un plan"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
     return render_template('planes/lineas.html', title='Líneas Estratégicas', plan=plan)
 
 @planes_bp.route('/<int:plan_id>/lineas/crear', methods=['GET', 'POST'])
@@ -617,6 +617,34 @@ def actividades(proyecto_id):
     ).first_or_404()
 
     return render_template('planes/actividades.html', title='Actividades', proyecto=proyecto)
+
+@planes_bp.route('/proyectos/<int:proyecto_id>/indicadores')
+@login_required
+def indicadores_proyecto(proyecto_id):
+    """Ver indicadores de un proyecto"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id
+    ).first_or_404()
+
+    return render_template('planes/indicadores_proyecto.html', title='Indicadores del Proyecto', proyecto=proyecto)
+
+@planes_bp.route('/proyectos/<int:proyecto_id>/indicadores/<int:indicador_id>')
+@login_required
+def detalles_indicador(proyecto_id, indicador_id):
+    """Ver detalles de un indicador específico"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id
+    ).first_or_404()
+
+    indicador = IndicadorProducto.query.filter_by(
+        id=indicador_id,
+        proyecto_id=proyecto_id
+    ).first_or_404()
+
+    return render_template('planes/detalles_indicador.html',
+                         title=f'Detalles del Indicador: {indicador.nombre}',
+                         proyecto=proyecto,
+                         indicador=indicador)
 
 @planes_bp.route('/proyectos/<int:proyecto_id>/actividades/crear', methods=['GET', 'POST'])
 @login_required

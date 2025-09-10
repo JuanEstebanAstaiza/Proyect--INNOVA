@@ -40,17 +40,28 @@ class Proyecto(db.Model):
 
     def get_progreso(self):
         """Calcula el progreso del proyecto basado en sus indicadores"""
-        indicadores = self.indicadores
-        if not indicadores:
+        try:
+            indicadores = self.indicadores
+            if not indicadores:
+                return 0.0
+
+            # Calcular progreso basado en indicadores de producto
+            indicadores_producto = [i for i in indicadores if hasattr(i, 'meta_cuatrienio') and i.meta_cuatrienio and i.meta_cuatrienio > 0]
+            if indicadores_producto:
+                # Obtener valores válidos de progreso
+                progresos_validos = []
+                for indicador in indicadores_producto:
+                    progreso = indicador.get_progreso_porcentual()
+                    if progreso is not None and progreso >= 0:
+                        progresos_validos.append(progreso)
+
+                if progresos_validos:
+                    total_progreso = sum(progresos_validos)
+                    return total_progreso / len(progresos_validos)
+
             return 0.0
-
-        # Calcular progreso basado en indicadores de producto
-        indicadores_producto = [i for i in indicadores if hasattr(i, 'meta_cuatrienio') and i.meta_cuatrienio > 0]
-        if indicadores_producto:
-            total_progreso = sum(indicador.get_progreso_porcentual() for indicador in indicadores_producto)
-            return total_progreso / len(indicadores_producto)
-
-        return 0.0
+        except (TypeError, ZeroDivisionError, AttributeError):
+            return 0.0
 
     def get_presupuesto_ejecutado(self):
         """Retorna el presupuesto ejecutado"""
