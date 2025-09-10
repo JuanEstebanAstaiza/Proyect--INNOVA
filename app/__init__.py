@@ -2,12 +2,14 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
+from flask_mail import Mail
 import os
 
 # Inicializar extensiones
 db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
+mail = Mail()
 
 def create_app(config_name=None):
     app = Flask(__name__)
@@ -23,6 +25,7 @@ def create_app(config_name=None):
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
+    mail.init_app(app)
 
     # Configurar login manager
     login_manager.login_view = 'auth.login'

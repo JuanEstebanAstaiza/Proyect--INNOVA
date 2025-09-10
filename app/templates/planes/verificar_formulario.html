@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-check-circle me-2"></i>Verificación de Formulario
+                    </h1>
+                    <p class="text-muted mb-0">Plan: {{ plan.titulo }}</p>
+                </div>
+                <a href="{{ url_for('planes.subir_documento', plan_id=plan.id) }}" class="btn btn-primary">
+                    <i class="fas fa-upload me-2"></i>Ir al Formulario
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Formulario -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Campos del Formulario de Documentos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Campo</th>
+                                    <th>Tipo</th>
+                                    <th>Requerido</th>
+                                    <th>Opciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for campo in campos %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ campo.nombre }}</strong>
+                                        {% if campo.nombre == 'tipo_documento' %}
+                                        <span class="badge bg-success ms-2">✅ Agregado</span>
+                                        {% elif campo.nombre == 'confidencialidad' %}
+                                        <span class="badge bg-success ms-2">✅ Agregado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <code>{{ campo.tipo }}</code>
+                                    </td>
+                                    <td>
+                                        {% if campo.requerido %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Sí
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Opcional</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if campo.opciones %}
+                                        <small class="text-muted">
+                                            {{ campo.opciones|length }} opciones disponibles
+                                        </small>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Opciones del campo tipo_documento -->
+                    {% for campo in campos %}
+                    {% if campo.nombre == 'tipo_documento' and campo.opciones %}
+                    <div class="mt-4">
+                        <h6 class="fw-bold">
+                            <i class="fas fa-tag me-2"></i>Opciones de Tipo de Documento:
+                        </h6>
+                        <div class="row">
+                            {% for value, label in campo.opciones %}
+                            <div class="col-md-3 mb-2">
+                                <div class="card border-primary">
+                                    <div class="card-body p-2 text-center">
+                                        <small class="fw-bold">{{ label }}</small>
+                                        <br>
+                                        <code class="text-muted">{{ value }}</code>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+
+                    <!-- Opciones del campo confidencialidad -->
+                    {% for campo in campos %}
+                    {% if campo.nombre == 'confidencialidad' and campo.opciones %}
+                    <div class="mt-4">
+                        <h6 class="fw-bold">
+                            <i class="fas fa-lock me-2"></i>Opciones de Nivel de Confidencialidad:
+                        </h6>
+                        <div class="row">
+                            {% for value, label in campo.opciones %}
+                            <div class="col-md-6 mb-2">
+                                <div class="card
+                                    {% if value == 'publico' %}border-success
+                                    {% else %}border-danger{% endif %}">
+                                    <div class="card-body p-2 text-center">
+                                        <small class="fw-bold">{{ label }}</small>
+                                        <br>
+                                        <code class="text-muted">{{ value }}</code>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <small>
+                                <strong>PÚBLICO:</strong> Todos los usuarios del municipio pueden acceder<br>
+                                <strong>CONFIDENCIAL:</strong> Solo el propietario, administradores y editores
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Estado del Sistema -->
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Estado del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-check-circle text-success me-3 fa-lg"></i>
+                                <div>
+                                    <strong>Campo tipo_documento</strong><br>
+                                    <small class="text-muted">Presente en el formulario</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-check-circle text-success me-3 fa-lg"></i>
+                                <div>
+                                    <strong>Opciones configuradas</strong><br>
+                                    <small class="text-muted">8 tipos disponibles</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-check-circle text-success me-3 fa-lg"></i>
+                                <div>
+                                    <strong>Validación activa</strong><br>
+                                    <small class="text-muted">Campo requerido</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-check-circle text-success me-3 fa-lg"></i>
+                                <div>
+                                    <strong>Template actualizado</strong><br>
+                                    <small class="text-muted">Campo visible en formulario</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

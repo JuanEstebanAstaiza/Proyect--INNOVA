@@ -108,13 +108,13 @@ class Documento(db.Model):
     def puede_descargar(self, usuario):
         """Verifica si un usuario puede descargar el documento"""
         if self.confidencialidad == 'publico':
+            # Todos los usuarios del municipio pueden descargar
             return True
-        elif self.confidencialidad == 'interno':
-            # Solo usuarios de la misma alcaldía
-            return usuario.municipality == self.usuario.municipality
         else:  # confidencial
-            # Solo el usuario que lo subió o administradores
-            return usuario.id == self.usuario_id or usuario.role == 'admin'
+            # Solo el propietario, administradores o editores
+            return (usuario.id == self.usuario_id or
+                   usuario.is_admin() or
+                   usuario.is_editor())
 
     def get_etiquetas_lista(self):
         """Retorna las etiquetas como una lista"""
@@ -128,6 +128,35 @@ class Documento(db.Model):
             self.etiquetas = ', '.join(etiquetas_lista)
         else:
             self.etiquetas = None
+
+    @property
+    def tipo_archivo(self):
+        """Retorna el tipo de archivo basado en la extensión"""
+        if not self.extension:
+            return 'desconocido'
+
+        ext = self.extension.lower()
+        if ext in ['pdf']:
+            return 'pdf'
+        elif ext in ['doc', 'docx']:
+            return ext
+        elif ext in ['xls', 'xlsx']:
+            return ext
+        elif ext in ['ppt', 'pptx']:
+            return ext
+        elif ext in ['txt']:
+            return 'txt'
+        elif ext in ['jpg', 'jpeg', 'png', 'gif']:
+            return 'imagen'
+        elif ext in ['mp4', 'avi', 'mov']:
+            return 'video'
+        else:
+            return 'otro'
+
+    @property
+    def tamano_archivo(self):
+        """Alias para tamano para compatibilidad con templates"""
+        return self.tamano
 
     def __repr__(self):
         return f'<Documento {self.titulo} - {self.tipo_documento}>'

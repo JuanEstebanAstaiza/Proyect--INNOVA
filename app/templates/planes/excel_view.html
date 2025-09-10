@@ -176,6 +176,26 @@
                                 <th class="text-center col-acumulado" style="min-width: 120px;" title="% Cumplimiento Total">% TOTAL<br>CUMPLIDO</th>
                                 <th class="text-center col-acumulado" style="min-width: 120px;" title="Población Total Impactada">TOTAL<br>POBLACIÓN</th>
                                 <th class="text-center col-acumulado" style="min-width: 150px;" title="Observaciones Generales">OBSERVACIONES<br>GENERALES</th>
+
+                                <!-- Columnas de documentos -->
+                                <th class="text-center col-documentos" style="min-width: 80px;" title="Documentos de Línea Estratégica">
+                                    <i class="fas fa-file-alt text-info"></i><br>DOCS<br>LÍNEA
+                                </th>
+                                <th class="text-center col-documentos" style="min-width: 80px;" title="Documentos de Componente">
+                                    <i class="fas fa-file-alt text-success"></i><br>DOCS<br>COMP
+                                </th>
+                                <th class="text-center col-documentos" style="min-width: 80px;" title="Documentos de Programa">
+                                    <i class="fas fa-file-alt text-warning"></i><br>DOCS<br>PROG
+                                </th>
+                                <th class="text-center col-documentos" style="min-width: 80px;" title="Documentos de Proyecto">
+                                    <i class="fas fa-file-alt text-danger"></i><br>DOCS<br>PROY
+                                </th>
+                                <th class="text-center col-documentos" style="min-width: 80px;" title="Documentos de Indicador">
+                                    <i class="fas fa-file-alt text-primary"></i><br>DOCS<br>IND
+                                </th>
+                                <th class="text-center col-documentos" style="min-width: 100px;" title="Total de Documentos Asociados">
+                                    <i class="fas fa-folder-open text-secondary"></i><br>TOTAL<br>DOCS
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -302,6 +322,62 @@
                                 <td class="bg-warning">
                                     <input type="text" class="form-control form-control-sm excel-cell"
                                            value="{{ row.observacion_acumulada }}" data-column="observacion_acumulada" readonly>
+                                </td>
+
+                                <!-- Celdas de documentos -->
+                                <td class="text-center">
+                                    {% if row.documentos_linea > 0 %}
+                                        <span class="badge bg-info" title="{{ row.documentos_linea }} documentos">
+                                            <i class="fas fa-file-alt"></i> {{ row.documentos_linea }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if row.documentos_componente > 0 %}
+                                        <span class="badge bg-success" title="{{ row.documentos_componente }} documentos">
+                                            <i class="fas fa-file-alt"></i> {{ row.documentos_componente }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if row.documentos_programa > 0 %}
+                                        <span class="badge bg-warning" title="{{ row.documentos_programa }} documentos">
+                                            <i class="fas fa-file-alt"></i> {{ row.documentos_programa }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if row.documentos_proyecto > 0 %}
+                                        <span class="badge bg-danger" title="{{ row.documentos_proyecto }} documentos">
+                                            <i class="fas fa-file-alt"></i> {{ row.documentos_proyecto }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if row.documentos_indicador > 0 %}
+                                        <span class="badge bg-primary" title="{{ row.documentos_indicador }} documentos">
+                                            <i class="fas fa-file-alt"></i> {{ row.documentos_indicador }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if row.total_documentos > 0 %}
+                                        <span class="badge bg-secondary fw-bold" title="Total: {{ row.total_documentos }} documentos">
+                                            <i class="fas fa-folder-open"></i> {{ row.total_documentos }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -1108,6 +1184,35 @@ document.addEventListener('keydown', function(e) {
         -webkit-print-color-adjust: exact;
         color-adjust: exact;
     }
+}
+
+/* Estilos para columnas de documentos */
+.col-documentos {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 2px solid #dee2e6;
+}
+
+.col-documentos th {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.col-documentos .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.col-documentos .badge:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* Tooltip personalizado para badges de documentos */
+.col-documentos .badge[title] {
+    cursor: help;
 }
 </style>
 
