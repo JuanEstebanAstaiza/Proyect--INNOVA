@@ -13,15 +13,16 @@ WTForms==3.0.1
 SQLAlchemy==2.0.23
 
 # Para deployment en servidor
-gunicorn==21.2.0
-gevent==23.9.1
+#gunicorn==21.2.0
+#gevent==23.9.1
 
 # Utilidades
 python-dotenv==1.0.0
 email-validator==2.1.0
+PyJWT==2.8.0
 
 # Para desarrollo
-flask-debugtoolbar==0.13.1
+Flask-DebugToolbar==0.13.1
 
 # Opcional: Para generar reportes PDF
 reportlab==4.0.7
