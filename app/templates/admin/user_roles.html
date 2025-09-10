@@ -154,7 +154,7 @@
                     </div>
 
                     <!-- Permisos de fila -->
-                    {% set row_permissions = user_data.user.row_permissions %}
+                    {% set row_permissions = user_data.row_permissions %}
                     {% if row_permissions %}
                     <div class="mb-3">
                         <h6 class="mb-2">
@@ -162,8 +162,20 @@
                         </h6>
                         <div class="d-flex flex-wrap gap-1">
                             {% for permission in row_permissions[:3] %}
-                            <span class="badge bg-info small" title="{{ permission.indicador.nombre }}">
-                                {{ permission.indicador.nombre[:20] }}{% if permission.indicador.nombre|length > 20 %}...{% endif %}
+                            <span class="badge bg-info small" title="{% if permission.indicador %}{{ permission.indicador.nombre }}{% elif permission.proyecto %}{{ permission.proyecto.nombre }}{% elif permission.programa %}{{ permission.programa.nombre }}{% elif permission.componente %}{{ permission.componente.nombre }}{% elif permission.linea_estrategica %}{{ permission.linea_estrategica.nombre }}{% else %}Entidad desconocida{% endif %}">
+                                {% if permission.indicador %}
+                                    {{ permission.indicador.nombre[:20] }}{% if permission.indicador.nombre|length > 20 %}...{% endif %}
+                                {% elif permission.proyecto %}
+                                    {{ permission.proyecto.nombre[:20] }}{% if permission.proyecto.nombre|length > 20 %}...{% endif %}
+                                {% elif permission.programa %}
+                                    {{ permission.programa.nombre[:20] }}{% if permission.programa.nombre|length > 20 %}...{% endif %}
+                                {% elif permission.componente %}
+                                    {{ permission.componente.nombre[:20] }}{% if permission.componente.nombre|length > 20 %}...{% endif %}
+                                {% elif permission.linea_estrategica %}
+                                    {{ permission.linea_estrategica.nombre[:20] }}{% if permission.linea_estrategica.nombre|length > 20 %}...{% endif %}
+                                {% else %}
+                                    Entidad sin nombre
+                                {% endif %}
                             </span>
                             {% endfor %}
                             {% if row_permissions|length > 3 %}
@@ -351,6 +363,7 @@ function showQuickAssignModal(roleId, roleName) {
 
     // Buscar descripción del rol
     const roles = {{ roles|tojson }};
+    window.allRoles = roles;
     const role = roles.find(r => r.id === roleId);
     document.getElementById('quickAssignRoleDesc').textContent = role ? role.description || 'Sin descripción' : '';
 
@@ -436,7 +449,9 @@ function filterUsers() {
 
         // Filtro de rol
         if (roleFilter) {
-            showCard = showCard && roles.some(role => role.includes(roleFilter.toLowerCase()));
+            // Obtener el nombre del rol filtrado desde la lista global de roles
+            const filteredRoleName = window.allRoles ? window.allRoles.find(r => r.id == roleFilter)?.name?.toLowerCase() : '';
+            showCard = showCard && roles.some(role => role.includes(filteredRoleName));
         }
 
         // Filtro de estado

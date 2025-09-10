@@ -23,6 +23,12 @@ def dashboard():
     total_users = User.query.count()
     active_users = User.query.filter_by(is_active=True).count()
     admin_users = User.query.filter_by(role='admin').count()
+
+    # Get plans statistics
+    from app.models import PlanDesarrollo
+    total_plans = PlanDesarrollo.query.count()
+    active_plans = PlanDesarrollo.query.filter_by(estado='activo').count()
+
     recent_activities = ActivityLog.query.order_by(desc(ActivityLog.timestamp)).limit(10).all()
 
     # Obtener sesiones activas con validación JWT
@@ -60,6 +66,10 @@ def dashboard():
         'inactive_sessions': len(inactive_sessions),
         'jwt_stats': jwt_stats
     }
+
+    # Add plans statistics to stats object
+    stats['total_plans'] = total_plans
+    stats['active_plans'] = active_plans
 
     return render_template('admin/dashboard.html',
                          title='Panel de Administrador',
@@ -639,18 +649,46 @@ def user_roles():
 
     user_roles_data = []
     for user in users:
+        # Obtener roles activos del usuario
         active_roles = [ur for ur in user.active_roles if ur.is_active]
+
+        # Obtener permisos de fila del usuario con las relaciones cargadas
+        from app.models import RowPermission
+        row_permissions = RowPermission.query.filter_by(
+            user_id=user.id,
+            is_active=True
+        ).options(
+            db.joinedload(RowPermission.indicador),
+            db.joinedload(RowPermission.proyecto),
+            db.joinedload(RowPermission.programa),
+            db.joinedload(RowPermission.componente),
+            db.joinedload(RowPermission.linea_estrategica)
+        ).all()
+
         user_roles_data.append({
             'user': user,
             'roles': active_roles,
             'role_names': [ur.role.name for ur in active_roles],
-            'role_colors': [ur.role.color for ur in active_roles]
+            'role_colors': [ur.role.color for ur in active_roles],
+            'row_permissions': row_permissions
+        })
+
+    # Convertir roles a formato JSON serializable
+    roles_data = []
+    for role in roles:
+        roles_data.append({
+            'id': role.id,
+            'name': role.name,
+            'description': role.description,
+            'color': role.color,
+            'is_active': role.is_active,
+            'created_at': role.created_at.isoformat() if role.created_at else None
         })
 
     return render_template('admin/user_roles.html',
                          title='Asignación de Roles',
                          user_roles_data=user_roles_data,
-                         roles=roles)
+                         roles=roles_data)
 
 @admin_bp.route('/users/<int:user_id>/assign-role', methods=['POST'])
 def assign_role_to_user(user_id):
