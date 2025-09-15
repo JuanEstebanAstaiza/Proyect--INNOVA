@@ -100,9 +100,6 @@
                         <a href="{{ url_for('planes.ver', plan_id=plan_activo.id) }}" class="btn btn-primary btn-lg px-4">
                             <i class="fas fa-eye me-2"></i>Ver Plan Activo
                         </a>
-                        <a href="{{ url_for('planes.reportes', plan_id=plan_activo.id) }}" class="btn btn-outline-info btn-lg px-4">
-                            <i class="fas fa-chart-bar me-2"></i>Ver Reportes
-                        </a>
                     </div>
                     {% else %}
                     <a href="{{ url_for('planes.index') }}" class="btn btn-primary btn-lg px-4">
