@@ -4,8 +4,12 @@ from datetime import datetime
 class LineaEstrategica(db.Model):
     __tablename__ = 'lineas_estrategicas'
 
+    __table_args__ = (
+        db.UniqueConstraint('plan_id', 'cod_linea', name='unique_plan_cod_linea'),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
-    cod_linea = db.Column(db.Integer, nullable=False, unique=True)
+    cod_linea = db.Column(db.Integer, nullable=False)
     nombre = db.Column(db.String(200), nullable=False)
     descripcion = db.Column(db.Text)
 
@@ -31,12 +35,25 @@ class LineaEstrategica(db.Model):
 
     def get_progreso_general(self):
         """Calcula el progreso general de la línea estratégica basado en sus componentes"""
-        componentes = self.componentes
-        if not componentes:
-            return 0.0
+        try:
+            componentes = self.componentes
+            if not componentes:
+                return 0.0
 
-        total_progreso = sum(componente.get_progreso() for componente in componentes)
-        return total_progreso / len(componentes)
+            # Obtener valores válidos de progreso
+            progresos_validos = []
+            for componente in componentes:
+                progreso = componente.get_progreso()
+                if progreso is not None and progreso >= 0:
+                    progresos_validos.append(progreso)
+
+            if progresos_validos:
+                total_progreso = sum(progresos_validos)
+                return total_progreso / len(progresos_validos)
+
+            return 0.0
+        except (TypeError, ZeroDivisionError, AttributeError):
+            return 0.0
 
     def get_presupuesto_ejecutado(self):
         """Calcula el presupuesto ejecutado de todos los componentes"""

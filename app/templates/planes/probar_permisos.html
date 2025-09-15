@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary fw-bold">
+                        <i class="fas fa-shield-alt me-2"></i>Prueba de Permisos de Confidencialidad
+                    </h1>
+                    <p class="text-muted mb-0">Plan: {{ plan.titulo }}</p>
+                </div>
+                <a href="{{ url_for('planes.documentos', plan_id=plan.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Documentos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Explicación del Sistema -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>Cómo Funciona el Sistema de Confidencialidad
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-globe fa-2x text-success mb-2"></i>
+                                <h6>PÚBLICO</h6>
+                                <small class="text-muted">Todos los usuarios del municipio</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-lock fa-2x text-danger mb-2"></i>
+                                <h6>CONFIDENCIAL</h6>
+                                <small class="text-muted">Solo propietario + admins/editores</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resultados de Pruebas -->
+    {% for resultado in resultados %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file me-2"></i>{{ resultado.documento }}
+                        <span class="badge
+                            {% if resultado.confidencialidad == 'publico' %}bg-success
+                            {% elif resultado.confidencialidad == 'interno' %}bg-warning
+                            {% else %}bg-danger{% endif %} ms-2">
+                            {{ resultado.confidencialidad|upper }}
+                        </span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Roles</th>
+                                    <th>¿Puede Acceder?</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for permiso in resultado.permisos %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ permiso.usuario }}</strong>
+                                    </td>
+                                    <td>
+                                        {% for rol in permiso.roles %}
+                                        <span class="badge bg-secondary me-1">{{ rol }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if permiso.puede_acceder %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>SÍ
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times me-1"></i>NO
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if permiso.puede_acceder %}
+                                        <small class="text-success">
+                                            <i class="fas fa-unlock me-1"></i>Acceso permitido
+                                        </small>
+                                        {% else %}
+                                        <small class="text-danger">
+                                            <i class="fas fa-lock me-1"></i>Acceso denegado
+                                        </small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Resumen Ejecutivo -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Resumen Ejecutivo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>🔐 Niveles de Confidencialidad:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Público:</strong> Todos los usuarios del municipio pueden acceder</li>
+                                <li><strong>Confidencial:</strong> Solo propietario, administradores y editores</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>👥 Sistema de Roles:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Administrador:</strong> Acceso completo a todos los documentos</li>
+                                <li><strong>Editor:</strong> Acceso a documentos confidenciales</li>
+                                <li><strong>Usuario Regular:</strong> Acceso según confidencialidad</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.card-header {
+    border: none;
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

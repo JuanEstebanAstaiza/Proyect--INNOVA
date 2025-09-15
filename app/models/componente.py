@@ -31,12 +31,25 @@ class Componente(db.Model):
 
     def get_progreso(self):
         """Calcula el progreso del componente basado en sus programas"""
-        programas = self.programas
-        if not programas:
-            return 0.0
+        try:
+            programas = self.programas
+            if not programas:
+                return 0.0
 
-        total_progreso = sum(programa.get_progreso() for programa in programas)
-        return total_progreso / len(programas)
+            # Obtener valores válidos de progreso
+            progresos_validos = []
+            for programa in programas:
+                progreso = programa.get_progreso()
+                if progreso is not None and progreso >= 0:
+                    progresos_validos.append(progreso)
+
+            if progresos_validos:
+                total_progreso = sum(progresos_validos)
+                return total_progreso / len(progresos_validos)
+
+            return 0.0
+        except (TypeError, ZeroDivisionError, AttributeError):
+            return 0.0
 
     def get_presupuesto_ejecutado(self):
         """Calcula el presupuesto ejecutado de todos los programas"""

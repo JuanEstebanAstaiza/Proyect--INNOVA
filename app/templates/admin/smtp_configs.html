@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-envelope me-2"></i>Configuración SMTP
+            </h1>
+            <p class="text-muted">Configura el envío de correos para cada municipio</p>
+        </div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Alertas -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'error' else 'warning' }} alert-dismissible fade show" role="alert">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Lista de configuraciones -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-cogs me-2"></i>Configuraciones por Municipio
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="smtpTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Municipio</th>
+                            <th>Servidor SMTP</th>
+                            <th>Correo Remitente</th>
+                            <th>Estado</th>
+                            <th>Última Modificación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for config in smtp_configs %}
+                        <tr>
+                            <td>
+                                <strong>{{ config.municipality }}</strong>
+                            </td>
+                            <td>
+                                {% if config.smtp_server %}
+                                    {{ config.smtp_server }}:{{ config.smtp_port }}
+                                {% else %}
+                                    <span class="text-muted">No configurado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if config.sender_email %}
+                                    {{ config.sender_email }}
+                                {% else %}
+                                    <span class="text-muted">No configurado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if config.is_active %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ config.updated_at.strftime('%d/%m/%Y %H:%M') if config.updated_at else 'Nunca' }}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin.edit_smtp_config', municipality=config.municipality) }}"
+                                   class="btn btn-sm btn-primary me-2">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                <a href="{{ url_for('admin.test_smtp_config', municipality=config.municipality) }}"
+                                   class="btn btn-sm btn-info">
+                                    <i class="fas fa-paper-plane"></i> Probar
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-info">
+                <i class="fas fa-info-circle me-2"></i>Información
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>¿Qué es SMTP?</h5>
+                    <p>SMTP (Simple Mail Transfer Protocol) es el protocolo estándar para envío de correos electrónicos. Cada municipio puede tener su propia configuración de correo electrónico.</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Configuración necesaria</h5>
+                    <ul>
+                        <li>Servidor SMTP (ej: smtp.gmail.com)</li>
+                        <li>Puerto (generalmente 587 para TLS, 465 para SSL)</li>
+                        <li>Usuario y contraseña del correo</li>
+                        <li>Correo y nombre del remitente</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// DataTable para mejor navegación
+$(document).ready(function() {
+    $('#smtpTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
+        },
+        "order": [[ 4, "desc" ]], // Ordenar por última modificación
+        "pageLength": 25
+    });
+});
+</script>
+{% endblock %}

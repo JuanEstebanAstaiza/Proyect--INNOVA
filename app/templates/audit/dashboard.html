@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-clipboard-list text-primary"></i> Panel de Auditoría
+                </h1>
+                <p class="text-muted">Registro completo de cambios realizados en el plan de desarrollo</p>
+            </div>
+            <div class="btn-group">
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver al Inicio
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del Plan Activo -->
+{% if active_plan %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marked-alt me-2"></i>
+                    Plan de Desarrollo Activo: {{ active_plan.titulo }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Estado:</strong>
+                        <span class="badge bg-success ms-2">{{ active_plan.estado.title() }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Fecha de Creación:</strong>
+                        <span class="ms-2">{{ active_plan.created_at.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Última Actualización:</strong>
+                        <span class="ms-2">{{ active_plan.updated_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>No hay plan de desarrollo activo</strong>
+            <p class="mb-0">No se puede mostrar información de auditoría sin un plan activo.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Estadísticas Generales -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-primary mb-2">{{ total_changes }}</div>
+                <h6 class="card-title text-muted">Cambios Realizados</h6>
+                <small class="text-muted">En el plan activo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-info mb-2">{{ total_files }}</div>
+                <h6 class="card-title text-muted">Archivos de Auditoría</h6>
+                <small class="text-muted">Generados automáticamente</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-success mb-2">{{ "%.1f"|format(total_size / 1024) }} KB</div>
+                <h6 class="card-title text-muted">Espacio Ocupado</h6>
+                <small class="text-muted">En archivos de auditoría</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Cambios Recientes -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Cambios Recientes en {{ active_plan.titulo if active_plan else 'Plan Activo' }}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if user_changes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><i class="fas fa-calendar"></i> Fecha y Hora</th>
+                                    <th><i class="fas fa-edit"></i> Columna Modificada</th>
+                                    <th><i class="fas fa-exchange-alt"></i> Cambio Realizado</th>
+                                    <th><i class="fas fa-project-diagram"></i> Indicador</th>
+                                    <th><i class="fas fa-file-alt"></i> Archivo de Auditoría</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for change in user_changes %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ change.created_at.strftime('%d/%m/%Y') }}</strong><br>
+                                        <small class="text-muted">{{ change.created_at.strftime('%H:%M:%S') }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ change.get_column_display_name() }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="small">
+                                            <span class="text-danger">Antes:</span> {{ change.old_value or 'N/A' }}<br>
+                                            <span class="text-success">Después:</span> {{ change.new_value }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if change.indicador %}
+                                            <strong>{{ change.indicador.nombre }}</strong><br>
+                                            <small class="text-muted">{{ change.indicador.cod_indicador }}</small>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% for file in audit_files %}
+                                            {% if change.created_at.strftime('%Y%m%d') in file.filename and change.column_name in file.filename %}
+                                                <a href="{{ url_for('audit.download_audit_file', filename=file.filename) }}"
+                                                   class="btn btn-sm btn-outline-info"
+                                                   title="Descargar archivo de auditoría">
+                                                    <i class="fas fa-download"></i> Descargar
+                                                </a>
+                                                {% if loop.first %}{% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No hay cambios registrados</h5>
+                        <p class="text-muted">
+                            Aún no has realizado cambios en el plan de desarrollo activo.
+                            Los cambios aparecerán aquí automáticamente cuando edites alguna celda.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Archivos de Auditoría Disponibles -->
+{% if audit_files %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-folder-open me-2"></i>
+                    Mis Archivos de Auditoría
+                </h5>
+                <a href="{{ url_for('audit.list_audit_files') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-external-link-alt"></i> Ver Todos los Archivos
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for file in audit_files[:6] %} <!-- Mostrar máximo 6 archivos recientes -->
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 border-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-file-alt fa-2x text-info mb-2"></i>
+                                <h6 class="card-title small">{{ file.filename }}</h6>
+                                <p class="card-text small text-muted mb-2">
+                                    {{ file.modified.strftime('%d/%m/%Y %H:%M') }}<br>
+                                    {{ "%.1f"|format(file.size / 1024) }} KB
+                                </p>
+                                <a href="{{ url_for('audit.download_audit_file', filename=file.filename) }}"
+                                   class="btn btn-sm btn-info">
+                                    <i class="fas fa-download"></i> Descargar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if audit_files|length > 6 %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        Mostrando {{ 6 if audit_files|length > 6 else audit_files|length }} de {{ audit_files|length }} archivos.
+                        <a href="{{ url_for('audit.list_audit_files') }}">Ver todos</a>
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Información del Sistema de Auditoría -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    Sistema de Auditoría Automático
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>¿Cómo funciona?</h6>
+                        <ul class="small mb-0">
+                            <li>Cada cambio en Excel genera automáticamente un archivo de auditoría</li>
+                            <li>Los archivos se organizan por usuario y fecha</li>
+                            <li>Se registra la justificación completa del cambio</li>
+                            <li>Se incluyen referencias a archivos de soporte anexados</li>
+                            <li>Toda la información queda almacenada permanentemente</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-eye text-primary me-2"></i>¿Qué se registra?</h6>
+                        <ul class="small mb-0">
+                            <li>Fecha y hora exacta del cambio</li>
+                            <li>Columna modificada y valores anterior/nuevo</li>
+                            <li>Justificación completa proporcionada por el usuario</li>
+                            <li>Información del indicador, proyecto y plan</li>
+                            <li>Referencias a documentos de soporte</li>
+                            <li>Usuario que realizó el cambio</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

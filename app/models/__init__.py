@@ -20,6 +20,12 @@ from .user_role import UserRole
 # Modelo para justificaciones de ediciones
 from .edit_justification import EditJustification
 
+# Modelo para configuración SMTP
+from .smtp_config import SMTPConfig
+
+# Modelo para contraseñas temporales
+from .user_temp_password import UserTempPassword
+
 __all__ = [
     'User',
     'PlanDesarrollo',
@@ -37,5 +43,7 @@ __all__ = [
     'ColumnPermission',
     'RowPermission',
     'UserRole',
-    'EditJustification'
+    'EditJustification',
+    'SMTPConfig',
+    'UserTempPassword'
 ]

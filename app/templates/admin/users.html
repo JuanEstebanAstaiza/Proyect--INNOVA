@@ -29,6 +29,9 @@
                     <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Volver al Panel
                     </a>
+                    <a href="{{ url_for('admin.smtp_config_list') }}" class="btn btn-info">
+                        <i class="fas fa-envelope me-2"></i>Config SMTP
+                    </a>
                     <a href="{{ url_for('admin.create_user') }}" class="btn btn-primary">
                         <i class="fas fa-user-plus me-2"></i>Crear Usuario
                     </a>
@@ -187,11 +190,21 @@
                                             <i class="fas fa-cog"></i>
                                         </button>
                                         <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="{{ url_for('admin.view_user_temp_password', user_id=user.id) }}">
+                                                <i class="fas fa-key"></i> Ver Contraseña
+                                            </a></li>
                                             <li><a class="dropdown-item" href="{{ url_for('main.profile') }}?user={{ user.id }}">
                                                 <i class="fas fa-eye"></i> Ver Perfil
                                             </a></li>
                                             {% if user.id != current_user.id %}
                                             <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.send_user_credentials', user_id=user.id) }}" style="display: inline;">
+                                                    <button type="submit" class="dropdown-item text-primary">
+                                                        <i class="fas fa-envelope"></i> Enviar Credenciales
+                                                    </button>
+                                                </form>
+                                            </li>
                                             <li>
                                                 <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" style="display: inline;">
                                                     <button type="submit" class="dropdown-item text-{{ 'danger' if user.is_active else 'success' }}">

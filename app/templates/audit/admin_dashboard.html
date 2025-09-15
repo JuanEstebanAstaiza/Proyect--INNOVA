@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-shield-alt text-danger"></i> Panel Administrativo de Auditoría
+                </h1>
+                <p class="text-muted">Vista completa del sistema de auditoría de todos los usuarios</p>
+            </div>
+            <div class="btn-group">
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver al Inicio
+                </a>
+                <a href="{{ url_for('audit.audit_dashboard') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-user"></i> Mi Auditoría
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del Plan Activo -->
+{% if active_plan %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marked-alt me-2"></i>
+                    Plan de Desarrollo Activo: {{ active_plan.titulo }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Estado:</strong>
+                        <span class="badge bg-success ms-2">{{ active_plan.estado.title() }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Fecha de Creación:</strong>
+                        <span class="ms-2">{{ active_plan.created_at.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Última Actualización:</strong>
+                        <span class="ms-2">{{ active_plan.updated_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Estadísticas Globales -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center h-100 border-warning">
+            <div class="card-body">
+                <div class="display-4 text-warning mb-2">{{ total_users }}</div>
+                <h6 class="card-title text-muted">Usuarios Activos</h6>
+                <small class="text-muted">Con archivos de auditoría</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center h-100 border-info">
+            <div class="card-body">
+                <div class="display-4 text-info mb-2">{{ total_changes }}</div>
+                <h6 class="card-title text-muted">Total Cambios</h6>
+                <small class="text-muted">En todo el sistema</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center h-100 border-success">
+            <div class="card-body">
+                <div class="display-4 text-success mb-2">{{ total_files }}</div>
+                <h6 class="card-title text-muted">Archivos Generados</h6>
+                <small class="text-muted">PDFs y documentos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center h-100 border-primary">
+            <div class="card-body">
+                <div class="display-4 text-primary mb-2">{{ "%.1f"|format(total_size / 1024) }} KB</div>
+                <h6 class="card-title text-muted">Espacio Total</h6>
+                <small class="text-muted">Archivos de auditoría</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Usuarios con Auditoría -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>
+                    Usuarios con Actividad de Auditoría
+                    <span class="badge bg-primary ms-2">{{ users_with_audit|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if users_with_audit %}
+                    <div class="accordion" id="auditUsersAccordion">
+                        {% for user_info in users_with_audit %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ user_info.user.id }}">
+                                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapse{{ user_info.user.id }}"
+                                        aria-expanded="{% if loop.first %}true{% else %}false{% endif %}"
+                                        aria-controls="collapse{{ user_info.user.id }}">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle fa-lg me-3 text-secondary"></i>
+                                            <div>
+                                                <strong>{{ user_info.user.first_name }} {{ user_info.user.last_name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ user_info.user.username }} • {{ user_info.user.email }}</small>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="row g-2">
+                                                <div class="col-auto">
+                                                    <span class="badge bg-info">{{ user_info.total_changes }} cambios</span>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <span class="badge bg-success">{{ user_info.total_files }} archivos</span>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <small class="text-muted">{{ "%.1f"|format(user_info.total_size / 1024) }} KB</small>
+                                                </div>
+                                            </div>
+                                            {% if user_info.last_activity %}
+                                            <small class="text-muted d-block">
+                                                Última actividad: {{ user_info.last_activity.strftime('%d/%m/%Y %H:%M') }}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ user_info.user.id }}"
+                                 class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                                 aria-labelledby="heading{{ user_info.user.id }}"
+                                 data-bs-parent="#auditUsersAccordion">
+                                <div class="accordion-body">
+                                    <!-- Información detallada del usuario -->
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-id-card me-2"></i>Información del Usuario</h6>
+                                            <table class="table table-sm table-borderless">
+                                                <tr>
+                                                    <td><strong>Municipio:</strong></td>
+                                                    <td>{{ user_info.user.municipality or 'N/A' }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Departamento:</strong></td>
+                                                    <td>{{ user_info.user.department or 'N/A' }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Cargo:</strong></td>
+                                                    <td>{{ user_info.user.position or 'N/A' }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Estado:</strong></td>
+                                                    <td>
+                                                        {% if user_info.user.is_active %}
+                                                            <span class="badge bg-success">Activo</span>
+                                                        {% else %}
+                                                            <span class="badge bg-danger">Inactivo</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-chart-bar me-2"></i>Estadísticas de Auditoría</h6>
+                                            <table class="table table-sm table-borderless">
+                                                <tr>
+                                                    <td><strong>Cambios realizados:</strong></td>
+                                                    <td>{{ user_info.total_changes }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Archivos generados:</strong></td>
+                                                    <td>{{ user_info.total_files }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Espacio ocupado:</strong></td>
+                                                    <td>{{ "%.1f"|format(user_info.total_size / 1024) }} KB</td>
+                                                </tr>
+                                                {% if user_info.last_activity %}
+                                                <tr>
+                                                    <td><strong>Última actividad:</strong></td>
+                                                    <td>{{ user_info.last_activity.strftime('%d/%m/%Y %H:%M') }}</td>
+                                                </tr>
+                                                {% endif %}
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Lista de archivos del usuario -->
+                                    {% if user_info.audit_files %}
+                                    <h6><i class="fas fa-folder-open me-2"></i>Archivos de Auditoría</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th><i class="fas fa-file"></i> Archivo</th>
+                                                    <th><i class="fas fa-tag"></i> Tipo</th>
+                                                    <th><i class="fas fa-weight"></i> Tamaño</th>
+                                                    <th><i class="fas fa-calendar"></i> Fecha</th>
+                                                    <th><i class="fas fa-download"></i> Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for file in user_info.audit_files %}
+                                                <tr>
+                                                    <td>
+                                                        <code>{{ file.filename }}</code>
+                                                        {% if 'resumen' in file.filename %}
+                                                            <br><small class="badge bg-info">Resumen General</small>
+                                                        {% else %}
+                                                            <br><small class="badge bg-secondary">Registro Individual</small>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if file.type == 'PDF' %}
+                                                            <span class="badge bg-danger">PDF</span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">TXT</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ "%.1f"|format(file.size / 1024) }} KB</td>
+                                                    <td>{{ file.modified.strftime('%d/%m/%Y %H:%M') }}</td>
+                                                    <td>
+                                                        <a href="{{ url_for('audit.download_admin_audit_file', user_id=user_info.user.id, filename=file.filename) }}"
+                                                           class="btn btn-sm btn-outline-primary"
+                                                           title="Descargar archivo de auditoría">
+                                                            <i class="fas fa-download"></i> Descargar
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Este usuario no tiene archivos de auditoría registrados.
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No hay usuarios con actividad de auditoría</h5>
+                        <p class="text-muted">
+                            Aún no hay usuarios que hayan realizado cambios en el sistema que generen archivos de auditoría.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del Sistema de Auditoría -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    Panel Administrativo de Auditoría
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-eye text-danger me-2"></i>Vista Administrativa Completa</h6>
+                        <ul class="small mb-0">
+                            <li>Acceso completo a todos los archivos de auditoría</li>
+                            <li>Organización por usuario con información detallada</li>
+                            <li>Estadísticas globales del sistema</li>
+                            <li>Descarga de archivos de cualquier usuario</li>
+                            <li>Seguimiento de actividad por usuario</li>
+                            <li>Información consolidada del sistema</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-chart-line text-success me-2"></i>Información Disponible</h6>
+                        <ul class="small mb-0">
+                            <li>Lista completa de usuarios activos</li>
+                            <li>Cantidad de cambios por usuario</li>
+                            <li>Archivos generados por usuario</li>
+                            <li>Espacio ocupado por archivos</li>
+                            <li>Fecha de última actividad</li>
+                            <li>Información detallada de cada archivo</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

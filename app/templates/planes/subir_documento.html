@@ -32,6 +32,18 @@
                     <form method="POST" enctype="multipart/form-data">
                         {{ form.hidden_tag() }}
 
+                        <!-- Debug: Mostrar errores del formulario -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Errores en el formulario:</h6>
+                            <ul class="mb-0">
+                                {% for field_name, field_errors in form.errors.items() %}
+                                <li><strong>{{ field_name }}:</strong> {{ field_errors|join(', ') }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
                         <!-- Archivo -->
                         <div class="mb-4">
                             <label for="archivo" class="form-label fw-bold">
@@ -82,13 +94,13 @@
 
                         <!-- Nombre del Documento -->
                         <div class="mb-3">
-                            <label for="nombre_original" class="form-label fw-bold">
+                            <label for="titulo" class="form-label fw-bold">
                                 <i class="fas fa-tag me-1"></i>Nombre del Documento *
                             </label>
-                            {{ form.nombre_original(class="form-control", placeholder="Ej: Plan de Desarrollo Municipal 2025") }}
-                            {% if form.nombre_original.errors %}
+                            {{ form.titulo(class="form-control", placeholder="Ej: Plan de Desarrollo Municipal 2025") }}
+                            {% if form.titulo.errors %}
                                 <div class="text-danger small">
-                                    {% for error in form.nombre_original.errors %}
+                                    {% for error in form.titulo.errors %}
                                         <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
                                     {% endfor %}
                                 </div>
@@ -112,20 +124,106 @@
                             <div class="form-text">Descripción opcional del documento (opcional)</div>
                         </div>
 
-                        <!-- Categoría -->
-                        <div class="mb-4">
-                            <label for="categoria" class="form-label fw-bold">
-                                <i class="fas fa-folder me-1"></i>Categoría
+                        <!-- Tipo de Documento -->
+                        <div class="mb-3">
+                            <label for="tipo_documento" class="form-label fw-bold">
+                                <i class="fas fa-tag me-1"></i>Tipo de Documento *
                             </label>
-                            {{ form.categoria(class="form-select") }}
-                            {% if form.categoria.errors %}
+                            {{ form.tipo_documento(class="form-select") }}
+                            {% if form.tipo_documento.errors %}
                                 <div class="text-danger small">
-                                    {% for error in form.categoria.errors %}
+                                    {% for error in form.tipo_documento.errors %}
                                         <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="form-text">Categoría del documento para mejor organización (opcional)</div>
+                            <div class="form-text">Selecciona la categoría del documento</div>
+                        </div>
+
+                        <!-- Confidencialidad -->
+                        <div class="mb-3">
+                            <label for="confidencialidad" class="form-label fw-bold">
+                                <i class="fas fa-lock me-1"></i>Nivel de Confidencialidad *
+                            </label>
+                            {{ form.confidencialidad(class="form-select") }}
+                            {% if form.confidencialidad.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.confidencialidad.errors %}
+                                        <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Selecciona el nivel de acceso al documento</div>
+                        </div>
+
+                        <!-- Asociación con elementos del plan -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-link me-2"></i>Asociación con Elementos del Plan
+                            </h5>
+                            <p class="text-muted small mb-3">
+                                Opcionalmente, asocie este documento a elementos específicos del plan para una mejor organización.
+                            </p>
+
+                            <div class="row">
+                                <!-- Línea Estratégica -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="linea_estrategica" class="form-label">
+                                        <i class="fas fa-route me-1"></i>Línea Estratégica
+                                    </label>
+                                    <select class="form-select" id="linea_estrategica" name="linea_estrategica_id">
+                                        <option value="">Seleccionar línea estratégica...</option>
+                                        {% for linea in plan.lineas_estrategicas %}
+                                        <option value="{{ linea.id }}">{{ linea.cod_linea }} - {{ linea.nombre }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Opcional: asocie a una línea estratégica</div>
+                                </div>
+
+                                <!-- Componente -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="componente" class="form-label">
+                                        <i class="fas fa-puzzle-piece me-1"></i>Componente
+                                    </label>
+                                    <select class="form-select" id="componente" name="componente_id" disabled>
+                                        <option value="">Primero seleccione línea estratégica...</option>
+                                    </select>
+                                    <div class="form-text">Opcional: asocie a un componente</div>
+                                </div>
+
+                                <!-- Programa -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="programa" class="form-label">
+                                        <i class="fas fa-tasks me-1"></i>Programa
+                                    </label>
+                                    <select class="form-select" id="programa" name="programa_id" disabled>
+                                        <option value="">Primero seleccione componente...</option>
+                                    </select>
+                                    <div class="form-text">Opcional: asocie a un programa</div>
+                                </div>
+
+                                <!-- Proyecto -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="proyecto" class="form-label">
+                                        <i class="fas fa-project-diagram me-1"></i>Proyecto
+                                    </label>
+                                    <select class="form-select" id="proyecto" name="proyecto_id" disabled>
+                                        <option value="">Primero seleccione programa...</option>
+                                    </select>
+                                    <div class="form-text">Opcional: asocie a un proyecto</div>
+                                </div>
+
+                                <!-- Indicador -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="indicador" class="form-label">
+                                        <i class="fas fa-chart-line me-1"></i>Indicador
+                                    </label>
+                                    <select class="form-select" id="indicador" name="indicador_id" disabled>
+                                        <option value="">Primero seleccione proyecto...</option>
+                                    </select>
+                                    <div class="form-text">Opcional: asocie a un indicador</div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Información del Plan -->
@@ -289,7 +387,220 @@
 
 <!-- Script para manejo de archivos -->
 <script>
+// Datos del plan para las cascadas
+const planData = {
+    lineas: [
+        {% for linea in plan.lineas_estrategicas %}
+        {
+            id: {{ linea.id }},
+            nombre: "{{ linea.nombre }}",
+            componentes: [
+                {% for componente in linea.componentes %}
+                {
+                    id: {{ componente.id }},
+                    nombre: "{{ componente.nombre }}",
+                    programas: [
+                        {% for programa in componente.programas %}
+                        {
+                            id: {{ programa.id }},
+                            nombre: "{{ programa.nombre }}",
+                            proyectos: [
+                                {% for proyecto in programa.proyectos %}
+                                {
+                                    id: {{ proyecto.id }},
+                                    nombre: "{{ proyecto.nombre }}",
+                                    indicadores: [
+                                        {% for indicador in proyecto.indicadores %}
+                                        {
+                                            id: {{ indicador.id }},
+                                            nombre: "{{ indicador.nombre }}"
+                                        }{% if not loop.last %},{% endif %}
+                                        {% endfor %}
+                                    ]
+                                }{% if not loop.last %},{% endif %}
+                                {% endfor %}
+                            ]
+                        }{% if not loop.last %},{% endif %}
+                        {% endfor %}
+                    ]
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+};
+
+// Funciones para manejar las cascadas de selección
+function updateComponentes() {
+    const lineaSelect = document.getElementById('linea_estrategica');
+    const componenteSelect = document.getElementById('componente');
+    const programaSelect = document.getElementById('programa');
+    const proyectoSelect = document.getElementById('proyecto');
+    const indicadorSelect = document.getElementById('indicador');
+
+    const lineaId = lineaSelect.value;
+
+    // Limpiar selects dependientes
+    componenteSelect.innerHTML = '<option value="">Seleccionar componente...</option>';
+    programaSelect.innerHTML = '<option value="">Primero seleccione componente...</option>';
+    proyectoSelect.innerHTML = '<option value="">Primero seleccione programa...</option>';
+    indicadorSelect.innerHTML = '<option value="">Primero seleccione proyecto...</option>';
+
+    // Deshabilitar selects dependientes
+    componenteSelect.disabled = !lineaId;
+    programaSelect.disabled = true;
+    proyectoSelect.disabled = true;
+    indicadorSelect.disabled = true;
+
+    if (lineaId) {
+        const linea = planData.lineas.find(l => l.id == lineaId);
+        if (linea) {
+            linea.componentes.forEach(componente => {
+                const option = document.createElement('option');
+                option.value = componente.id;
+                option.textContent = componente.nombre;
+                componenteSelect.appendChild(option);
+            });
+        }
+    }
+}
+
+function updateProgramas() {
+    const lineaSelect = document.getElementById('linea_estrategica');
+    const componenteSelect = document.getElementById('componente');
+    const programaSelect = document.getElementById('programa');
+    const proyectoSelect = document.getElementById('proyecto');
+    const indicadorSelect = document.getElementById('indicador');
+
+    const lineaId = lineaSelect.value;
+    const componenteId = componenteSelect.value;
+
+    // Limpiar selects dependientes
+    programaSelect.innerHTML = '<option value="">Seleccionar programa...</option>';
+    proyectoSelect.innerHTML = '<option value="">Primero seleccione programa...</option>';
+    indicadorSelect.innerHTML = '<option value="">Primero seleccione proyecto...</option>';
+
+    // Deshabilitar selects dependientes
+    programaSelect.disabled = !componenteId;
+    proyectoSelect.disabled = true;
+    indicadorSelect.disabled = true;
+
+    if (lineaId && componenteId) {
+        const linea = planData.lineas.find(l => l.id == lineaId);
+        if (linea) {
+            const componente = linea.componentes.find(c => c.id == componenteId);
+            if (componente) {
+                componente.programas.forEach(programa => {
+                    const option = document.createElement('option');
+                    option.value = programa.id;
+                    option.textContent = programa.nombre;
+                    programaSelect.appendChild(option);
+                });
+            }
+        }
+    }
+}
+
+function updateProyectos() {
+    const lineaSelect = document.getElementById('linea_estrategica');
+    const componenteSelect = document.getElementById('componente');
+    const programaSelect = document.getElementById('programa');
+    const proyectoSelect = document.getElementById('proyecto');
+    const indicadorSelect = document.getElementById('indicador');
+
+    const lineaId = lineaSelect.value;
+    const componenteId = componenteSelect.value;
+    const programaId = programaSelect.value;
+
+    // Limpiar selects dependientes
+    proyectoSelect.innerHTML = '<option value="">Seleccionar proyecto...</option>';
+    indicadorSelect.innerHTML = '<option value="">Primero seleccione proyecto...</option>';
+
+    // Deshabilitar selects dependientes
+    proyectoSelect.disabled = !programaId;
+    indicadorSelect.disabled = true;
+
+    if (lineaId && componenteId && programaId) {
+        const linea = planData.lineas.find(l => l.id == lineaId);
+        if (linea) {
+            const componente = linea.componentes.find(c => c.id == componenteId);
+            if (componente) {
+                const programa = componente.programas.find(p => p.id == programaId);
+                if (programa) {
+                    programa.proyectos.forEach(proyecto => {
+                        const option = document.createElement('option');
+                        option.value = proyecto.id;
+                        option.textContent = proyecto.nombre;
+                        proyectoSelect.appendChild(option);
+                    });
+                }
+            }
+        }
+    }
+}
+
+function updateIndicadores() {
+    const lineaSelect = document.getElementById('linea_estrategica');
+    const componenteSelect = document.getElementById('componente');
+    const programaSelect = document.getElementById('programa');
+    const proyectoSelect = document.getElementById('proyecto');
+    const indicadorSelect = document.getElementById('indicador');
+
+    const lineaId = lineaSelect.value;
+    const componenteId = componenteSelect.value;
+    const programaId = programaSelect.value;
+    const proyectoId = proyectoSelect.value;
+
+    // Limpiar select de indicadores
+    indicadorSelect.innerHTML = '<option value="">Seleccionar indicador...</option>';
+
+    // Deshabilitar select de indicadores
+    indicadorSelect.disabled = !proyectoId;
+
+    if (lineaId && componenteId && programaId && proyectoId) {
+        const linea = planData.lineas.find(l => l.id == lineaId);
+        if (linea) {
+            const componente = linea.componentes.find(c => c.id == componenteId);
+            if (componente) {
+                const programa = componente.programas.find(p => p.id == programaId);
+                if (programa) {
+                    const proyecto = programa.proyectos.find(pr => pr.id == proyectoId);
+                    if (proyecto) {
+                        proyecto.indicadores.forEach(indicador => {
+                            const option = document.createElement('option');
+                            option.value = indicador.id;
+                            option.textContent = indicador.nombre;
+                            indicadorSelect.appendChild(option);
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar cascadas de selección
+    const lineaSelect = document.getElementById('linea_estrategica');
+    const componenteSelect = document.getElementById('componente');
+    const programaSelect = document.getElementById('programa');
+    const proyectoSelect = document.getElementById('proyecto');
+
+    if (lineaSelect) {
+        lineaSelect.addEventListener('change', updateComponentes);
+    }
+    if (componenteSelect) {
+        componenteSelect.addEventListener('change', updateProgramas);
+    }
+    if (programaSelect) {
+        programaSelect.addEventListener('change', updateProyectos);
+    }
+    if (proyectoSelect) {
+        proyectoSelect.addEventListener('change', updateIndicadores);
+    }
+
+    // Gestión de archivos
     const fileInput = document.getElementById('archivo');
     const filePreview = document.getElementById('filePreview');
     const fileName = document.getElementById('fileName');
@@ -385,6 +696,56 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función global para limpiar archivo
     window.clearFile = clearFile;
+
+    // Validación adicional antes del envío
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('archivo');
+        const tituloInput = document.querySelector('input[name="titulo"]');
+        const tipoDocumentoSelect = document.querySelector('select[name="tipo_documento"]');
+        const confidencialidadSelect = document.querySelector('select[name="confidencialidad"]');
+
+        // Validar archivo
+        if (!fileInput.files || fileInput.files.length === 0) {
+            e.preventDefault();
+            alert('Por favor selecciona un archivo para subir.');
+            return false;
+        }
+
+        // Validar título
+        if (!tituloInput || !tituloInput.value.trim()) {
+            e.preventDefault();
+            alert('Por favor ingresa un título para el documento.');
+            tituloInput.focus();
+            return false;
+        }
+
+        // Validar tipo de documento
+        if (!tipoDocumentoSelect || !tipoDocumentoSelect.value) {
+            e.preventDefault();
+            alert('Por favor selecciona el tipo de documento.');
+            tipoDocumentoSelect.focus();
+            return false;
+        }
+
+        // Validar confidencialidad
+        if (!confidencialidadSelect || !confidencialidadSelect.value) {
+            e.preventDefault();
+            alert('Por favor selecciona el nivel de confidencialidad.');
+            confidencialidadSelect.focus();
+            return false;
+        }
+
+        // Mostrar mensaje de carga
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Subiendo...';
+        }
+
+        console.log('Formulario validado correctamente. Enviando...');
+        return true;
+    });
 });
 </script>
 {% endblock %}

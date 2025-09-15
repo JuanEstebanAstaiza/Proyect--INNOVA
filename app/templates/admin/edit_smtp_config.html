@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-envelope me-2"></i>Configuración SMTP - {{ smtp_config.municipality }}
+            </h1>
+            <p class="text-muted">Configura el envío de correos para {{ smtp_config.municipality }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.smtp_config_list') }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left me-2"></i>Volver
+            </a>
+            <a href="{{ url_for('admin.test_smtp_config', municipality=smtp_config.municipality) }}" class="btn btn-info">
+                <i class="fas fa-paper-plane me-2"></i>Probar Configuración
+            </a>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'error' else 'warning' }} alert-dismissible fade show" role="alert">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Formulario -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-cogs me-2"></i>Configuración del Servidor SMTP
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+
+                <div class="row">
+                    <!-- Municipio -->
+                    <div class="col-md-6 mb-3">
+                        <label for="municipality" class="form-label">Municipio</label>
+                        {{ form.municipality(class="form-control", readonly=True) }}
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Estado de la Configuración</label>
+                        <div class="form-check">
+                            {{ form.is_active(class="form-check-input") }}
+                            <label class="form-check-label" for="is_active">
+                                Configuración activa
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <!-- Servidor SMTP -->
+                    <div class="col-md-6 mb-3">
+                        <label for="smtp_server" class="form-label">Servidor SMTP *</label>
+                        {{ form.smtp_server(class="form-control") }}
+                        {% if form.smtp_server.errors %}
+                            <div class="text-danger">
+                                {% for error in form.smtp_server.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Ejemplo: smtp.gmail.com, smtp.outlook.com</div>
+                    </div>
+
+                    <!-- Puerto -->
+                    <div class="col-md-6 mb-3">
+                        <label for="smtp_port" class="form-label">Puerto *</label>
+                        {{ form.smtp_port(class="form-control") }}
+                        {% if form.smtp_port.errors %}
+                            <div class="text-danger">
+                                {% for error in form.smtp_port.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">587 (TLS) o 465 (SSL)</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Usuario -->
+                    <div class="col-md-6 mb-3">
+                        <label for="smtp_username" class="form-label">Usuario SMTP *</label>
+                        {{ form.smtp_username(class="form-control") }}
+                        {% if form.smtp_username.errors %}
+                            <div class="text-danger">
+                                {% for error in form.smtp_username.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Generalmente el correo electrónico</div>
+                    </div>
+
+                    <!-- Contraseña -->
+                    <div class="col-md-6 mb-3">
+                        <label for="smtp_password" class="form-label">Contraseña SMTP *</label>
+                        {{ form.smtp_password(class="form-control") }}
+                        {% if form.smtp_password.errors %}
+                            <div class="text-danger">
+                                {% for error in form.smtp_password.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Contraseña de aplicación para Gmail</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- TLS -->
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.use_tls(class="form-check-input") }}
+                            <label class="form-check-label" for="use_tls">
+                                Usar TLS (recomendado)
+                            </label>
+                        </div>
+                        <div class="form-text">Para puertos 587</div>
+                    </div>
+
+                    <!-- SSL -->
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.use_ssl(class="form-check-input") }}
+                            <label class="form-check-label" for="use_ssl">
+                                Usar SSL
+                            </label>
+                        </div>
+                        <div class="form-text">Para puertos 465</div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <!-- Correo remitente -->
+                    <div class="col-md-6 mb-3">
+                        <label for="sender_email" class="form-label">Correo del Remitente *</label>
+                        {{ form.sender_email(class="form-control") }}
+                        {% if form.sender_email.errors %}
+                            <div class="text-danger">
+                                {% for error in form.sender_email.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Correo que aparecerá como remitente</div>
+                    </div>
+
+                    <!-- Nombre remitente -->
+                    <div class="col-md-6 mb-3">
+                        <label for="sender_name" class="form-label">Nombre del Remitente *</label>
+                        {{ form.sender_name(class="form-control") }}
+                        {% if form.sender_name.errors %}
+                            <div class="text-danger">
+                                {% for error in form.smtp_username.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Nombre que aparecerá como remitente</div>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <div class="d-flex justify-content-between">
+                    <div>
+                        {{ form.submit(class="btn btn-primary") }}
+                        {{ form.test_email(class="btn btn-info") }}
+                    </div>
+                    <a href="{{ url_for('admin.smtp_config_list') }}" class="btn btn-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Información de ayuda -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-info">
+                <i class="fas fa-question-circle me-2"></i>Ayuda para Configuración
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Configuración para Gmail</h5>
+                    <ul>
+                        <li><strong>Servidor:</strong> smtp.gmail.com</li>
+                        <li><strong>Puerto:</strong> 587</li>
+                        <li><strong>TLS:</strong> Activado</li>
+                        <li><strong>Contraseña:</strong> Contraseña de aplicación</li>
+                    </ul>
+                    <p><small>Para Gmail, necesitas activar la autenticación de 2 factores y generar una "Contraseña de aplicación".</small></p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Configuración para Outlook</h5>
+                    <ul>
+                        <li><strong>Servidor:</strong> smtp-mail.outlook.com</li>
+                        <li><strong>Puerto:</strong> 587</li>
+                        <li><strong>TLS:</strong> Activado</li>
+                        <li><strong>Contraseña:</strong> Contraseña normal</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

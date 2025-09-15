@@ -4,7 +4,8 @@ from sqlalchemy import desc, func
 from datetime import datetime, timedelta
 from app import db
 from app.models import (User, ActivityLog, ActiveSession, Role, ColumnPermission, RowPermission, UserRole,
-                       IndicadorProducto, LineaEstrategica, Componente, Programa, Proyecto, PlanDesarrollo)
+                       IndicadorProducto, LineaEstrategica, Componente, Programa, Proyecto, PlanDesarrollo,
+                       SMTPConfig, UserTempPassword)
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -339,9 +340,17 @@ def create_user():
             position=form.position.data,
             municipality=form.municipality.data,
             department=form.department.data,
-            municipality_code=form.municipality_code.data,
-            role=form.role.data
+            municipality_code=form.municipality_code.data
         )
+
+        # Asignar rol legacy basado en el rol seleccionado
+        selected_role = form.role.data
+        if selected_role == 'Administrador':
+            user.legacy_role = 'admin'
+        elif selected_role in ['Editor General', 'Editor de Ejecución', 'Editor de Metas']:
+            user.legacy_role = 'editor'
+        else:
+            user.legacy_role = 'viewer'
 
         # Generar contraseña temporal segura
         import secrets
@@ -354,6 +363,34 @@ def create_user():
             db.session.add(user)
             db.session.commit()
 
+            # Asignar rol del sistema avanzado
+            from app.models import Role, UserRole
+            role_obj = Role.query.filter_by(name=selected_role, is_active=True).first()
+            if role_obj:
+                user_role = UserRole(
+                    user_id=user.id,
+                    role_id=role_obj.id,
+                    is_active=True
+                )
+                db.session.add(user_role)
+                db.session.commit()
+
+            # Crear registro de contraseña temporal
+            temp_password_record = UserTempPassword.create_for_user(user, temp_password)
+            db.session.add(temp_password_record)
+            db.session.commit()
+
+            # Intentar enviar email con credenciales
+            smtp_config = SMTPConfig.get_by_municipality(user.municipality)
+            email_sent = False
+
+            if smtp_config and smtp_config.is_active:
+                try:
+                    from app.utils.email_service import EmailService
+                    email_sent = EmailService.send_user_credentials_email(user, temp_password, smtp_config)
+                except Exception as e:
+                    current_app.logger.error(f"Error enviando email: {e}")
+
             # Log the activity
             ActivityLog.log_activity(
                 'create_user',
@@ -362,13 +399,148 @@ def create_user():
                 request.headers.get('User-Agent')
             )
 
-            flash(f'Usuario {user.username} creado exitosamente. Contraseña temporal: {temp_password}', 'success')
+            if email_sent:
+                flash(f'Usuario {user.username} creado exitosamente. Las credenciales han sido enviadas por email.', 'success')
+            else:
+                flash(f'Usuario {user.username} creado exitosamente. Contraseña temporal: <strong>{temp_password}</strong><br>'
+                      '<small class="text-muted">Guarda esta contraseña en un lugar seguro. '
+                      'Si no se envió el email, configura SMTP en el panel de administración.</small>', 'success')
+
             return redirect(url_for('admin.users'))
         except Exception as e:
             db.session.rollback()
             flash('Error al crear el usuario. Por favor intenta nuevamente.', 'error')
 
     return render_template('admin/create_user.html', title='Crear Usuario', form=form)
+
+# ==================== CONFIGURACIÓN SMTP ====================
+
+@admin_bp.route('/smtp-config')
+@login_required
+def smtp_config_list():
+    """Listar configuraciones SMTP por municipio"""
+    smtp_configs = SMTPConfig.query.order_by(SMTPConfig.municipality).all()
+    return render_template('admin/smtp_configs.html', title='Configuración SMTP', smtp_configs=smtp_configs)
+
+@admin_bp.route('/smtp-config/<municipality>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_smtp_config(municipality):
+    """Editar configuración SMTP para un municipio"""
+    from app.forms.smtp import SMTPConfigForm
+
+    smtp_config = SMTPConfig.get_or_create(municipality)
+    form = SMTPConfigForm(obj=smtp_config)
+
+    # Llenar choices de municipios
+    from app.models import User
+    municipios = db.session.query(User.municipality).distinct().all()
+    form.municipality.choices = [(m[0], m[0]) for m in municipios]
+    form.municipality.data = municipality
+
+    if form.validate_on_submit():
+        # Actualizar configuración
+        smtp_config.smtp_server = form.smtp_server.data
+        smtp_config.smtp_port = form.smtp_port.data
+        smtp_config.smtp_username = form.smtp_username.data
+        smtp_config.smtp_password = form.smtp_password.data
+        smtp_config.use_tls = form.use_tls.data
+        smtp_config.use_ssl = form.use_ssl.data
+        smtp_config.sender_email = form.sender_email.data
+        smtp_config.sender_name = form.sender_name.data
+        smtp_config.is_active = form.is_active.data
+
+        try:
+            db.session.commit()
+
+            # Si se presionó el botón de prueba
+            if 'test_email' in request.form:
+                # Redirigir a página de prueba
+                return redirect(url_for('admin.test_smtp_config', municipality=municipality))
+
+            flash('Configuración SMTP guardada exitosamente.', 'success')
+            return redirect(url_for('admin.smtp_config_list'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash('Error al guardar la configuración.', 'error')
+
+    return render_template('admin/edit_smtp_config.html', title=f'Configuración SMTP - {municipality}',
+                         form=form, smtp_config=smtp_config)
+
+@admin_bp.route('/smtp-config/<municipality>/test', methods=['GET', 'POST'])
+@login_required
+def test_smtp_config(municipality):
+    """Probar configuración SMTP"""
+    from app.forms.smtp import TestEmailForm
+
+    smtp_config = SMTPConfig.get_by_municipality(municipality)
+    if not smtp_config:
+        flash('Configuración SMTP no encontrada.', 'error')
+        return redirect(url_for('admin.smtp_config_list'))
+
+    form = TestEmailForm()
+
+    if form.validate_on_submit():
+        try:
+            from app.utils.email_service import EmailService
+            success = EmailService.send_test_email(smtp_config, form.test_email.data)
+
+            if success:
+                flash(f'Email de prueba enviado exitosamente a {form.test_email.data}', 'success')
+            else:
+                flash('Error al enviar el email de prueba. Revisa la configuración.', 'error')
+
+        except Exception as e:
+            flash(f'Error al probar la configuración: {str(e)}', 'error')
+
+    return render_template('admin/test_smtp_config.html', title=f'Probar SMTP - {municipality}',
+                         form=form, smtp_config=smtp_config)
+
+# ==================== GESTIÓN DE CONTRASEÑAS TEMPORALES ====================
+
+@admin_bp.route('/users/<int:user_id>/temp-password')
+@login_required
+def view_user_temp_password(user_id):
+    """Ver contraseña temporal de un usuario"""
+    user = User.query.get_or_404(user_id)
+    temp_password_record = UserTempPassword.get_active_for_user(user_id)
+
+    return render_template('admin/user_temp_password.html',
+                         title=f'Contraseña Temporal - {user.username}',
+                         user=user,
+                         temp_password_record=temp_password_record)
+
+@admin_bp.route('/users/<int:user_id>/send-credentials', methods=['POST'])
+@login_required
+def send_user_credentials(user_id):
+    """Reenviar credenciales por email"""
+    user = User.query.get_or_404(user_id)
+    temp_password_record = UserTempPassword.get_active_for_user(user_id)
+
+    if not temp_password_record:
+        flash('No hay contraseña temporal activa para este usuario.', 'warning')
+        return redirect(url_for('admin.view_user_temp_password', user_id=user_id))
+
+    # Obtener configuración SMTP
+    smtp_config = SMTPConfig.get_by_municipality(user.municipality)
+
+    if not smtp_config or not smtp_config.is_active:
+        flash('No hay configuración SMTP activa para el municipio de este usuario.', 'warning')
+        return redirect(url_for('admin.view_user_temp_password', user_id=user_id))
+
+    try:
+        from app.utils.email_service import EmailService
+        success = EmailService.send_user_credentials_email(user, temp_password_record.plain_password, smtp_config)
+
+        if success:
+            flash('Credenciales enviadas exitosamente por email.', 'success')
+        else:
+            flash('Error al enviar las credenciales por email.', 'error')
+
+    except Exception as e:
+        flash(f'Error al enviar email: {str(e)}', 'error')
+
+    return redirect(url_for('admin.view_user_temp_password', user_id=user_id))
 
 @admin_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
 def toggle_user_status(user_id):

@@ -13,11 +13,25 @@ main_bp = Blueprint('main', __name__)
 @login_required
 def dashboard():
     from app.models import PlanDesarrollo
-    # Obtener el plan activo del usuario actual
-    plan_activo = PlanDesarrollo.query.filter_by(
-        municipio=current_user,
-        estado='activo'
-    ).first()
+
+    # Determinar si el usuario puede ver planes de otros municipios
+    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+
+    if puede_ver_global:
+        # Para administradores y editores, mostrar el plan activo global
+        plan_activo = PlanDesarrollo.query.filter_by(estado='activo').first()
+        if not plan_activo:
+            # Si no hay plan activo global, mostrar el del municipio del usuario
+            plan_activo = PlanDesarrollo.query.filter_by(
+                municipio=current_user,
+                estado='activo'
+            ).first()
+    else:
+        # Para usuarios normales (viewers), mostrar solo el plan activo de su municipio
+        plan_activo = PlanDesarrollo.query.filter_by(
+            municipio=current_user,
+            estado='activo'
+        ).first()
 
     return render_template('main/dashboard.html', title='Dashboard', plan_activo=plan_activo)
 

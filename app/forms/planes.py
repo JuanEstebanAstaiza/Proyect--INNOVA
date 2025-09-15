@@ -295,14 +295,11 @@ class DocumentoForm(FlaskForm):
                                 ],
                                 validators=[DataRequired(message='El tipo es obligatorio')])
 
-    categoria = StringField('Categoría',
-                           validators=[Optional(),
-                                     Length(max=100, message='La categoría no puede exceder 100 caracteres')])
+    # Campo categoría eliminado para simplificar el formulario
 
     confidencialidad = SelectField('Confidencialidad',
                                   choices=[
                                       ('publico', 'Público'),
-                                      ('interno', 'Interno'),
                                       ('confidencial', 'Confidencial')
                                   ],
                                   validators=[DataRequired(message='La confidencialidad es obligatoria')])

@@ -175,7 +175,12 @@
                             </div>
                         </div>
                         <div class="col-6">
-                            <h4 class="text-warning mb-1">${{ "%.0f"|format(programa.proyectos|sum(attribute='presupuesto_total') or 0) }}K</h4>
+                            {% set total_presupuesto = namespace(value=0) %}
+                            {% for proyecto in programa.proyectos %}
+                                {% set total_presupuesto.value = total_presupuesto.value + (proyecto.presupuesto_total or 0) %}
+                            {% endfor %}
+                            {% set total_presupuesto = total_presupuesto.value %}
+                            <h4 class="text-warning mb-1">${{ "%.0f"|format(total_presupuesto) }}K</h4>
                             <small class="text-muted">Presupuesto Total</small>
                         </div>
                     </div>

@@ -80,7 +80,7 @@ class ProfileEditForm(FlaskForm):
     municipality_code = StringField('Código de Alcaldía',
                                    validators=[Length(max=20, message='El código no puede exceder 20 caracteres')])
     role = SelectField('Rol',
-                      choices=[('viewer', 'Visualizador'), ('editor', 'Editor'), ('admin', 'Administrador')],
+                      choices=[],
                       validators=[DataRequired(message='El rol es obligatorio')])
 
     submit = SubmitField('Guardar Cambios')
@@ -89,6 +89,27 @@ class ProfileEditForm(FlaskForm):
         super(ProfileEditForm, self).__init__(*args, **kwargs)
         self.original_username = original_username
         self.original_email = original_email
+
+        # Cargar roles dinámicamente desde el sistema avanzado
+        from app.models import Role
+        from flask import current_app
+
+        try:
+            # Intentar cargar roles del sistema avanzado
+            active_roles = Role.query.filter_by(is_active=True).all()
+            if active_roles:
+                # Crear choices con formato: (valor_para_db, texto_mostrado)
+                self.role.choices = [(role.name, role.name) for role in active_roles]
+            else:
+                # Fallback a roles legacy si no hay roles avanzados
+                self.role.choices = [('Visualizador', 'Visualizador'),
+                                   ('Editor General', 'Editor General'),
+                                   ('Administrador', 'Administrador')]
+        except:
+            # Fallback si hay error de conexión a BD
+            self.role.choices = [('Visualizador', 'Visualizador'),
+                               ('Editor General', 'Editor General'),
+                               ('Administrador', 'Administrador')]
 
     def validate_username(self, username):
         if self.original_username and username.data != self.original_username:

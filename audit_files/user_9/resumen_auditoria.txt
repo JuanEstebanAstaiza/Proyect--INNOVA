@@ -1,0 +1,37 @@
+RESUMEN DE AUDITORÍA - USUARIO 9
+==================================================
+
+Total de cambios registrados: 5
+Fecha de generación: 2025-09-10 12:40:19
+
+LISTADO DE CAMBIOS
+====================
+
+1. 2025-09-09 12:40:19
+   Columna: Meta 2024
+   Cambio: 50.0 → 75.0
+   Archivo: 20250909_124019_plan_1_meta_2024.txt
+
+2. 2025-09-07 12:40:19
+   Columna: Línea Base
+   Cambio: 20.0 → 25.0
+   Archivo: 20250907_124019_plan_1_linea_base.txt
+
+3. 2025-09-05 12:40:19
+   Columna: Unidad
+   Cambio: items → unidades
+   Archivo: 20250905_124019_plan_1_unidad.txt
+
+4. 2025-09-03 12:40:19
+   Columna: Meta Cuatrienio
+   Cambio: 150.0 → 200.0
+   Archivo: 20250903_124019_plan_1_meta_cuatrienio.txt
+
+5. 2025-08-31 12:40:19
+   Columna: Sentido
+   Cambio: negativo → positivo
+   Archivo: 20250831_124019_plan_1_sentido.txt
+
+
+==================================================
+FIN DEL RESUMEN

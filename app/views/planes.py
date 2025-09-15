@@ -18,35 +18,109 @@ from app.forms.planes import (
     EditarProyectoForm, EditarActividadForm
 )
 
+def get_documentos_asociados(plan_id=None, linea_id=None, componente_id=None,
+                           programa_id=None, proyecto_id=None, indicador_id=None):
+    """Obtiene documentos asociados a un elemento específico del plan"""
+    filters = []
+    if plan_id:
+        filters.append(Documento.plan_id == plan_id)
+    if linea_id:
+        filters.append(Documento.linea_estrategica_id == linea_id)
+    if componente_id:
+        filters.append(Documento.componente_id == componente_id)
+    if programa_id:
+        filters.append(Documento.programa_id == programa_id)
+    if proyecto_id:
+        filters.append(Documento.proyecto_id == proyecto_id)
+    if indicador_id:
+        filters.append(Documento.indicador_id == indicador_id)
+
+    if filters:
+        query = Documento.query.filter(db.or_(*filters))
+        return query.filter_by(estado='activo').order_by(Documento.fecha_subida.desc()).all()
+
+    return []
+
 planes_bp = Blueprint('planes', __name__, url_prefix='/planes')
+
+def get_plan_or_404(plan_id, current_user):
+    """Helper function to get a plan with 404 if not found, allowing editors to see global plans"""
+    # Determinar si el usuario puede ver planes de otros municipios
+    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+
+    if puede_ver_global:
+        # Para administradores y editores, buscar el plan directamente sin filtro de municipio 
+        plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
+    else:
+        # Para usuarios normales (viewers), filtrar por municipio
+        plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+
+    return plan
+
+def build_plan_filter(current_user):
+    """Helper function to build plan filter based on user permissions"""
+    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+
+    if puede_ver_global:
+        # Para administradores y editores, no filtrar por municipio
+        return PlanDesarrollo.municipio_id != None  # Siempre verdadero
+    else:
+        # Para usuarios normales (viewers), filtrar por municipio
+        return PlanDesarrollo.municipio_id == current_user.id
 
 def get_plan_or_redirect(plan_id, current_user, redirect_endpoint='planes.index'):
     """Helper function to get a plan or redirect to an available one"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first()
+    # Determinar si el usuario puede ver planes de otros municipios
+    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+
+    if puede_ver_global:
+        # Para administradores y editores, buscar el plan directamente sin filtro de municipio
+        plan = PlanDesarrollo.query.filter_by(id=plan_id).first()
+    else:
+        # Para usuarios normales (viewers), filtrar por municipio
+        plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first()
 
     if not plan:
-        # Buscar el plan activo del usuario
-        plan_activo = PlanDesarrollo.query.filter_by(
-            municipio=current_user,
-            estado='activo'
-        ).first()
+        if puede_ver_global:
+            # Buscar el plan activo global
+            plan_activo = PlanDesarrollo.query.filter_by(estado='activo').first()
 
-        if plan_activo:
-            flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan activo.', 'info')
-            return redirect(url_for('planes.ver', plan_id=plan_activo.id))
+            if plan_activo:
+                flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan activo.', 'info')
+                return redirect(url_for('planes.ver', plan_id=plan_activo.id))
+            else:
+                # Si no hay plan activo global, buscar el más reciente sin filtro de municipio
+                plan_reciente = PlanDesarrollo.query.order_by(
+                    PlanDesarrollo.created_at.desc()
+                ).first()
+
+                if plan_reciente:
+                    flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan más reciente.', 'info')
+                    return redirect(url_for('planes.ver', plan_id=plan_reciente.id))
+                else:
+                    flash('No se encontraron planes disponibles. Por favor cree un plan primero.', 'warning')
+                    return redirect(url_for(redirect_endpoint))
         else:
-            # Si no hay plan activo, buscar el más reciente
-            plan_reciente = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
-                PlanDesarrollo.created_at.desc()
+            # Lógica original para usuarios normales (viewers)
+            plan_activo = PlanDesarrollo.query.filter_by(
+                municipio=current_user,
+                estado='activo'
             ).first()
 
-            if plan_reciente:
-                flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan más reciente.', 'info')
-                return redirect(url_for('planes.ver', plan_id=plan_reciente.id))
+            if plan_activo:
+                flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan activo.', 'info')
+                return redirect(url_for('planes.ver', plan_id=plan_activo.id))
             else:
-                # Si no hay ningún plan, mostrar error
-                flash('No se encontraron planes disponibles. Por favor cree un plan primero.', 'warning')
-                return redirect(url_for(redirect_endpoint))
+                plan_reciente = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
+                    PlanDesarrollo.created_at.desc()
+                ).first()
+
+                if plan_reciente:
+                    flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan más reciente.', 'info')
+                    return redirect(url_for('planes.ver', plan_id=plan_reciente.id))
+                else:
+                    flash('No se encontraron planes disponibles. Por favor cree un plan primero.', 'warning')
+                    return redirect(url_for(redirect_endpoint))
 
     return plan
 
@@ -55,18 +129,31 @@ def get_plan_or_redirect(plan_id, current_user, redirect_endpoint='planes.index'
 @login_required
 def index():
     """Lista todos los planes del usuario actual"""
-    # Para usuarios normales, mostrar solo el plan activo o el más reciente
-    if not current_user.is_admin():
+    # Determinar si el usuario puede ver planes de otros municipios
+    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+
+    if not puede_ver_global:
+        # Para usuarios normales (viewers), mostrar solo el plan activo de su municipio
         plan_activo = PlanDesarrollo.get_plan_activo_o_primero(current_user)
         planes = [plan_activo] if plan_activo else []
         mostrar_todos = False
     else:
-        # Para administradores, mostrar todos los planes
-        planes = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
-            PlanDesarrollo.estado.desc(),  # Activos primero
-            PlanDesarrollo.created_at.desc()  # Luego por fecha de creación
-        ).all()
-        mostrar_todos = True
+        # Para administradores y editores, mostrar el plan activo global primero
+        plan_activo_global = PlanDesarrollo.query.filter_by(estado='activo').first()
+        if plan_activo_global:
+            # Si hay plan activo global, mostrarlo junto con los planes del municipio del usuario
+            planes_municipio = PlanDesarrollo.query.filter_by(municipio=current_user).all()
+            # Evitar duplicados
+            planes = [plan_activo_global] if plan_activo_global not in planes_municipio else []
+            planes.extend(planes_municipio)
+            mostrar_todos = True
+        else:
+            # Si no hay plan activo global, mostrar los del municipio del usuario
+            planes = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
+                PlanDesarrollo.estado.desc(),  # Activos primero
+                PlanDesarrollo.created_at.desc()  # Luego por fecha de creación
+            ).all()
+            mostrar_todos = True
 
     return render_template('planes/index.html', title='Mis Planes de Desarrollo',
                          planes=planes, mostrar_todos=mostrar_todos)
@@ -150,7 +237,7 @@ def editar(plan_id):
 @login_required
 def eliminar(plan_id):
     """Eliminar un plan"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     # No permitir eliminar planes activos
     if plan.estado == 'activo':
@@ -206,7 +293,7 @@ def eliminar(plan_id):
 @login_required
 def activar_plan(plan_id):
     """Activar un plan (desactiva automáticamente los demás)"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     plan.activar()
 
@@ -218,7 +305,7 @@ def activar_plan(plan_id):
 @login_required
 def desactivar_plan(plan_id):
     """Desactivar un plan"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     plan.desactivar()
 
@@ -231,14 +318,14 @@ def desactivar_plan(plan_id):
 @login_required
 def lineas(plan_id):
     """Ver líneas estratégicas de un plan"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
     return render_template('planes/lineas.html', title='Líneas Estratégicas', plan=plan)
 
 @planes_bp.route('/<int:plan_id>/lineas/crear', methods=['GET', 'POST'])
 @login_required
 def crear_linea(plan_id):
     """Crear nueva línea estratégica"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     form = LineaEstrategicaForm()
     if form.validate_on_submit():
@@ -265,7 +352,7 @@ def editar_linea(linea_id):
     """Editar línea estratégica existente"""
     linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
         LineaEstrategica.id == linea_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        build_plan_filter(current_user)
     ).first_or_404()
 
     # Temporalmente deshabilitado para pruebas
@@ -298,7 +385,7 @@ def detalles_linea(linea_id):
     """Ver detalles completos de una línea estratégica"""
     linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
         LineaEstrategica.id == linea_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        build_plan_filter(current_user)
     ).first_or_404()
 
     # Calcular estadísticas para el template
@@ -320,7 +407,7 @@ def componentes(linea_id):
     """Ver componentes de una línea estratégica"""
     linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
         LineaEstrategica.id == linea_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        build_plan_filter(current_user)
     ).first_or_404()
 
     return render_template('planes/componentes.html', title='Componentes', linea=linea)
@@ -331,7 +418,7 @@ def crear_componente(linea_id):
     """Crear nuevo componente"""
     linea = LineaEstrategica.query.join(PlanDesarrollo).filter(
         LineaEstrategica.id == linea_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        build_plan_filter(current_user)
     ).first_or_404()
 
     form = ComponenteForm()
@@ -618,6 +705,34 @@ def actividades(proyecto_id):
 
     return render_template('planes/actividades.html', title='Actividades', proyecto=proyecto)
 
+@planes_bp.route('/proyectos/<int:proyecto_id>/indicadores')
+@login_required
+def indicadores_proyecto(proyecto_id):
+    """Ver indicadores de un proyecto"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id
+    ).first_or_404()
+
+    return render_template('planes/indicadores_proyecto.html', title='Indicadores del Proyecto', proyecto=proyecto)
+
+@planes_bp.route('/proyectos/<int:proyecto_id>/indicadores/<int:indicador_id>')
+@login_required
+def detalles_indicador(proyecto_id, indicador_id):
+    """Ver detalles de un indicador específico"""
+    proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
+        Proyecto.id == proyecto_id
+    ).first_or_404()
+
+    indicador = IndicadorProducto.query.filter_by(
+        id=indicador_id,
+        proyecto_id=proyecto_id
+    ).first_or_404()
+
+    return render_template('planes/detalles_indicador.html',
+                         title=f'Detalles del Indicador: {indicador.nombre}',
+                         proyecto=proyecto,
+                         indicador=indicador)
+
 @planes_bp.route('/proyectos/<int:proyecto_id>/actividades/crear', methods=['GET', 'POST'])
 @login_required
 def crear_actividad(proyecto_id):
@@ -794,6 +909,22 @@ def ver_excel(plan_id):
                     row['poblacion_impactada_acumulada'] = poblacion_acumulada
                     row['observacion_acumulada'] = 'Consolidado anual'
 
+                    # Agregar información de documentos asociados
+                    documentos_linea = get_documentos_asociados(linea_id=linea.id)
+                    documentos_componente = get_documentos_asociados(componente_id=componente.id)
+                    documentos_programa = get_documentos_asociados(programa_id=programa.id)
+                    documentos_proyecto = get_documentos_asociados(proyecto_id=proyecto.id)
+                    documentos_indicador = get_documentos_asociados(indicador_id=indicador.id) if indicador else []
+
+                    row['documentos_linea'] = len(documentos_linea)
+                    row['documentos_componente'] = len(documentos_componente)
+                    row['documentos_programa'] = len(documentos_programa)
+                    row['documentos_proyecto'] = len(documentos_proyecto)
+                    row['documentos_indicador'] = len(documentos_indicador)
+                    row['total_documentos'] = (len(documentos_linea) + len(documentos_componente) +
+                                             len(documentos_programa) + len(documentos_proyecto) +
+                                             len(documentos_indicador))
+
                     # Agregar información de permisos a la fila
                     row['_can_edit_row'] = can_edit_row
                     row['_indicador_id'] = indicador.id if indicador else None
@@ -836,6 +967,14 @@ def ver_excel(plan_id):
         row_ejemplo['poblacion_impactada_acumulada'] = 0
         row_ejemplo['observacion_acumulada'] = ''
 
+        # Agregar campos de documentos a la fila de ejemplo
+        row_ejemplo['documentos_linea'] = 0
+        row_ejemplo['documentos_componente'] = 0
+        row_ejemplo['documentos_programa'] = 0
+        row_ejemplo['documentos_proyecto'] = 0
+        row_ejemplo['documentos_indicador'] = 0
+        row_ejemplo['total_documentos'] = 0
+
         excel_data.append(row_ejemplo)
 
     return render_template('planes/excel_view.html',
@@ -857,7 +996,7 @@ def exportar_excel(plan_id):
         flash('La funcionalidad de Excel requiere instalar pandas. Contacte al administrador.', 'error')
         return redirect(url_for('planes.ver', plan_id=plan_id))
 
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     # Preparar datos como en la vista Excel
     excel_data = []
@@ -941,22 +1080,22 @@ def importar_excel(plan_id):
         import pandas as pd
     except ImportError:
         flash('La funcionalidad de Excel requiere instalar pandas. Contacte al administrador.', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
 
     if 'excel_file' not in request.files:
         flash('No se encontró el archivo.', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
     file = request.files['excel_file']
     if file.filename == '':
         flash('No se seleccionó ningún archivo.', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
     if not file.filename.endswith(('.xlsx', '.xls')):
         flash('El archivo debe ser un Excel (.xlsx o .xls).', 'error')
-        return redirect(url_for('planes.excel', plan_id=plan_id))
+        return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
     try:
         # Leer el archivo Excel
@@ -1096,7 +1235,7 @@ def importar_excel(plan_id):
         db.session.rollback()
         flash(f'Error al procesar el archivo Excel: {str(e)}', 'error')
 
-    return redirect(url_for('planes.excel', plan_id=plan_id))
+    return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
 @planes_bp.route('/<int:plan_id>/guardar-excel', methods=['POST'])
 @login_required
@@ -1104,7 +1243,7 @@ def guardar_excel(plan_id):
     """Guardar cambios desde la vista Excel"""
     from flask import jsonify
 
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     try:
         data = request.get_json()
@@ -1254,7 +1393,7 @@ def editar_celda_excel(plan_id):
     from werkzeug.utils import secure_filename
     import os
 
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     try:
         # Obtener datos del formulario
@@ -1346,6 +1485,16 @@ def editar_celda_excel(plan_id):
         )
 
         db.session.add(edit_justification)
+        db.session.flush()  # Para obtener el ID de la justificación
+
+        # Crear archivo de auditoría
+        try:
+            from audit_file_system import create_audit_file
+            audit_file_path = create_audit_file(edit_justification)
+            if audit_file_path:
+                print(f"Archivo de auditoría creado: {audit_file_path}")
+        except Exception as e:
+            print(f"Error creando archivo de auditoría: {e}")
 
         # Actualizar el valor en la base de datos
         if indicador:
@@ -1432,8 +1581,9 @@ def editar_celda_excel(plan_id):
 @login_required
 def documentos(plan_id):
     """Ver documentos de un plan"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
-    documentos = Documento.query.filter_by(plan_id=plan_id).all()
+    plan = get_plan_or_404(plan_id, current_user)
+    # Solo mostrar documentos activos (no eliminados)
+    documentos = Documento.query.filter_by(plan_id=plan_id, estado='activo').order_by(Documento.fecha_subida.desc()).all()
 
     return render_template('planes/documentos.html', title='Documentos', plan=plan, documentos=documentos)
 
@@ -1441,12 +1591,28 @@ def documentos(plan_id):
 @login_required
 def subir_documento(plan_id):
     """Subir documento a un plan"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
 
     form = DocumentoForm()
+
+    # Debug: Log del método de request
+    current_app.logger.info(f"Método de request: {request.method}")
+    current_app.logger.info(f"Formulario validado: {form.validate_on_submit()}")
+    current_app.logger.info(f"Datos del formulario: {request.form}")
+
+    if request.method == 'POST':
+        current_app.logger.info(f"Campos del formulario: {list(form._fields.keys())}")
+        for field_name in form._fields:
+            field = form._fields[field_name]
+            current_app.logger.info(f"Campo {field_name}: {getattr(form, field_name).data} (errores: {getattr(form, field_name).errors})")
+
     if form.validate_on_submit():
+        current_app.logger.info("Formulario validado correctamente")
         file = form.archivo.data
+        current_app.logger.info(f"Archivo recibido: {file}")
         if file:
+            current_app.logger.info(f"Nombre del archivo: {file.filename}")
+            current_app.logger.info(f"Tamaño del archivo: {getattr(file, 'content_length', 'N/A')}")
             filename = secure_filename(file.filename)
 
             # Crear directorio si no existe
@@ -1455,9 +1621,18 @@ def subir_documento(plan_id):
 
             # Guardar archivo
             file_path = os.path.join(upload_dir, filename)
+            current_app.logger.info(f"Guardando archivo en: {file_path}")
             file.save(file_path)
+            current_app.logger.info(f"Archivo guardado exitosamente")
+
+            # Verificar que el archivo existe
+            if os.path.exists(file_path):
+                current_app.logger.info(f"Archivo verificado en disco: {os.path.getsize(file_path)} bytes")
+            else:
+                current_app.logger.error(f"Archivo NO encontrado en disco: {file_path}")
 
             # Crear registro en base de datos
+            current_app.logger.info("Creando registro en base de datos...")
             documento = Documento(
                 titulo=form.titulo.data,
                 descripcion=form.descripcion.data,
@@ -1468,19 +1643,235 @@ def subir_documento(plan_id):
                 tipo_mime=file.mimetype,
                 extension=os.path.splitext(filename)[1][1:],
                 tipo_documento=form.tipo_documento.data,
-                categoria=form.categoria.data,
+                categoria=None,  # Campo eliminado del formulario
                 confidencialidad=form.confidencialidad.data,
-                plan=plan,
-                usuario=current_user
+                plan_id=plan.id,
+                linea_estrategica_id=request.form.get('linea_estrategica_id'),
+                componente_id=request.form.get('componente_id'),
+                programa_id=request.form.get('programa_id'),
+                proyecto_id=request.form.get('proyecto_id'),
+                indicador_id=request.form.get('indicador_id'),
+                usuario_id=current_user.id
             )
 
+            current_app.logger.info(f"Datos del documento: título={documento.titulo}, tipo={documento.tipo_documento}")
+
             db.session.add(documento)
+            current_app.logger.info("Documento agregado a la sesión")
             db.session.commit()
+            current_app.logger.info(f"Documento guardado exitosamente con ID: {documento.id}")
 
             flash('Documento subido exitosamente.', 'success')
             return redirect(url_for('planes.documentos', plan_id=plan_id))
+        else:
+            current_app.logger.warning("No se recibió ningún archivo")
+    else:
+        current_app.logger.warning("Formulario NO validado")
+        current_app.logger.warning(f"Errores del formulario: {form.errors}")
+
+    # Debug: Mostrar errores del formulario en el template
+    if request.method == 'POST':
+        current_app.logger.info(f"Mostrando errores del formulario al usuario: {form.errors}")
 
     return render_template('planes/subir_documento.html', title='Subir Documento', form=form, plan=plan)
+
+@planes_bp.route('/<int:plan_id>/documentos/<int:documento_id>/descargar')
+@login_required
+def descargar_documento(plan_id, documento_id):
+    """Descargar un documento específico"""
+    plan = get_plan_or_404(plan_id, current_user)
+    documento = Documento.query.filter_by(id=documento_id, plan_id=plan_id).first_or_404()
+
+    # Verificar permisos de descarga
+    if not documento.puede_descargar(current_user):
+        flash('No tienes permisos para descargar este documento.', 'error')
+        return redirect(url_for('planes.documentos', plan_id=plan_id))
+
+    # Verificar que el archivo existe
+    if not os.path.exists(documento.ruta_archivo):
+        flash('El archivo no se encuentra disponible.', 'error')
+        return redirect(url_for('planes.documentos', plan_id=plan_id))
+
+    try:
+        # Log de la descarga
+        current_app.logger.info(f"Descargando documento: {documento.nombre_original} por usuario: {current_user.username}")
+
+        # Enviar el archivo
+        return send_file(
+            documento.ruta_archivo,
+            as_attachment=True,
+            download_name=documento.nombre_original,
+            mimetype=documento.tipo_mime
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error al descargar documento {documento_id}: {e}")
+        flash('Error al descargar el documento.', 'error')
+        return redirect(url_for('planes.documentos', plan_id=plan_id))
+
+@planes_bp.route('/<int:plan_id>/documentos/<int:documento_id>/eliminar', methods=['POST'])
+@login_required
+def eliminar_documento(plan_id, documento_id):
+    """Eliminar un documento"""
+    plan = get_plan_or_404(plan_id, current_user)
+    documento = Documento.query.filter_by(id=documento_id, plan_id=plan_id).first_or_404()
+
+    # Verificar permisos (solo el propietario o admin pueden eliminar)
+    if current_user.id != documento.usuario_id and not current_user.has_role('admin'):
+        flash('No tienes permisos para eliminar este documento.', 'error')
+        return redirect(url_for('planes.documentos', plan_id=plan_id))
+
+    try:
+        # Eliminar el archivo físico si existe
+        if os.path.exists(documento.ruta_archivo):
+            os.remove(documento.ruta_archivo)
+            current_app.logger.info(f"Archivo físico eliminado: {documento.ruta_archivo}")
+
+        # Marcar como eliminado en la base de datos (no eliminar físicamente)
+        documento.estado = 'eliminado'
+        db.session.commit()
+
+        current_app.logger.info(f"Documento marcado como eliminado: {documento.nombre_original}")
+        flash('Documento eliminado exitosamente.', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al eliminar documento {documento_id}: {e}")
+        flash('Error al eliminar el documento.', 'error')
+
+    return redirect(url_for('planes.documentos', plan_id=plan_id))
+
+# ==================== DEBUG: PRUEBA DE PERMISOS ====================
+
+@planes_bp.route('/<int:plan_id>/documentos/probar_permisos', methods=['GET'])
+@login_required
+def probar_permisos(plan_id):
+    """Prueba el sistema de permisos de confidencialidad"""
+    plan = get_plan_or_404(plan_id, current_user)
+
+    from app.models import Documento, User
+
+    # Crear documentos de prueba con diferentes niveles de confidencialidad
+    documentos_prueba = [
+        {'titulo': 'Documento Público', 'confidencialidad': 'publico'},
+        {'titulo': 'Documento Confidencial', 'confidencialidad': 'confidencial'}
+    ]
+
+    # Obtener algunos usuarios para probar permisos
+    usuarios_prueba = User.query.limit(3).all()
+
+    resultados = []
+    for doc_data in documentos_prueba:
+        # Buscar o crear documento de prueba
+        doc = Documento.query.filter_by(
+            titulo=doc_data['titulo'],
+            plan_id=plan.id
+        ).first()
+
+        if not doc:
+            # Crear documento si no existe
+            doc = Documento(
+                titulo=doc_data['titulo'],
+                descripcion=f'Documento de prueba - {doc_data["confidencialidad"]}',
+                nombre_original='test.txt',
+                nombre_archivo='test.txt',
+                ruta_archivo='/tmp/test.txt',
+                tamano=100,
+                tipo_mime='text/plain',
+                extension='txt',
+                tipo_documento='informe',
+                confidencialidad=doc_data['confidencialidad'],
+                plan_id=plan.id,
+                usuario_id=current_user.id
+            )
+            db.session.add(doc)
+            db.session.commit()
+
+        # Probar permisos para diferentes usuarios
+        permisos = []
+        for usuario in usuarios_prueba:
+            puede_acceder = doc.puede_descargar(usuario)
+            permisos.append({
+                'usuario': f'{usuario.username} ({usuario.municipality})',
+                'puede_acceder': puede_acceder,
+                'roles': [ur.role.name for ur in usuario.active_roles] if usuario.active_roles else [usuario.legacy_role]
+            })
+
+        resultados.append({
+            'documento': doc_data['titulo'],
+            'confidencialidad': doc_data['confidencialidad'],
+            'permisos': permisos
+        })
+
+    return render_template('planes/probar_permisos.html',
+                          title='Prueba de Permisos',
+                          plan=plan,
+                          resultados=resultados)
+
+# ==================== DEBUG: PRUEBA DE FORMULARIO ====================
+
+@planes_bp.route('/<int:plan_id>/documentos/verificar_formulario', methods=['GET'])
+@login_required
+def verificar_formulario(plan_id):
+    """Verificar que el formulario funciona correctamente"""
+    plan = get_plan_or_404(plan_id, current_user)
+    form = DocumentoForm()
+
+    # Verificar campos del formulario
+    campos_info = []
+    for field_name in form._fields:
+        field = form._fields[field_name]
+        info = {
+            'nombre': field_name,
+            'tipo': field.__class__.__name__,
+            'requerido': any('DataRequired' in str(v) for v in getattr(field, 'validators', [])),
+            'opciones': getattr(field, 'choices', None)
+        }
+        campos_info.append(info)
+
+    return render_template('planes/verificar_formulario.html',
+                          title='Verificación de Formulario',
+                          plan=plan,
+                          campos=campos_info,
+                          form=form)
+
+# ==================== DEBUG: PRUEBA DE SUBIDA ====================
+
+@planes_bp.route('/<int:plan_id>/documentos/test', methods=['GET'])
+@login_required
+def test_documento(plan_id):
+    """Función de prueba para verificar la subida de documentos"""
+    plan = get_plan_or_404(plan_id, current_user)
+
+    # Crear un documento de prueba sin archivo
+    from app.models import Documento
+    import datetime
+
+    documento_test = Documento(
+        titulo="Documento de Prueba - " + str(datetime.datetime.now().strftime("%Y%m%d_%H%M%S")),
+        descripcion="Documento creado para pruebas del sistema",
+        nombre_original="test_document.txt",
+        nombre_archivo="test_document.txt",
+        ruta_archivo="/tmp/test_document.txt",
+        tamano=100,
+        tipo_mime="text/plain",
+        extension="txt",
+        tipo_documento="informe",
+        confidencialidad="publico",
+        plan_id=plan.id,
+        usuario_id=current_user.id
+    )
+
+    try:
+        db.session.add(documento_test)
+        db.session.commit()
+        current_app.logger.info(f"Documento de prueba creado exitosamente: {documento_test.id}")
+        flash(f'Documento de prueba creado exitosamente (ID: {documento_test.id}).', 'success')
+    except Exception as e:
+        current_app.logger.error(f"Error creando documento de prueba: {e}")
+        db.session.rollback()
+        flash(f'Error creando documento de prueba: {e}', 'error')
+
+    return redirect(url_for('planes.documentos', plan_id=plan_id))
 
 @planes_bp.route('/<int:plan_id>/debug')
 @login_required

@@ -1,0 +1,15 @@
+RESUMEN DE AUDITORÍA - USUARIO 1
+==================================================
+
+Total de cambios registrados: 1
+Fecha de generación: 2024-12-19 14:30:45
+
+LISTADO DE CAMBIOS
+==================
+1. 2024-12-19 14:30:45
+   Columna: Meta 2024
+   Cambio: 150.0 → 200.0
+   Archivo: 20241219_143045_plan_1_meta_2024.txt
+
+==================================================
+FIN DEL RESUMEN

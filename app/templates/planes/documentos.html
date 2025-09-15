@@ -16,8 +16,17 @@
                     <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-secondary me-2">
                         <i class="fas fa-arrow-left me-2"></i>Volver al Plan
                     </a>
-                    <a href="{{ url_for('planes.subir_documento', plan_id=plan.id) }}" class="btn btn-primary">
+                    <a href="{{ url_for('planes.subir_documento', plan_id=plan.id) }}" class="btn btn-primary me-2">
                         <i class="fas fa-upload me-2"></i>Subir Documento
+                    </a>
+                    <a href="{{ url_for('planes.test_documento', plan_id=plan.id) }}" class="btn btn-warning me-2">
+                        <i class="fas fa-flask me-2"></i>Crear Documento de Prueba
+                    </a>
+                    <a href="{{ url_for('planes.verificar_formulario', plan_id=plan.id) }}" class="btn btn-info me-2">
+                        <i class="fas fa-search me-2"></i>Verificar Formulario
+                    </a>
+                    <a href="{{ url_for('planes.probar_permisos', plan_id=plan.id) }}" class="btn btn-warning">
+                        <i class="fas fa-shield-alt me-2"></i>Probar Permisos
                     </a>
                 </div>
             </div>
@@ -148,12 +157,12 @@
                                         </td>
                                         <td class="border-0">
                                             <div>
-                                                <div class="fw-bold">{{ documento.created_at.strftime('%d/%m/%Y') }}</div>
-                                                <small class="text-muted">{{ documento.created_at.strftime('%H:%M') }}</small>
+                                                <div class="fw-bold">{{ documento.fecha_subida.strftime('%d/%m/%Y') }}</div>
+                                                <small class="text-muted">{{ documento.fecha_subida.strftime('%H:%M') }}</small>
                                             </div>
                                         </td>
                                         <td class="border-0">
-                                            {% set size_kb = documento.tamano_archivo / 1024 %}
+                                            {% set size_kb = documento.tamano / 1024 %}
                                             {% set size_mb = size_kb / 1024 %}
                                             {% if size_mb >= 1 %}
                                                 <span class="fw-bold">{{ "%.1f"|format(size_mb) }} MB</span>
@@ -163,14 +172,14 @@
                                         </td>
                                         <td class="border-0 text-center">
                                             <div class="btn-group" role="group">
-                                                <a href="{{ url_for('planes.descargar_documento', documento_id=documento.id) }}"
+                                                <a href="{{ url_for('planes.descargar_documento', plan_id=plan.id, documento_id=documento.id) }}"
                                                    class="btn btn-sm btn-outline-primary"
                                                    title="Descargar">
                                                     <i class="fas fa-download"></i>
                                                 </a>
                                                 {% if current_user.id == documento.usuario_id or current_user.has_role('admin') %}
                                                 <a href="#" class="btn btn-sm btn-outline-danger"
-                                                   onclick="confirmarEliminar('{{ documento.nombre_original }}', '{{ url_for('planes.eliminar_documento', documento_id=documento.id) }}')"
+                                                   onclick="confirmarEliminar('{{ documento.nombre_original }}', '{{ url_for('planes.eliminar_documento', plan_id=plan.id, documento_id=documento.id) }}')"
                                                    title="Eliminar">
                                                     <i class="fas fa-trash"></i>
                                                 </a>

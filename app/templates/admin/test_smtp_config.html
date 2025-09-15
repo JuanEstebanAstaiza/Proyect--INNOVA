@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                <i class="fas fa-paper-plane me-2"></i>Probar Configuración SMTP - {{ smtp_config.municipality }}
+            </h1>
+            <p class="text-muted">Envía un email de prueba para verificar la configuración</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.edit_smtp_config', municipality=smtp_config.municipality) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-edit me-2"></i>Editar Configuración
+            </a>
+            <a href="{{ url_for('admin.smtp_config_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'error' else 'warning' }} alert-dismissible fade show" role="alert">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <!-- Configuración actual -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h6 class="m-0 font-weight-bold text-white">
+                        <i class="fas fa-cogs me-2"></i>Configuración Actual
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Municipio:</dt>
+                        <dd class="col-sm-8">{{ smtp_config.municipality }}</dd>
+
+                        <dt class="col-sm-4">Estado:</dt>
+                        <dd class="col-sm-8">
+                            {% if smtp_config.is_active %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">Servidor:</dt>
+                        <dd class="col-sm-8">{{ smtp_config.smtp_server or 'No configurado' }}</dd>
+
+                        <dt class="col-sm-4">Puerto:</dt>
+                        <dd class="col-sm-8">{{ smtp_config.smtp_port or 'No configurado' }}</dd>
+
+                        <dt class="col-sm-4">Usuario:</dt>
+                        <dd class="col-sm-8">{{ smtp_config.smtp_username or 'No configurado' }}</dd>
+
+                        <dt class="col-sm-4">TLS:</dt>
+                        <dd class="col-sm-8">
+                            {% if smtp_config.use_tls %}
+                                <i class="fas fa-check text-success"></i> Sí
+                            {% else %}
+                                <i class="fas fa-times text-danger"></i> No
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">SSL:</dt>
+                        <dd class="col-sm-8">
+                            {% if smtp_config.use_ssl %}
+                                <i class="fas fa-check text-success"></i> Sí
+                            {% else %}
+                                <i class="fas fa-times text-danger"></i> No
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">Remitente:</dt>
+                        <dd class="col-sm-8">{{ smtp_config.sender_email or 'No configurado' }}</dd>
+
+                        <dt class="col-sm-4">Nombre:</dt>
+                        <dd class="col-sm-8">{{ smtp_config.sender_name or 'No configurado' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario de prueba -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <h6 class="m-0 font-weight-bold text-white">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar Email de Prueba
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if smtp_config.is_active and smtp_config.smtp_server %}
+                        <form method="POST">
+                            {{ form.hidden_tag() }}
+
+                            <div class="mb-3">
+                                <label for="test_email" class="form-label">Correo de destino para la prueba</label>
+                                {{ form.test_email(class="form-control") }}
+                                {% if form.test_email.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.test_email.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Ingresa un correo válido donde recibirás el email de prueba</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-paper-plane me-2"></i>Enviar Email de Prueba
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Configuración incompleta</strong><br>
+                            La configuración SMTP debe estar completa y activa para poder enviar emails de prueba.
+                        </div>
+                        <a href="{{ url_for('admin.edit_smtp_config', municipality=smtp_config.municipality) }}" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Configurar SMTP
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de pruebas -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3" style="background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);">
+            <h6 class="m-0 font-weight-bold text-white">
+                <i class="fas fa-history me-2"></i>Información
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>¿Qué se envía en el email de prueba?</h5>
+                    <p>El email de prueba incluye:</p>
+                    <ul>
+                        <li>Confirmación de que la configuración funciona</li>
+                        <li>Detalles de la configuración utilizada</li>
+                        <li>Fecha y hora del envío</li>
+                        <li>Información del municipio</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5>Posibles problemas</h5>
+                    <ul>
+                        <li><strong>Contraseña incorrecta:</strong> Gmail requiere contraseña de aplicación</li>
+                        <li><strong>Puerto bloqueado:</strong> Algunos proveedores bloquean puertos SMTP</li>
+                        <li><strong>Autenticación fallida:</strong> Verifica usuario y contraseña</li>
+                        <li><strong>Firewall:</strong> El servidor puede bloquear conexiones SMTP</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
