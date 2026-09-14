@@ -1,120 +1,103 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h3 mb-0 text-primary fw-bold">
-                    <i class="fas fa-clipboard-list text-secondary"></i>
-                    {% if mostrar_todos %}Mis Planes{% else %}Plan de Desarrollo{% endif %}
-                </h1>
-                <p class="text-muted">
-                    {% if mostrar_todos %}
-                    Gestiona todos tus planes en Proyecto INNOVA
-                    {% else %}
-                    Plan actualmente activo para trabajar en Proyecto INNOVA
-                    {% endif %}
-                </p>
-                {% if mostrar_todos %}
-                <div class="mt-2">
-                    <small class="text-info">
-                        <i class="fas fa-info-circle"></i>
-                        Como administrador, puedes crear múltiples planes y activar/desactivar el que los usuarios normales verán
-                    </small>
-                </div>
-                {% endif %}
-            </div>
+<div class="encabezado-pagina">
+    <div>
+        <h1>{% if mostrar_todos %}Planes de desarrollo{% else %}Plan de desarrollo{% endif %}</h1>
+        <p class="subtitulo">
             {% if mostrar_todos %}
-            <a href="{{ url_for('planes.crear') }}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Crear Nuevo Plan
-            </a>
+                Todos los planes de su municipio. Solo uno puede estar activo a la vez.
+            {% else %}
+                Plan vigente sobre el que está trabajando su entidad.
             {% endif %}
-        </div>
+        </p>
     </div>
+    {% if mostrar_todos %}
+    <div class="encabezado-acciones">
+        <a href="{{ url_for('planes.crear') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo plan
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 {% if planes %}
-<div class="row">
+<div class="row g-3">
     {% for plan in planes %}
-    <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card h-100 shadow-sm">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">{{ plan.titulo }}</h6>
-                    <span class="badge bg-{{ 'success' if plan.estado == 'activo' else 'warning' }}">
-                        {{ plan.estado.title() }}
-                    </span>
-                </div>
-            </div>
-            <div class="card-body">
-                <p class="card-text text-muted small">
-                    {{ plan.descripcion|truncate(100) if plan.descripcion else 'Sin descripción' }}
-                </p>
-
-                <div class="row text-center mb-3">
-                    <div class="col-6">
-                        <div class="h5 mb-0">{{ plan.anio_inicio }}</div>
-                        <small class="text-muted">Inicio</small>
-                    </div>
-                    <div class="col-6">
-                        <div class="h5 mb-0">{{ plan.anio_fin }}</div>
-                        <small class="text-muted">Fin</small>
-                    </div>
-                </div>
-
-                <div class="mb-2">
-                    <small class="text-muted">
-                        <i class="fas fa-calendar"></i>
-                        Creado: {{ plan.created_at.strftime('%d/%m/%Y') }}
-                    </small>
-                </div>
-
-                {% if plan.prioridad %}
-                <div class="mb-2">
-                    <span class="badge bg-{{ 'danger' if plan.prioridad == 'critica' else 'warning' if plan.prioridad == 'alta' else 'info' }}">
-                        Prioridad {{ plan.prioridad.title() }}
-                    </span>
-                </div>
+    <div class="col-md-6 col-xl-4">
+        <div class="card h-100 d-flex flex-column">
+            <div class="card-header d-flex justify-content-between align-items-start gap-2">
+                <h2 class="h6 mb-0">{{ plan.titulo }}</h2>
+                {% if plan.estado == 'activo' %}
+                <span class="badge bg-success"><span class="punto-estado activo"></span>Activo</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ plan.estado.title() }}</span>
                 {% endif %}
             </div>
+
+            <div class="card-body flex-grow-1">
+                <p class="text-muted">
+                    {{ plan.descripcion|truncate(120) if plan.descripcion else 'Sin descripción.' }}
+                </p>
+
+                <dl class="row mb-0 small">
+                    <dt class="col-5 fw-normal text-muted">Vigencia</dt>
+                    <dd class="col-7 mb-1 fw-semibold">{{ plan.anio_inicio }}–{{ plan.anio_fin }}</dd>
+
+                    <dt class="col-5 fw-normal text-muted">Creado</dt>
+                    <dd class="col-7 mb-1">{{ plan.created_at.strftime('%d/%m/%Y') }}</dd>
+
+                    {% if plan.prioridad %}
+                    <dt class="col-5 fw-normal text-muted">Prioridad</dt>
+                    <dd class="col-7 mb-0">
+                        <span class="badge bg-{{ 'danger' if plan.prioridad == 'critica' else 'warning' if plan.prioridad == 'alta' else 'info' }}">
+                            {{ plan.prioridad.title() }}
+                        </span>
+                    </dd>
+                    {% endif %}
+                </dl>
+            </div>
+
             <div class="card-footer">
-                <div class="btn-group w-100" role="group">
-                    <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-eye"></i> Ver
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> Abrir
                     </a>
+                    <a href="{{ url_for('planes.ver_excel', plan_id=plan.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-table-cells"></i> Matriz
+                    </a>
+
                     {% if mostrar_todos %}
-                    <a href="{{ url_for('planes.editar', plan_id=plan.id) }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-edit"></i> Editar
+                    <a href="{{ url_for('planes.editar', plan_id=plan.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-pen"></i> Editar
                     </a>
+
                     {% if plan.estado == 'activo' %}
-                    <form method="POST" action="{{ url_for('planes.desactivar_plan', plan_id=plan.id) }}" style="display: inline;">
+                    <form method="POST" action="{{ url_for('planes.desactivar_plan', plan_id=plan.id) }}" class="d-inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <button type="submit" class="btn btn-outline-warning btn-sm"
-                                onclick="return confirm('¿Desactivar este plan? Los usuarios normales ya no lo verán.')">
+                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                                onclick="return confirm('¿Desactivar este plan? Los usuarios dejarán de verlo.')">
                             <i class="fas fa-pause"></i> Desactivar
                         </button>
                     </form>
                     {% else %}
-                    <form method="POST" action="{{ url_for('planes.activar_plan', plan_id=plan.id) }}" style="display: inline;">
+                    <form method="POST" action="{{ url_for('planes.activar_plan', plan_id=plan.id) }}" class="d-inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <button type="submit" class="btn btn-outline-success btn-sm"
-                                onclick="return confirm('¿Activar este plan? Se desactivarán automáticamente los demás planes.')">
+                        <button type="submit" class="btn btn-sm btn-outline-success"
+                                onclick="return confirm('¿Activar este plan? Se desactivarán los demás.')">
                             <i class="fas fa-play"></i> Activar
                         </button>
                     </form>
                     {% endif %}
-                    <form method="POST" action="{{ url_for('planes.eliminar', plan_id=plan.id) }}" style="display: inline;" id="form-eliminar-{{ plan.id }}">
+
+                    <form method="POST" action="{{ url_for('planes.eliminar', plan_id=plan.id) }}"
+                          class="d-inline ms-auto" id="form-eliminar-{{ plan.id }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <button type="submit" class="btn btn-outline-danger btn-sm"
-                                onclick="return confirm('¿Estás seguro de que deseas eliminar el plan \"{{ plan.titulo }}\"? Esta acción no se puede deshacer.')">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('¿Eliminar el plan «{{ plan.titulo }}»? Esta acción no se puede deshacer.')">
                             <i class="fas fa-trash"></i> Eliminar
                         </button>
                     </form>
-                    {% else %}
-                    <span class="btn btn-outline-info btn-sm disabled">
-                        <i class="fas fa-info-circle"></i> Plan Actual
-                    </span>
                     {% endif %}
                 </div>
             </div>
@@ -123,18 +106,21 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="row">
-    <div class="col-12">
-        <div class="text-center py-5">
-            <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
-            <h4 class="text-primary fw-bold" style="font-size: 1.4rem;">No tienes planes</h4>
-            <p class="text-muted">Comienza creando tu primer plan en Proyecto INNOVA</p>
-            <a href="{{ url_for('planes.crear') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus"></i> Crear Mi Primer Plan
-            </a>
-        </div>
-    </div>
+<div class="estado-vacio">
+    <i class="fas fa-folder-open fa-3x" aria-hidden="true"></i>
+    <h4>Aún no hay planes registrados</h4>
+    <p>
+        {% if mostrar_todos %}
+            Cree el plan de desarrollo de su entidad para empezar a cargar la matriz.
+        {% else %}
+            El administrador todavía no ha activado un plan para su municipio.
+        {% endif %}
+    </p>
+    {% if mostrar_todos %}
+    <a href="{{ url_for('planes.crear') }}" class="btn btn-primary btn-lg">
+        <i class="fas fa-plus"></i> Crear el primer plan
+    </a>
+    {% endif %}
 </div>
 {% endif %}
-
 {% endblock %}

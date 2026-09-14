@@ -5,7 +5,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="h3 mb-0 text-primary fw-bold">
+                <h1 class="h3 mb-0">
                     <i class="fas fa-history text-secondary"></i> Registro de Actividades
                 </h1>
                 <p class="text-muted">Monitoreo completo de acciones realizadas por usuarios</p>
@@ -177,7 +177,7 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="avatar-circle me-2" style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8rem;">
+                                        <div class="avatar-circle avatar-sm me-2">
                                             {{ activity.user.first_name[0] if activity.user and activity.user.first_name else activity.user.username[0] if activity.user else '?' }}
                                         </div>
                                         <div>

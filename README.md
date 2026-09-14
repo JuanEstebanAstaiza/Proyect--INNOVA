@@ -32,6 +32,7 @@ de acceso por columna y por fila, y una pista de auditoría de cada cambio.
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Estructura del código, blueprints, flujo de una petición |
 | [docs/MODELO_DATOS.md](docs/MODELO_DATOS.md) | Jerarquía del plan, tablas y correspondencia con la matriz Excel |
 | [docs/PERMISOS.md](docs/PERMISOS.md) | Roles, permisos de columna, permisos de fila y auditoría |
+| [docs/INTERFAZ.md](docs/INTERFAZ.md) | Sistema de diseño: paleta, tipografía, componentes y accesibilidad |
 | [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) | Puesta en producción con Nginx/Apache, respaldos y seguridad |
 | [docs/CORRECCIONES.md](docs/CORRECCIONES.md) | Errores corregidos en la revisión de septiembre de 2026 |
 

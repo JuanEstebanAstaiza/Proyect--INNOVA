@@ -20,7 +20,7 @@
             </nav>
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1 class="h3 mb-0 text-primary fw-bold">
+                    <h1 class="h3 mb-0">
                         <i class="fas fa-table me-2"></i>Permisos de Fila
                     </h1>
                     <p class="text-muted mt-1">Asigna permisos específicos de fila a usuarios individuales</p>
@@ -81,16 +81,16 @@
                         <div class="row">
                             {% for permission in row_permissions %}
                             <div class="col-lg-6 mb-3">
-                                <div class="card border shadow-sm h-100 position-relative" style="border-color: #dee2e6 !important; min-height: 200px;">
-                                    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background-color: #f8f9fa !important; border-bottom: 1px solid #dee2e6 !important;">
+                                <div class="card border shadow-sm h-100 position-relative" style="min-height: 200px;">
+                                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
                                         <div class="d-flex align-items-center">
-                                            <div class="avatar-circle me-2" style="width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">
+                                            <div class="avatar-circle avatar-sm me-2">
                                                 {{ permission.user.first_name[0] if permission.user and permission.user.first_name else permission.user.username[0] if permission.user else '?' }}
                                             </div>
                                             <div>
-                                                <strong class="text-white fw-semibold">{{ permission.user.get_full_name() if permission.user else 'Usuario Desconocido' }}</strong>
+                                                <strong class="fw-semibold">{{ permission.user.get_full_name() if permission.user else 'Usuario Desconocido' }}</strong>
                                                 <br>
-                                                <small class="text-white">{{ permission.user.username if permission.user else 'N/A' }}</small>
+                                                <small class="text-muted">{{ permission.user.username if permission.user else 'N/A' }}</small>
                                             </div>
                                         </div>
                                         <div class="d-flex gap-2">

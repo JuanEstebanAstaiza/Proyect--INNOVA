@@ -130,8 +130,15 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(toastContainer);
         }
 
+        // 'error' no es una variante de Bootstrap: el aviso quedaba en blanco
+        // sobre fondo transparente. Se traduce a las clases de la hoja propia.
+        var variantes = {
+            success: 'exito', error: 'peligro', danger: 'peligro',
+            warning: 'aviso', info: 'info', primary: 'info'
+        };
+
         var toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-' + type + ' border-0';
+        toast.className = 'toast align-items-center toast-' + (variantes[type] || 'info') + ' border-0';
         toast.setAttribute('role', 'alert');
 
         toast.innerHTML = `

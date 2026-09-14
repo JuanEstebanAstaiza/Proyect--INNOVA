@@ -18,97 +18,81 @@
 {% endmacro %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h3 mb-0">
-                    <i class="fas fa-table text-success"></i> Vista Excel: {{ plan.titulo }}
-                </h1>
-                <p class="text-muted">Vista tabular editable del plan de desarrollo</p>
-
-                <!-- Información de permisos -->
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="fas fa-key me-1"></i>
-                        Columnas editables: <strong>{{ user_editable_columns|length }}</strong> |
-                        Total visibles: <strong>{{ user_viewable_columns|length }}</strong>
-                    </small>
-                </div>
-            </div>
-            <div class="btn-group">
-                {% if user_editable_columns %}
-                <button type="button" class="btn btn-success" onclick="guardarCambios()">
-                    <i class="fas fa-save"></i> Guardar Cambios
-                </button>
-                {% endif %}
-                <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Volver
-                </a>
-            </div>
-        </div>
+<div class="encabezado-pagina">
+    <div>
+        <nav aria-label="Ubicación">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('planes.index') }}">Planes</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('planes.ver', plan_id=plan.id) }}">{{ plan.titulo }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Matriz</li>
+            </ol>
+        </nav>
+        <h1>Matriz de seguimiento</h1>
+        <p class="subtitulo">
+            {{ plan.titulo }} · {{ user_viewable_columns|length }} columnas visibles,
+            {{ user_editable_columns|length }} editables para su rol
+        </p>
+    </div>
+    <div class="encabezado-acciones">
+        <a href="{{ url_for('planes.ver', plan_id=plan.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al plan
+        </a>
     </div>
 </div>
 
-<!-- Alertas de permisos -->
-{% if not user_editable_columns %}
-<div class="alert alert-info">
-    <i class="fas fa-info-circle me-2"></i>
-    <strong>Modo Solo Lectura:</strong> No tienes permisos para editar ninguna columna. Solo puedes visualizar la información.
+{% if user_editable_columns %}
+<div class="matriz-ayuda">
+    <i class="fas fa-lightbulb mt-1" aria-hidden="true"></i>
+    <div>
+        <strong>Cómo editar:</strong> haga doble clic sobre una celda editable.
+        Se abrirá un panel que pide el nuevo valor y una justificación; el sistema
+        deja constancia del cambio y genera el acta de auditoría.
+    </div>
 </div>
 {% else %}
-<div class="alert alert-success">
-    <i class="fas fa-edit me-2"></i>
-    <strong>Modo de Edición Seguro:</strong> Para editar una celda, haz <strong>doble clic</strong> sobre ella.
-    Se abrirá un panel de edición que requiere justificación para guardar los cambios.
+<div class="alert alert-info d-flex align-items-start">
+    <i class="fas fa-circle-info fa-fw me-2 mt-1" aria-hidden="true"></i>
+    <div>
+        <strong>Modo de solo consulta.</strong>
+        Su rol no tiene columnas habilitadas para edición en esta matriz.
+    </div>
 </div>
 {% endif %}
 
-<!-- Barra de herramientas Excel -->
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="excel-toolbar">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex gap-2">
-                    {% if user_editable_columns %}
-                    <button type="button" class="btn btn-success" onclick="guardarCambios()">
-                        <i class="fas fa-save"></i> Guardar Cambios
-                    </button>
-                    {% endif %}
-                    {% if current_user.is_editor() %}
-                    <button type="button" class="btn btn-outline-primary" onclick="agregarFila()">
-                        <i class="fas fa-plus"></i> Agregar Fila
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="eliminarFilaSeleccionada()">
-                        <i class="fas fa-trash"></i> Eliminar Fila
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="copiarFila()">
-                        <i class="fas fa-copy"></i> Copiar
-                    </button>
-                    {% endif %}
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ url_for('planes.exportar_excel', plan_id=plan.id) }}" class="btn btn-info">
-                        <i class="fas fa-download"></i> Exportar Excel
-                    </a>
-                    {% if current_user.is_editor() %}
-                    <button type="button" class="btn btn-warning" onclick="importarExcel()">
-                        <i class="fas fa-upload"></i> Importar Excel
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+<!-- Barra de acciones de la matriz -->
+<div class="barra-acciones">
+    <div class="grupo">
+        {% if user_editable_columns %}
+        <button type="button" class="btn btn-primary" onclick="guardarCambios()">
+            <i class="fas fa-floppy-disk"></i> Guardar cambios
+        </button>
+        {% endif %}
+        {% if current_user.is_editor() %}
+        <button type="button" class="btn btn-outline-secondary" onclick="agregarFila()">
+            <i class="fas fa-plus"></i> Agregar fila
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="copiarFila()">
+            <i class="fas fa-copy"></i> Copiar fila
+        </button>
+        <button type="button" class="btn btn-outline-danger" onclick="eliminarFilaSeleccionada()">
+            <i class="fas fa-trash"></i> Eliminar fila
+        </button>
+        {% endif %}
+    </div>
+    <div class="grupo">
+        <a href="{{ url_for('planes.exportar_excel', plan_id=plan.id) }}" class="btn btn-outline-primary">
+            <i class="fas fa-download"></i> Exportar a Excel
+        </a>
+        {% if current_user.is_editor() %}
+        <button type="button" class="btn btn-outline-secondary" onclick="importarExcel()">
+            <i class="fas fa-upload"></i> Importar
+        </button>
+        {% endif %}
     </div>
 </div>
 
-<!-- Tabla Excel -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-                    <table id="excelTable" class="excel-table table mb-0">
+<div class="matriz-envoltura">
+    <table id="excelTable" class="excel-table table mb-0">
                         <thead class="sticky-top">
                             <tr>
                                 <!-- Información básica de la estructura -->
@@ -382,11 +366,16 @@
                             </tr>
                             {% endfor %}
                         </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+    </table>
+</div>
+
+<div class="matriz-leyenda" aria-hidden="true">
+    <span><i style="background:#56727d"></i>Estructura del plan</span>
+    <span><i style="background:#6d7a5c"></i>Indicadores</span>
+    <span><i style="background:#86733f"></i>Ejecución trimestral</span>
+    <span><i style="background:#4f6b80"></i>Cumplimiento</span>
+    <span><i style="background:#7d5548"></i>Acumulado</span>
+    <span><i style="background:#5e5a54"></i>Documentos</span>
 </div>
 
 <!-- Modal para importar Excel -->
@@ -849,372 +838,6 @@ document.addEventListener('keydown', function(e) {
     }
 });
 </script>
-
-<style>
-/* Estilos específicos para la vista Excel */
-.excel-cell {
-    border: 1px solid #dee2e6 !important;
-    padding: 3px 6px;
-    font-size: 0.875rem;
-    min-height: 32px;
-    background-color: #ffffff !important;
-    color: #212529 !important;
-}
-
-.excel-cell:focus {
-    outline: 2px solid #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    background-color: #f8f9fa !important;
-}
-
-/* Asegurar que todas las celdas de datos tengan fondo claro */
-.table td {
-    background-color: #ffffff !important;
-    color: #212529 !important;
-    border: 1px solid #dee2e6 !important;
-}
-
-/* Celdas de solo lectura con fondo ligeramente diferente */
-.table td.bg-light {
-    background-color: #f8f9fa !important;
-    color: #495057 !important;
-}
-
-.table td.bg-warning {
-    background-color: #fff3cd !important;
-    color: #856404 !important;
-}
-
-/* Estilos para inputs dentro de celdas */
-.table td input[type="text"],
-.table td input[type="number"],
-.table td select {
-    background-color: #ffffff !important;
-    color: #212529 !important;
-    border: 1px solid #ced4da !important;
-}
-
-.table td input[type="text"]:focus,
-.table td input[type="number"]:focus,
-.table td select:focus {
-    background-color: #ffffff !important;
-    color: #212529 !important;
-    border-color: #80bdff !important;
-}
-
-/* Estilo para celdas en modo edición (sin readonly) */
-.editing-cell {
-    background-color: #fff3cd !important; /* Color amarillo claro */
-    border-color: #ffc107 !important; /* Borde amarillo */
-    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25) !important;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25); }
-    50% { box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.25); }
-    100% { box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25); }
-}
-
-/* Mejora significativa de los títulos de las columnas */
-.table th {
-    font-size: 0.9rem !important;
-    font-weight: 800 !important;
-    padding: 14px 8px !important;
-    vertical-align: middle;
-    white-space: nowrap;
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important;
-    color: #ffffff !important;
-    border: 2px solid #495057 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-    position: relative;
-    z-index: 10;
-}
-
-/* Títulos más específicos para mejor legibilidad */
-.table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-}
-
-.table thead th::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(52, 73, 94, 0.9) 0%, rgba(44, 62, 80, 0.95) 100%);
-    z-index: -1;
-}
-
-.table thead th::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #3498db, #2ecc71, #f39c12, #e74c3c);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-/* Mejorar la legibilidad en hover */
-.table th:hover {
-    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    transition: all 0.2s ease;
-}
-
-.table td {
-    padding: 3px 6px;
-    vertical-align: middle;
-    border: 1px solid #dee2e6;
-    background-color: #ffffff !important;
-    color: #212529 !important;
-}
-
-/* Estilos específicos para diferentes tipos de columnas */
-.col-estructura th {
-    background-color: #495057 !important;
-    border-left: 3px solid #007bff !important;
-}
-
-.col-indicadores th {
-    background-color: #6c757d !important;
-    border-left: 3px solid #28a745 !important;
-}
-
-.col-ejecucion th {
-    background-color: #5a6268 !important;
-    border-left: 3px solid #ffc107 !important;
-}
-
-.col-cumplimiento th {
-    background-color: #545b62 !important;
-    border-left: 3px solid #17a2b8 !important;
-}
-
-.col-acumulado th {
-    background-color: #343a40 !important;
-    border-left: 3px solid #dc3545 !important;
-    font-weight: 900 !important;
-    font-size: 0.9rem !important;
-}
-
-.table-responsive {
-    border: 1px solid #dee2e6;
-}
-
-.sticky-top {
-    top: 0;
-    z-index: 1020;
-}
-
-/* Estilos para la fila seleccionada */
-.table-active {
-    background-color: rgba(0, 123, 255, 0.1) !important;
-}
-
-/* Estilos para las columnas de diferentes tipos */
-.text-end {
-    text-align: right;
-}
-
-/* Celdas con colores específicos - asegurar buen contraste */
-.bg-light {
-    background-color: #f8f9fa !important;
-    color: #495057 !important;
-}
-
-.bg-light input,
-.bg-light select {
-    background-color: #f8f9fa !important;
-    color: #495057 !important;
-}
-
-.bg-warning {
-    background-color: #fff3cd !important;
-    color: #856404 !important;
-}
-
-.bg-warning input,
-.bg-warning select {
-    background-color: #fff3cd !important;
-    color: #856404 !important;
-}
-
-/* Tooltips informativos para títulos */
-.table th[title] {
-    cursor: help;
-}
-
-/* Mejorar contraste para accesibilidad */
-@media (prefers-contrast: high) {
-    .table th {
-        background: #000000 !important;
-        color: #ffffff !important;
-        border: 3px solid #ffffff !important;
-    }
-}
-
-/* Estilos para modo oscuro */
-@media (prefers-color-scheme: dark) {
-    .table th {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
-        color: #ffffff !important;
-        border-color: #404040 !important;
-    }
-
-    .table td {
-        background-color: #2d2d2d !important;
-        color: #ffffff !important;
-        border-color: #404040 !important;
-    }
-
-    /* Celdas con colores específicos en modo oscuro */
-    .bg-light {
-        background-color: #343a40 !important;
-        color: #adb5bd !important;
-    }
-
-    .bg-light input,
-    .bg-light select {
-        background-color: #343a40 !important;
-        color: #adb5bd !important;
-        border-color: #495057 !important;
-    }
-
-    .bg-warning {
-        background-color: #533f00 !important;
-        color: #ffda6a !important;
-    }
-
-    .bg-warning input,
-    .bg-warning select {
-        background-color: #533f00 !important;
-        color: #ffda6a !important;
-        border-color: #6c5b00 !important;
-    }
-
-    /* Inputs en modo oscuro */
-    .table td input[type="text"],
-    .table td input[type="number"],
-    .table td select {
-        background-color: #2d2d2d !important;
-        color: #ffffff !important;
-        border-color: #495057 !important;
-    }
-
-    .table td input[type="text"]:focus,
-    .table td input[type="number"]:focus,
-    .table td select:focus {
-        background-color: #2d2d2d !important;
-        color: #ffffff !important;
-        border-color: #0d6efd !important;
-    }
-
-    /* Celdas Excel en modo oscuro */
-    .excel-cell {
-        background-color: #2d2d2d !important;
-        color: #ffffff !important;
-        border-color: #404040 !important;
-    }
-
-    .excel-cell:focus {
-        background-color: #343a40 !important;
-    }
-}
-
-/* Responsive para móviles */
-@media (max-width: 768px) {
-    .excel-cell {
-        font-size: 0.8rem;
-        padding: 2px 4px;
-        min-height: 35px;
-    }
-
-    .table th {
-        font-size: 0.75rem !important;
-        padding: 8px 4px !important;
-        writing-mode: horizontal-tb;
-        white-space: normal;
-        line-height: 1.2;
-    }
-
-    .table th br {
-        display: none;
-    }
-
-    .table td {
-        padding: 2px 4px;
-    }
-}
-
-/* Para pantallas muy pequeñas */
-@media (max-width: 576px) {
-    .table th {
-        font-size: 0.7rem !important;
-        padding: 6px 3px !important;
-    }
-
-    .excel-cell {
-        font-size: 0.75rem;
-        padding: 1px 2px;
-        min-height: 30px;
-    }
-}
-
-/* Asegurar legibilidad en todas las condiciones */
-.table th {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-/* Estilos para impresión */
-@media print {
-    .table th {
-        background: #000000 !important;
-        color: #ffffff !important;
-        -webkit-print-color-adjust: exact;
-        color-adjust: exact;
-    }
-}
-
-/* Estilos para columnas de documentos */
-.col-documentos {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-left: 2px solid #dee2e6;
-}
-
-.col-documentos th {
-    background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
-    color: #ffffff !important;
-    font-weight: 600;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-.col-documentos .badge {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-}
-
-.col-documentos .badge:hover {
-    transform: scale(1.1);
-    transition: transform 0.2s ease;
-}
-
-/* Tooltip personalizado para badges de documentos */
-.col-documentos .badge[title] {
-    cursor: help;
-}
-</style>
 
 <!-- Modal de Edición Avanzada -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">

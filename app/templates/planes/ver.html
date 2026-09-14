@@ -1,30 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h3 mb-0">
-                    <i class="fas fa-clipboard text-primary"></i> {{ plan.titulo }}
-                </h1>
-                <p class="text-muted">{{ plan.descripcion or 'Sin descripción' }}</p>
-            </div>
-            <div class="btn-group">
-                <a href="{{ url_for('planes.editar', plan_id=plan.id) }}" class="btn btn-outline-primary">
-                    <i class="fas fa-edit"></i> Editar
-                </a>
-                <a href="{{ url_for('planes.lineas', plan_id=plan.id) }}" class="btn btn-primary">
-                    <i class="fas fa-sitemap"></i> Líneas Estratégicas
-                </a>
-                <a href="{{ url_for('planes.ver_excel', plan_id=plan.id) }}" class="btn btn-success">
-                    <i class="fas fa-table"></i> Vista Excel
-                </a>
-                <a href="{{ url_for('planes.documentos', plan_id=plan.id) }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-file-alt"></i> Documentos
-                </a>
-            </div>
-        </div>
+<div class="encabezado-pagina">
+    <div>
+        <nav aria-label="Ubicación">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('planes.index') }}">Planes</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ plan.titulo }}</li>
+            </ol>
+        </nav>
+        <h1>{{ plan.titulo }}</h1>
+        <p class="subtitulo">{{ plan.descripcion or 'Sin descripción.' }}</p>
+    </div>
+    <div class="encabezado-acciones">
+        <a href="{{ url_for('planes.ver_excel', plan_id=plan.id) }}" class="btn btn-primary">
+            <i class="fas fa-table-cells"></i> Abrir la matriz
+        </a>
+        <a href="{{ url_for('planes.lineas', plan_id=plan.id) }}" class="btn btn-outline-primary">
+            <i class="fas fa-sitemap"></i> Líneas estratégicas
+        </a>
+        <a href="{{ url_for('planes.documentos', plan_id=plan.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-paperclip"></i> Documentos
+        </a>
+        <a href="{{ url_for('planes.editar', plan_id=plan.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-pen"></i> Editar
+        </a>
     </div>
 </div>
 
