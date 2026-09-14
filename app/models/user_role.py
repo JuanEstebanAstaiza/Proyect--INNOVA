@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class UserRole(db.Model):
     __tablename__ = 'user_roles'
@@ -13,7 +15,7 @@ class UserRole(db.Model):
 
     # Información de asignación
     assigned_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # Admin que asignó
-    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    assigned_at = db.Column(db.DateTime, default=ahora_utc)
     notes = db.Column(db.Text)  # Notas adicionales sobre la asignación
 
     # Relaciones
@@ -22,7 +24,7 @@ class UserRole(db.Model):
     assigner = db.relationship('User', foreign_keys=[assigned_by], backref=db.backref('assigned_roles', lazy=True))
 
     def __init__(self, **kwargs):
-        super(UserRole, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def to_dict(self):
         """Convierte la asignación a diccionario"""

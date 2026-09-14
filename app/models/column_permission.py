@@ -1,5 +1,6 @@
 from app import db
 
+
 class ColumnPermission(db.Model):
     __tablename__ = 'column_permissions'
 
@@ -15,26 +16,36 @@ class ColumnPermission(db.Model):
     category = db.Column(db.String(50), default='general')  # estructura, indicadores, ejecucion, cumplimiento, poblacion, observaciones
 
     def __init__(self, **kwargs):
-        super(ColumnPermission, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # Asignar categoría basada en el nombre de la columna
         self._assign_category()
 
     def _assign_category(self):
-        """Asigna categoría automáticamente basada en el nombre de la columna"""
-        column_lower = self.column_name.lower()
+        """Asigna categoría automáticamente según el nombre de la columna.
 
-        if any(keyword in column_lower for keyword in ['cód', 'linea', 'componente', 'programa', 'proyecto']):
-            self.category = 'estructura'
-        elif any(keyword in column_lower for keyword in ['indicador', 'meta', 'linea base', 'tipo', 'unidad']):
-            self.category = 'indicadores'
-        elif any(keyword in column_lower for keyword in ['ejecución', 'trimestre']):
-            self.category = 'ejecucion'
-        elif any(keyword in column_lower for keyword in ['cumplimiento', '%']):
-            self.category = 'cumplimiento'
-        elif 'poblacion' in column_lower:
-            self.category = 'poblacion'
-        elif 'observacion' in column_lower:
+        El orden importa: casi todas las columnas de ejecución, cumplimiento,
+        población y observaciones contienen la palabra "trimestre", así que las
+        reglas más específicas van primero. Además se comprueban las variantes
+        con y sin tilde, porque los encabezados reales llevan acento.
+        """
+        column_lower = (self.column_name or '').lower()
+
+        def contiene(*palabras):
+            return any(palabra in column_lower for palabra in palabras)
+
+        if contiene('observacion', 'observación'):
             self.category = 'observaciones'
+        elif contiene('poblacion', 'población'):
+            self.category = 'poblacion'
+        elif contiene('cumplimiento', '%'):
+            self.category = 'cumplimiento'
+        elif contiene('ejecucion', 'ejecución', 'trimestre'):
+            self.category = 'ejecucion'
+        elif contiene('indicador', 'meta', 'linea base', 'tipo', 'unidad', 'sentido'):
+            self.category = 'indicadores'
+        elif contiene('cod', 'cód', 'linea', 'componente', 'programa', 'proyecto',
+                      'bpim', 'responsable', 'resposable'):
+            self.category = 'estructura'
         else:
             self.category = 'general'
 

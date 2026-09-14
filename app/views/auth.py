@@ -1,17 +1,19 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask_login import current_user, login_required, login_user, logout_user
+
+from app.utils.fechas import ahora_utc
+
 try:
     from werkzeug.urls import url_parse
 except ImportError:
     from urllib.parse import urlparse as url_parse
+import uuid
+
 from app import db
-from app.models import User
 from app.forms.auth import LoginForm, RegistrationForm
+from app.models import User
 from app.models.active_session import ActiveSession
 from app.models.activity_log import ActivityLog
-import uuid
-import json
-from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -30,7 +32,7 @@ def get_device_info():
         'screen_resolution': request.form.get('screen_resolution', ''),
         'cookie_enabled': True,  # Asumimos que sí porque están usando la app
         'ip_address': request.remote_addr,
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': ahora_utc().isoformat(),
         'session_id': str(uuid.uuid4())  # ID único para esta sesión
     }
 

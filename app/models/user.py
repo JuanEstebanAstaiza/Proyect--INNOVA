@@ -1,7 +1,10 @@
+
 from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -23,8 +26,8 @@ class User(UserMixin, db.Model):
 
     # Estado y timestamps
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
     last_login = db.Column(db.DateTime)
 
     # Sistema de roles avanzado (legacy para compatibilidad)
@@ -42,7 +45,7 @@ class User(UserMixin, db.Model):
                                overlaps="active_roles")
 
     def __init__(self, **kwargs):
-        super(User, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.legacy_role not in ['admin', 'editor', 'viewer']:
             self.legacy_role = 'viewer'
 
@@ -97,22 +100,16 @@ class User(UserMixin, db.Model):
         if self.is_admin():
             return True  # Los admins pueden editar todo
 
-        for user_role in self.active_roles:
-            if user_role.role.can_edit_column(column_name):
-                return True
-
-        return False
+        return any(user_role.role.can_edit_column(column_name)
+                   for user_role in self.active_roles)
 
     def can_view_column(self, column_name):
         """Verifica si el usuario puede ver una columna específica"""
         if self.is_admin():
             return True  # Los admins pueden ver todo
 
-        for user_role in self.active_roles:
-            if user_role.role.can_view_column(column_name):
-                return True
-
-        return False
+        return any(user_role.role.can_view_column(column_name)
+                   for user_role in self.active_roles)
 
     def can_edit_row(self, indicador_id, plan_id=None):
         """Verifica si el usuario puede editar una fila específica"""
@@ -141,7 +138,7 @@ class User(UserMixin, db.Model):
             is_active=True
         ).first()
 
-        return permission and permission.can_edit
+        return bool(permission and permission.can_edit)
 
     def can_view_row(self, indicador_id, plan_id=None):
         """Verifica si el usuario puede ver una fila específica"""
@@ -170,7 +167,7 @@ class User(UserMixin, db.Model):
             is_active=True
         ).first()
 
-        return permission and permission.can_view
+        return bool(permission and permission.can_view)
 
     def can_edit_entity(self, entity_id, entity_type, plan_id=None):
         """Verifica si el usuario puede editar una entidad específica"""
@@ -213,7 +210,7 @@ class User(UserMixin, db.Model):
         filter_kwargs[entity_field] = entity_id
 
         permission = RowPermission.query.filter_by(**filter_kwargs).first()
-        return permission and permission.can_edit
+        return bool(permission and permission.can_edit)
 
     def can_view_entity(self, entity_id, entity_type, plan_id=None):
         """Verifica si el usuario puede ver una entidad específica"""
@@ -256,7 +253,7 @@ class User(UserMixin, db.Model):
         filter_kwargs[entity_field] = entity_id
 
         permission = RowPermission.query.filter_by(**filter_kwargs).first()
-        return permission and permission.can_view
+        return bool(permission and permission.can_view)
 
     def get_editable_columns(self):
         """Retorna todas las columnas que el usuario puede editar"""
@@ -303,7 +300,7 @@ class User(UserMixin, db.Model):
 
     def update_last_login(self):
         """Update the last login timestamp"""
-        self.last_login = datetime.utcnow()
+        self.last_login = ahora_utc()
         db.session.commit()
 
     def __repr__(self):

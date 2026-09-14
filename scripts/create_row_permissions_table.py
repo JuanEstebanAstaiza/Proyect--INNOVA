@@ -7,10 +7,12 @@ import os
 import sys
 
 # Agregar el directorio raíz al path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# La raíz del proyecto es el directorio padre de scripts/.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app, db
 from app.models import RowPermission
+
 
 def create_row_permissions_table():
     """Crear la tabla de permisos de fila"""
@@ -59,7 +61,7 @@ def create_row_permissions_table():
         print("   - Control de permisos de vista y edición")
 
     except Exception as e:
-        print(f"❌ Error creando tabla: {str(e)}")
+        print(f"❌ Error creando tabla: {e!s}")
         return False
 
     print("\n✅ TABLA DE PERMISOS DE FILA CREADA EXITOSAMENTE")

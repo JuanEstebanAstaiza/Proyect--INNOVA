@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class LineaEstrategica(db.Model):
     __tablename__ = 'lineas_estrategicas'
@@ -19,15 +21,15 @@ class LineaEstrategica(db.Model):
 
     # Estado y timestamps
     estado = db.Column(db.String(20), default='activo')  # activo, inactivo
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Metadatos
     prioridad = db.Column(db.String(20), default='media')  # baja, media, alta, critica
     presupuesto_asignado = db.Column(db.Float, default=0.0)
 
     def __init__(self, **kwargs):
-        super(LineaEstrategica, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.estado not in ['activo', 'inactivo']:
             self.estado = 'activo'
         if self.prioridad not in ['baja', 'media', 'alta', 'critica']:

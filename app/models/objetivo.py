@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class Objetivo(db.Model):
     __tablename__ = 'objetivos'
@@ -24,15 +26,15 @@ class Objetivo(db.Model):
     # Fechas
     fecha_inicio = db.Column(db.Date)
     fecha_fin = db.Column(db.Date)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Metadatos
     responsable = db.Column(db.String(100))
     presupuesto_asignado = db.Column(db.Float, default=0.0)
 
     def __init__(self, **kwargs):
-        super(Objetivo, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.tipo not in ['estrategico', 'operativo', 'tactico']:
             self.tipo = 'operativo'
         if self.prioridad not in ['baja', 'media', 'alta']:

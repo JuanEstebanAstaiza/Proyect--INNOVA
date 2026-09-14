@@ -1,5 +1,8 @@
-from app import db
 from datetime import datetime
+
+from app import db
+from app.utils.fechas import ahora_utc
+
 
 class EjecucionTrimestral(db.Model):
     __tablename__ = 'ejecuciones_trimestrales'
@@ -42,15 +45,15 @@ class EjecucionTrimestral(db.Model):
     usuario = db.relationship('User', backref=db.backref('ejecuciones_registradas', lazy=True))
 
     # Timestamps
-    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
-    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    fecha_registro = db.Column(db.DateTime, default=ahora_utc)
+    fecha_actualizacion = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Metadatos
     fuente_informacion = db.Column(db.String(200))
     verificado = db.Column(db.Boolean, default=False)
 
     def __init__(self, **kwargs):
-        super(EjecucionTrimestral, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if not (1 <= self.trimestre <= 4):
             raise ValueError("El trimestre debe estar entre 1 y 4")
 

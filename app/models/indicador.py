@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class Indicador(db.Model):
     __tablename__ = 'indicadores'
@@ -35,8 +37,8 @@ class Indicador(db.Model):
 
     # Fechas
     fecha_ultima_medicion = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Metadatos
     fuente_datos = db.Column(db.String(200))  # fuente de la información
@@ -44,7 +46,7 @@ class Indicador(db.Model):
     observaciones = db.Column(db.Text)
 
     def __init__(self, **kwargs):
-        super(Indicador, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.tipo not in ['proceso', 'resultado', 'impacto']:
             self.tipo = 'proceso'
         if self.frecuencia_medicion not in ['diaria', 'semanal', 'mensual', 'trimestral', 'anual']:
@@ -75,7 +77,7 @@ class Indicador(db.Model):
     def actualizar_valor(self, nuevo_valor, fecha=None):
         """Actualiza el valor del indicador"""
         self.valor_actual = nuevo_valor
-        self.fecha_ultima_medicion = fecha or datetime.utcnow()
+        self.fecha_ultima_medicion = fecha or ahora_utc()
         db.session.commit()
 
     def __repr__(self):

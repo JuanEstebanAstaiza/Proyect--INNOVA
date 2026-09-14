@@ -1,0 +1,62 @@
+[project]
+name = "proyecto-innova"
+version = "1.0.0"
+description = "Gestión y seguimiento del Plan de Desarrollo de alcaldías y gobernaciones de Colombia"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+
+# Las dependencias de ejecución se declaran en requirements.txt para poder
+# fijarlas con versiones exactas en los despliegues.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    # El código no debe usar APIs obsoletas: un aviso nuevo rompe la suite.
+    "error::DeprecationWarning",
+    "error::sqlalchemy.exc.LegacyAPIWarning",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+exclude = [".venv", "scripts/legacy", "migrations", "__pycache__"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle
+    "F",      # pyflakes
+    "I",      # orden de imports
+    "UP",     # modernización de sintaxis
+    "B",      # errores frecuentes (flake8-bugbear)
+    "SIM",    # simplificaciones
+    "RUF",    # reglas propias de ruff
+    "BLE",    # except demasiado amplios
+    "E722",   # except desnudo
+]
+ignore = [
+    "E501",    # el largo de línea lo controla el formateador
+    "RUF001",  # caracteres unicode ambiguos: el dominio es en castellano
+    "RUF002",
+    "RUF003",
+    "B008",    # llamadas en argumentos por defecto (habitual en Flask/WTForms)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Las pruebas importan dentro de las funciones a propósito, para controlar
+# cuándo se carga la aplicación.
+"tests/*" = ["E402", "F401", "BLE001"]
+# Los scripts operativos ajustan sys.path antes de importar el paquete.
+"scripts/*" = ["E402", "BLE001"]
+# En el borde de una vista es correcto atrapar cualquier excepción para
+# devolver una respuesta de error; todos esos manejadores dejan traza en el log.
+"app/views/*" = ["BLE001"]
+# El envío de correo puede fallar de muchas formas (SMTP, DNS, TLS);
+# se atrapa cualquier fallo, se registra y se devuelve False.
+"app/utils/email_service.py" = ["BLE001"]
+"audit_file_system.py" = ["BLE001"]
+"audit_pdf_generator.py" = ["BLE001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "config", "audit_file_system", "audit_pdf_generator"]

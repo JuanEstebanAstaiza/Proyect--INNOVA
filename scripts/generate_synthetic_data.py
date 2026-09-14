@@ -5,18 +5,27 @@ Genera más de 100 filas con datos realistas para testing y demostración
 """
 
 import os
-import sys
 import random
-from datetime import datetime
+import sys
+from datetime import timedelta
+
 from faker import Faker
 
 # Agregar el directorio raíz al path para importar módulos de la app
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# La raíz del proyecto es el directorio padre de scripts/.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app, db
 from app.models import (
-    User, PlanDesarrollo, LineaEstrategica, Componente, Programa, Proyecto,
-    Actividad, IndicadorProducto, EjecucionTrimestral
+    Actividad,
+    Componente,
+    EjecucionTrimestral,
+    IndicadorProducto,
+    LineaEstrategica,
+    PlanDesarrollo,
+    Programa,
+    Proyecto,
+    User,
 )
 
 # Inicializar Faker para datos realistas
@@ -199,24 +208,38 @@ class SyntheticDataGenerator:
         ]
 
     def get_or_create_admin_user(self):
-        """Obtiene o crea un usuario administrador para el plan"""
-        admin = User.query.filter_by(email='admin@alcaldia.test').first()
-        if not admin:
-            admin = User(
-                username='admin_test',
-                email='admin@alcaldia.test',
-                password='admin123',
-                municipality='Municipio de Prueba',
-                department='Departamento de Prueba',
-                first_name='Administrador',
-                last_name='Sistema',
-                position='Administrador del Sistema'
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print("✅ Usuario administrador creado")
-        else:
-            print("✅ Usuario administrador encontrado")
+        """Devuelve el administrador al que pertenecerá el plan generado.
+
+        Se reutiliza el administrador que ya exista (el que crea
+        `scripts/init_db.py`, por ejemplo). Es importante: un plan pertenece al
+        municipio de su propietario, así que si aquí se creara un usuario de
+        otro municipio, los usuarios de prueba no verían el plan generado.
+        """
+        admin = User.query.filter_by(legacy_role='admin').first()
+        if admin:
+            print(f"[OK] Se reutiliza el administrador existente: {admin.username} "
+                  f"({admin.municipality})")
+            return admin
+
+        admin = User(
+            username='admin_test',
+            email='admin@alcaldia.test',
+            password='admin123',
+            municipality='Municipio de Ejemplo',
+            department='Departamento de Ejemplo',
+            first_name='Administrador',
+            last_name='Sistema',
+            position='Administrador del Sistema',
+            legacy_role='admin',
+        )
+        db.session.add(admin)
+        db.session.commit()
+
+        # Enlazarlo con el sistema de roles para que tenga permisos de columna.
+        from app import assign_default_roles_to_users
+        assign_default_roles_to_users()
+
+        print("[OK] Usuario administrador creado")
         return admin
 
     def clear_existing_data(self):
@@ -234,7 +257,7 @@ class SyntheticDataGenerator:
             db.session.commit()
             print("🧹 Datos existentes limpiados")
         except Exception as e:
-            print(f"⚠️  Error limpiando datos: {str(e)}")
+            print(f"⚠️  Error limpiando datos: {e!s}")
             db.session.rollback()
 
     def create_plan_desarrollo(self, admin_user):
@@ -286,10 +309,7 @@ class SyntheticDataGenerator:
                     linea_estrategica=linea,
                     estado='activo',
                     prioridad=random.choice(['media', 'alta']),
-                    presupuesto_total=random.uniform(20000000, 80000000),  # 20-80M por componente
-                    presupuesto_ejecutado=random.uniform(5000000, 20000000),  # 5-20M ejecutados
-                    dependencia_responsable=fake.company(),
-                    bpim=fake.name()
+                    presupuesto_asignado=random.uniform(20000000, 80000000),  # 20-80M por componente
                 )
                 db.session.add(componente)
                 componentes_creados.append((componente, componente_data))
@@ -312,11 +332,9 @@ class SyntheticDataGenerator:
                     descripcion=f"Programa enfocado en {programa_nombre.lower()} dentro del componente {componente.nombre.lower()}",
                     componente=componente,
                     estado='activo',
-                    prioridad=random.choice(['media', 'alta']),
-                    presupuesto_total=random.uniform(10000000, 40000000),  # 10-40M por programa
-                    presupuesto_ejecutado=random.uniform(2000000, 10000000),  # 2-10M ejecutados
+                    presupuesto_asignado=random.uniform(10000000, 40000000),  # 10-40M por programa
                     dependencia_responsable=fake.company(),
-                    bpim=fake.name()
+                    bpim=f"BPIM-{random.randint(2024000, 2024999)}"
                 )
                 db.session.add(programa)
                 programas_creados.append(programa)
@@ -331,25 +349,22 @@ class SyntheticDataGenerator:
         for programa in programas:
             num_proyectos = random.randint(2, 4)  # 2-4 proyectos por programa
 
-            for i in range(num_proyectos):
+            for _ in range(num_proyectos):
                 proyecto = Proyecto(
-                    cod_proyecto=f"{programa.cod_programa}.{i+1}",
                     nombre=fake.sentence(nb_words=6, variable_nb_words=True),
                     descripcion=fake.paragraph(nb_sentences=3),
                     programa=programa,
-                    estado=random.choice(['planificado', 'ejecucion', 'completado']),
-                    prioridad=random.choice(['media', 'alta']),
+                    estado=random.choice(['planificado', 'en_ejecucion', 'completado']),
                     presupuesto_total=random.uniform(3000000, 15000000),  # 3-15M por proyecto
                     presupuesto_ejecutado=random.uniform(500000, 8000000),  # 0.5-8M ejecutados
                     fecha_inicio=fake.date_between(start_date='-6M', end_date='+3M'),
                     fecha_fin=fake.date_between(start_date='+6M', end_date='+18M'),
-                    responsable=fake.name(),
-                    dependencia_responsable=fake.company(),
-                    bpim=fake.name()
+                    responsable_ejecucion=fake.name(),
+                    responsable_seguimiento=fake.name(),
                 )
                 db.session.add(proyecto)
                 proyectos_creados.append(proyecto)
-                print(f"        🎯 Proyecto {proyecto.cod_proyecto}: {proyecto.nombre[:50]}...")
+                print(f"        🎯 Proyecto {proyecto.id} ({programa.cod_programa}): {proyecto.nombre[:50]}...")
 
         db.session.commit()
         return proyectos_creados
@@ -360,17 +375,25 @@ class SyntheticDataGenerator:
         for proyecto in proyectos:
             num_actividades = random.randint(3, 6)  # 3-6 actividades por proyecto
 
-            for i in range(num_actividades):
+            for _ in range(num_actividades):
                 actividad = Actividad(
                     nombre=fake.sentence(nb_words=4, variable_nb_words=True),
                     descripcion=fake.paragraph(nb_sentences=2),
-                    tipo=random.choice(['capacitación', 'infraestructura', 'adquisición', 'consultoría', 'monitoreo']),
+                    tipo_actividad=random.choice(['capacitación', 'infraestructura', 'adquisición', 'consultoría', 'monitoreo']),
                     prioridad=random.choice(['baja', 'media', 'alta']),
                     presupuesto_asignado=random.uniform(200000, 2000000),  # 200K-2M por actividad
-                    responsables=fake.name(),
-                    fecha_inicio=fake.date_between(start_date=proyecto.fecha_inicio, end_date=proyecto.fecha_inicio.replace(month=min(12, proyecto.fecha_inicio.month + 2))),
-                    fecha_fin=fake.date_between(start_date=proyecto.fecha_inicio.replace(month=min(12, proyecto.fecha_inicio.month + 1)), end_date=proyecto.fecha_fin),
-                    progreso=random.uniform(0, 100),
+                    responsable_ejecucion=fake.name(),
+                    # Con `replace(month=...)` se conservaba el día y salían
+                    # fechas inexistentes (31 de febrero). Se desplaza en días.
+                    fecha_inicio=fake.date_between(
+                        start_date=proyecto.fecha_inicio,
+                        end_date=min(proyecto.fecha_inicio + timedelta(days=60), proyecto.fecha_fin),
+                    ),
+                    fecha_fin=fake.date_between(
+                        start_date=min(proyecto.fecha_inicio + timedelta(days=30), proyecto.fecha_fin),
+                        end_date=proyecto.fecha_fin,
+                    ),
+                    progreso_porcentual=random.uniform(0, 100),
                     estado=random.choice(['pendiente', 'en_progreso', 'completada', 'cancelada']),
                     proyecto=proyecto
                 )
@@ -384,7 +407,6 @@ class SyntheticDataGenerator:
     def create_indicadores(self, proyectos):
         """Crea indicadores de producto para cada proyecto"""
         indicadores_creados = []
-        admin_user = User.query.filter_by(email='admin@alcaldia.test').first()
 
         for proyecto in proyectos:
             num_indicadores = random.randint(3, 6)  # 3-6 indicadores por proyecto
@@ -406,7 +428,7 @@ class SyntheticDataGenerator:
                 indicador_info = next((ind for ind in self.indicadores_base if ind['categoria'] == categoria), self.indicadores_base[0])
 
                 indicador = IndicadorProducto(
-                    cod_indicador=f"IND-{proyecto.cod_proyecto}-{i+1}",
+                    cod_indicador=f"IND-{proyecto.id}-{i+1}",
                     nombre=random.choice(indicador_info['nombres']),
                     descripcion=fake.paragraph(nb_sentences=2),
                     tipo_indicador=random.choice(['Producto', 'Proceso', 'Resultado']),
@@ -429,7 +451,7 @@ class SyntheticDataGenerator:
     def create_ejecuciones_trimestrales(self, indicadores):
         """Crea ejecuciones trimestrales para cada indicador (2024)"""
         ejecuciones_creadas = []
-        admin_user = User.query.filter_by(email='admin@alcaldia.test').first()
+        admin_user = self.get_or_create_admin_user()
 
         for indicador in indicadores:
             # Crear 4 trimestres para 2024
@@ -544,7 +566,7 @@ class SyntheticDataGenerator:
             return True
 
         except Exception as e:
-            print(f"❌ Error durante la generación: {str(e)}")
+            print(f"❌ Error durante la generación: {e!s}")
             db.session.rollback()
             return False
 

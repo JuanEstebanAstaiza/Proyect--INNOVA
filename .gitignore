@@ -1,0 +1,52 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# --- Entornos virtuales ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Configuración local (NUNCA subir: contiene claves y credenciales SMTP) ---
+.env
+.env.local
+*.env
+!.env.example
+
+# --- Base de datos ---
+instance/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# --- Archivos generados en tiempo de ejecución ---
+uploads/
+audit_files/
+!audit_files/.gitkeep
+*.log
+logs/
+
+# --- Editores e IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Pruebas y cobertura ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/

@@ -1,7 +1,10 @@
-from app import db
-from datetime import datetime, timedelta
 import json
+from datetime import timedelta
+
+from app import db
+from app.utils.fechas import ahora_utc
 from app.utils.jwt_utils import JWTUtils
+
 
 class ActiveSession(db.Model):
     __tablename__ = 'active_sessions'
@@ -12,8 +15,8 @@ class ActiveSession(db.Model):
     jwt_token = db.Column(db.Text, unique=True, nullable=False)  # JWT token único para la sesión
     ip_address = db.Column(db.String(45))
     user_agent = db.Column(db.Text)
-    login_time = db.Column(db.DateTime, default=datetime.utcnow)
-    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+    login_time = db.Column(db.DateTime, default=ahora_utc)
+    last_activity = db.Column(db.DateTime, default=ahora_utc)
     is_active = db.Column(db.Boolean, default=True)
     device_info = db.Column(db.Text)  # JSON with device/browser info
     device_fingerprint = db.Column(db.String(100))  # Fingerprint único del dispositivo
@@ -43,7 +46,7 @@ class ActiveSession(db.Model):
 
     def update_activity(self):
         """Update last activity timestamp"""
-        self.last_activity = datetime.utcnow()
+        self.last_activity = ahora_utc()
         db.session.commit()
 
     def validate_jwt(self):
@@ -63,23 +66,23 @@ class ActiveSession(db.Model):
         if self.device_info:
             try:
                 return json.loads(self.device_info)
-            except:
+            except (ValueError, TypeError):
                 return {}
         return {}
 
     def is_inactive(self, timeout_minutes=20):
         """Check if session is inactive based on timeout"""
         timeout = timedelta(minutes=timeout_minutes)
-        return datetime.utcnow() - self.last_activity > timeout
+        return ahora_utc() - self.last_activity > timeout
 
     def get_inactive_duration(self):
         """Get duration of inactivity in minutes"""
-        delta = datetime.utcnow() - self.last_activity
+        delta = ahora_utc() - self.last_activity
         return delta.total_seconds() / 60
 
     def get_active_duration(self):
         """Get total active duration of session in minutes"""
-        delta = datetime.utcnow() - self.login_time
+        delta = ahora_utc() - self.login_time
         return delta.total_seconds() / 60
 
     def to_dict(self):
@@ -251,9 +254,9 @@ class ActiveSession(db.Model):
     @staticmethod
     def get_inactive_sessions(timeout_minutes=20):
         """Get sessions that have been inactive for more than timeout_minutes"""
-        timeout_time = datetime.utcnow() - timedelta(minutes=timeout_minutes)
+        timeout_time = ahora_utc() - timedelta(minutes=timeout_minutes)
         return ActiveSession.query.filter(
-            ActiveSession.is_active == True,
+            ActiveSession.is_active.is_(True),
             ActiveSession.last_activity < timeout_time
         ).all()
 
@@ -284,9 +287,9 @@ class ActiveSession(db.Model):
     @staticmethod
     def cleanup_inactive_sessions(timeout_minutes=60):
         """Mark sessions as inactive if they've been inactive for too long"""
-        timeout_time = datetime.utcnow() - timedelta(minutes=timeout_minutes)
+        timeout_time = ahora_utc() - timedelta(minutes=timeout_minutes)
         inactive_sessions = ActiveSession.query.filter(
-            ActiveSession.is_active == True,
+            ActiveSession.is_active.is_(True),
             ActiveSession.last_activity < timeout_time
         ).update({'is_active': False})
         db.session.commit()

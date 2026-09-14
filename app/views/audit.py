@@ -2,11 +2,14 @@
 """
 Vistas para el sistema de auditoría de archivos
 """
-from flask import Blueprint, render_template, current_app, send_from_directory, abort
-from flask_login import login_required, current_user
-from audit_file_system import get_user_audit_files, create_user_audit_summary
 import os
 from datetime import datetime
+
+from flask import Blueprint, abort, current_app, render_template, send_from_directory
+from flask_login import current_user, login_required
+from werkzeug.exceptions import NotFound
+
+from audit_file_system import create_user_audit_summary, get_user_audit_files
 
 audit_bp = Blueprint('audit', __name__, url_prefix='/audit')
 
@@ -14,11 +17,11 @@ audit_bp = Blueprint('audit', __name__, url_prefix='/audit')
 @login_required
 def audit_dashboard():
     """Panel principal de auditoría - solo lectura para usuarios"""
-    from app.models import PlanDesarrollo, EditJustification
+    from app.models import EditJustification, PlanDesarrollo
 
     try:
         # Obtener el plan activo
-        active_plan = PlanDesarrollo.query.filter_by(estado='activo').first()
+        active_plan = PlanDesarrollo.get_plan_activo(current_user)
 
         # Obtener archivos de auditoría del usuario
         audit_files = get_user_audit_files(current_user.id)
@@ -59,7 +62,8 @@ def audit_dashboard():
 def admin_audit_dashboard():
     """Panel administrativo de auditoría - vista completa de todos los usuarios"""
     from flask_login import current_user
-    from app.models import User, PlanDesarrollo, EditJustification
+
+    from app.models import EditJustification, PlanDesarrollo, User
 
     # Verificar que el usuario sea administrador
     if not current_user.is_admin():
@@ -107,7 +111,7 @@ def admin_audit_dashboard():
         users_with_audit.sort(key=lambda x: x['last_activity'] or datetime.min, reverse=True)
 
         # Obtener plan activo
-        active_plan = PlanDesarrollo.query.filter_by(estado='activo').first()
+        active_plan = PlanDesarrollo.get_plan_activo(current_user)
 
         return render_template('audit/admin_dashboard.html',
                              title='Panel Administrativo de Auditoría',
@@ -218,18 +222,17 @@ def download_admin_audit_file(user_id, filename):
 @login_required
 def download_summary():
     """Descargar resumen de auditoría del usuario"""
+    summary_path = create_user_audit_summary(current_user.id)
+    if not summary_path:
+        abort(404)
+
+    # El resumen se genera en PDF cuando reportlab está disponible y en TXT
+    # cuando no, así que hay que enviar la ruta que devuelve el generador en
+    # lugar de dar por hecho la extensión.
+    directory, filename = os.path.split(os.path.abspath(summary_path))
+
     try:
-        summary_path = create_user_audit_summary(current_user.id)
-        if not summary_path:
-            abort(404)
-
-        user_dir = f'user_{current_user.id}'
-        base_path = current_app.config.get('AUDIT_FILES_PATH', 'audit_files')
-        directory = os.path.join(base_path, user_dir)
-        filename = 'resumen_auditoria.txt'
-
         return send_from_directory(directory, filename, as_attachment=True)
-
-    except Exception as e:
-        current_app.logger.error(f"Error descargando resumen de auditoría: {e}")
-        abort(500)
+    except NotFound:
+        current_app.logger.error("No se encontró el resumen de auditoría en %s", summary_path)
+        abort(404)

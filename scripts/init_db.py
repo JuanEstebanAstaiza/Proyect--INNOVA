@@ -3,14 +3,34 @@
 Script para inicializar la base de datos con datos de ejemplo
 """
 
+import os
+import sys
+
+# Permite ejecutar este script desde cualquier directorio: anade la raiz del
+# proyecto al sys.path para poder importar el paquete `app`.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# La consola de Windows usa cp1252 y no puede imprimir acentos ni simbolos.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+
+
+from datetime import datetime
+
 from app import create_app, db
 from app.models import (
-    User, PlanDesarrollo, LineaEstrategica, Componente,
-    Programa, Proyecto, IndicadorProducto, EjecucionTrimestral,
-    ActivityLog, ActiveSession
+    ActivityLog,
+    Componente,
+    EjecucionTrimestral,
+    IndicadorProducto,
+    LineaEstrategica,
+    PlanDesarrollo,
+    Programa,
+    Proyecto,
+    User,
 )
-from werkzeug.security import generate_password_hash
-from datetime import datetime
+
 
 def create_sample_data():
     """Crear datos de ejemplo para testing"""
@@ -58,39 +78,37 @@ def create_sample_data():
     db.session.commit()
 
     # Crear algunos registros de actividad de ejemplo
-    ActivityLog.log_activity(
-        'login',
-        'Inicio de sesión del administrador',
-        '127.0.0.1',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        user_id=admin_user.id
-    )
-
-    ActivityLog.log_activity(
-        'create_plan',
-        'Creación del Plan de Desarrollo Municipal 2024-2027',
-        '127.0.0.1',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        user_id=admin_user.id
-    )
-
-    ActivityLog.log_activity(
-        'login',
-        'Inicio de sesión del editor',
-        '192.168.1.100',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        user_id=editor_user.id
-    )
-
-    # Crear sesión activa de ejemplo
-    active_session = ActiveSession(
+    db.session.add(ActivityLog(
         user_id=admin_user.id,
-        session_id='sample_session_123',
+        action='login',
+        description='Inicio de sesión del administrador',
         ip_address='127.0.0.1',
         user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    )
-    db.session.add(active_session)
-    db.session.commit()
+    ))
+
+    db.session.add(ActivityLog(
+        user_id=admin_user.id,
+        action='create_plan',
+        description='Creación del Plan de Desarrollo Municipal 2024-2027',
+        ip_address='127.0.0.1',
+        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    ))
+
+    db.session.add(ActivityLog(
+        user_id=editor_user.id,
+        action='login',
+        description='Inicio de sesión del editor',
+        ip_address='192.168.1.100',
+        user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+    ))
+
+    # No se siembra ninguna sesión activa: las sesiones (con su JWT) las crea
+    # ActiveSession.create_session_with_jwt() cuando un usuario inicia sesión.
+
+    # Enlazar los usuarios recién creados con el sistema de roles y permisos
+    # de columna; si no, un editor no podría editar ninguna columna.
+    from app import assign_default_roles_to_users
+    assign_default_roles_to_users()
 
     # Crear plan de desarrollo
     plan = PlanDesarrollo(
@@ -219,6 +237,10 @@ def init_database():
     with app.app_context():
         print("🔄 Creando tablas de la base de datos...")
         db.create_all()
+
+        # El esquema y los roles ya no se crean al arrancar la aplicación.
+        from app import initialize_default_roles
+        initialize_default_roles()
         print("✅ Tablas creadas exitosamente!")
 
         # Verificar si ya existen datos

@@ -1,5 +1,9 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
+from .column_permission import ColumnPermission
+
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -14,8 +18,8 @@ class Role(db.Model):
     is_system_role = db.Column(db.Boolean, default=False)  # System roles cannot be deleted
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Relaciones
     column_permissions = db.relationship('ColumnPermission',
@@ -24,10 +28,11 @@ class Role(db.Model):
                                        lazy=True)
 
     def __init__(self, **kwargs):
-        super(Role, self).__init__(**kwargs)
-        # Crear permisos por defecto para nuevas columnas cuando se crea el rol
-        if not self.is_system_role:
-            self._create_default_column_permissions()
+        super().__init__(**kwargs)
+        # Todo rol nuevo arranca con el juego completo de columnas del plan.
+        # Los roles de sistema también lo necesitan: 'Editor General' y
+        # 'Visualizador' resuelven sus permisos a través de estas filas.
+        self._create_default_column_permissions()
 
     def _create_default_column_permissions(self):
         """Crea permisos por defecto para las columnas estándar"""
@@ -67,12 +72,12 @@ class Role(db.Model):
     def can_edit_column(self, column_name):
         """Verifica si el rol puede editar una columna específica"""
         permission = self.get_column_permission(column_name)
-        return permission and permission.can_edit
+        return bool(permission and permission.can_edit)
 
     def can_view_column(self, column_name):
         """Verifica si el rol puede ver una columna específica"""
         permission = self.get_column_permission(column_name)
-        return permission and permission.can_view
+        return bool(permission and permission.can_view)
 
     def get_editable_columns(self):
         """Retorna lista de columnas que el rol puede editar"""

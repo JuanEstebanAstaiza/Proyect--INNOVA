@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 
+
 class Config:
     """Configuración base"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
@@ -29,11 +30,11 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'Sistema de Gestión <noreply@alcaldia.gob>'
 
     # Extensiones permitidas para archivos
-    ALLOWED_EXTENSIONS = {
+    ALLOWED_EXTENSIONS = frozenset({
         'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
         'txt', 'rtf', 'jpg', 'jpeg', 'png', 'gif', 'bmp',
-        'zip', 'rar', '7z', 'mp4', 'avi', 'mov', 'wmv'
-    }
+        'zip', 'rar', '7z', 'mp4', 'avi', 'mov', 'wmv',
+    })
 
 class DevelopmentConfig(Config):
     """Configuración para desarrollo"""
@@ -45,10 +46,18 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///alcaldias.db'
 
-    # Configuración de seguridad adicional para producción
-    SESSION_COOKIE_SECURE = True
+    # Seguridad de las cookies.
+    #
+    # `Secure` hace que el navegador solo envíe la cookie por HTTPS, que es lo
+    # correcto en producción. Pero si el sistema se sirve por HTTP plano (una
+    # demostración, una red interna sin TLS) la cookie nunca vuelve y NADIE
+    # puede iniciar sesión. Por eso es configurable:
+    #     SESSION_COOKIE_SECURE=false  -> permite HTTP (solo para pruebas)
+    _cookies_seguras = os.environ.get('SESSION_COOKIE_SECURE', 'true').lower() not in ('false', '0', 'no')
+
+    SESSION_COOKIE_SECURE = _cookies_seguras
+    REMEMBER_COOKIE_SECURE = _cookies_seguras
     SESSION_COOKIE_HTTPONLY = True
-    REMEMBER_COOKIE_SECURE = True
     REMEMBER_COOKIE_HTTPONLY = True
 
     # Configuración de logs
@@ -57,7 +66,9 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     """Configuración para pruebas"""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    # Permite que la suite apunte a una base temporal en disco; una base en
+    # memoria no sobrevive a los distintos hilos del cliente de pruebas.
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
 
 # Diccionario de configuraciones

@@ -1,15 +1,47 @@
 RESUMEN DE AUDITORÍA - USUARIO 1
 ==================================================
 
-Total de cambios registrados: 1
-Fecha de generación: 2024-12-19 14:30:45
+Total de cambios registrados: 7
+Fecha de generación: 2026-09-09 23:54:02
 
 LISTADO DE CAMBIOS
-==================
-1. 2024-12-19 14:30:45
+====================
+
+1. 2026-09-10 04:54:01
+   Columna: Nombre
+   Cambio: Indicador de producto 3 → Con justificación
+   Archivo: 20260910_045401_plan_1_nombre.pdf
+
+2. 2026-09-10 04:54:01
+   Columna: Nombre
+   Cambio: Indicador de producto 2 → Valor verificado
+   Archivo: 20260910_045401_plan_1_nombre.pdf
+
+3. 2026-09-10 04:54:01
    Columna: Meta 2024
-   Cambio: 150.0 → 200.0
-   Archivo: 20241219_143045_plan_1_meta_2024.txt
+   Cambio: 40.0 → 75.5
+   Archivo: 20260910_045401_plan_1_meta_2024.pdf
+
+4. 2026-09-10 04:54:01
+   Columna: Observación Trimestre 4
+   Cambio: N/A → Obra entregada en diciembre
+   Archivo: 20260910_045401_plan_1_observacion_4_trimestre.pdf
+
+5. 2026-09-10 04:54:01
+   Columna: poblacion Trimestre impactada
+   Cambio: N/A → 1500
+   Archivo: 20260910_045401_plan_1_poblacion_impactada_3_trimestre.pdf
+
+6. 2026-09-10 04:54:01
+   Columna: Ejecución Trimestre 3
+   Cambio: N/A → 10
+   Archivo: 20260910_045401_plan_1_ejecucion_3_trimestre.pdf
+
+7. 2026-09-10 04:54:00
+   Columna: Ejecución Trimestre 2
+   Cambio: N/A → 25
+   Archivo: 20260910_045400_plan_1_ejecucion_2_trimestre.pdf
+
 
 ==================================================
 FIN DEL RESUMEN

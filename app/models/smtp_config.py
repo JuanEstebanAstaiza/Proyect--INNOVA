@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class SMTPConfig(db.Model):
     """Configuración SMTP para envío de correos por municipio"""
@@ -22,11 +24,11 @@ class SMTPConfig(db.Model):
 
     # Configuración adicional
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     def __init__(self, **kwargs):
-        super(SMTPConfig, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if not self.sender_name:
             self.sender_name = f"Alcaldía de {self.municipality}"
 

@@ -2,8 +2,22 @@
 """
 Script para crear las nuevas tablas en la base de datos
 """
+
+import os
+import sys
+
+# Permite ejecutar este script desde cualquier directorio: anade la raiz del
+# proyecto al sys.path para poder importar el paquete `app`.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# La consola de Windows usa cp1252 y no puede imprimir acentos ni simbolos.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+
 from app import create_app, db
 from app.models import SMTPConfig, UserTempPassword
+
 
 def create_new_tables():
     """Crear las nuevas tablas en la base de datos"""

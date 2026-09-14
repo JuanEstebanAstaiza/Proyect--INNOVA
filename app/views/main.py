@@ -1,10 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
-from flask_login import login_required, current_user, logout_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from app import db
-from app.forms.auth import ProfileEditForm, ChangePasswordForm
-from app.models import ActiveSession
 import uuid
+
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask_login import current_user, login_required, logout_user
+
+from app import db
+from app.forms.auth import ChangePasswordForm, ProfileEditForm
+from app.models import ActiveSession
 
 main_bp = Blueprint('main', __name__)
 
@@ -14,24 +15,8 @@ main_bp = Blueprint('main', __name__)
 def dashboard():
     from app.models import PlanDesarrollo
 
-    # Determinar si el usuario puede ver planes de otros municipios
-    puede_ver_global = current_user.is_admin() or current_user.is_editor()
-
-    if puede_ver_global:
-        # Para administradores y editores, mostrar el plan activo global
-        plan_activo = PlanDesarrollo.query.filter_by(estado='activo').first()
-        if not plan_activo:
-            # Si no hay plan activo global, mostrar el del municipio del usuario
-            plan_activo = PlanDesarrollo.query.filter_by(
-                municipio=current_user,
-                estado='activo'
-            ).first()
-    else:
-        # Para usuarios normales (viewers), mostrar solo el plan activo de su municipio
-        plan_activo = PlanDesarrollo.query.filter_by(
-            municipio=current_user,
-            estado='activo'
-        ).first()
+    # El plan que se muestra es siempre el activo del municipio del usuario.
+    plan_activo = PlanDesarrollo.get_plan_activo_o_primero(current_user)
 
     return render_template('main/dashboard.html', title='Dashboard', plan_activo=plan_activo)
 
@@ -74,7 +59,7 @@ def edit_profile():
 
             flash('Tu perfil ha sido actualizado exitosamente.', 'success')
             return redirect(url_for('main.profile'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             flash('Error al actualizar el perfil. Por favor intenta nuevamente.', 'error')
 
@@ -110,7 +95,7 @@ def change_password():
             # Forzar logout por seguridad
             logout_user()
             return redirect(url_for('auth.login'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             flash('Error al cambiar la contraseña. Por favor intenta nuevamente.', 'error')
 
@@ -125,8 +110,6 @@ def change_password():
 def update_user_activity():
     """API endpoint to update user activity"""
     try:
-        data = request.get_json() or {}
-
         # Buscar sesión activa para el usuario usando JWT
         jwt_token = session.get('jwt_token')
         session_id = session.get('session_id')
@@ -181,7 +164,7 @@ def update_user_activity():
         })
 
     except Exception as e:
-        print(f"Activity update error for user {current_user.username}: {str(e)}")
+        print(f"Activity update error for user {current_user.username}: {e!s}")
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

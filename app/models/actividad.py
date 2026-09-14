@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class Actividad(db.Model):
     __tablename__ = 'actividades'
@@ -32,11 +34,11 @@ class Actividad(db.Model):
     observaciones = db.Column(db.Text)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     def __init__(self, **kwargs):
-        super(Actividad, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.estado not in ['planificada', 'en_progreso', 'completada', 'suspendida', 'cancelada']:
             self.estado = 'planificada'
         if self.prioridad not in ['baja', 'media', 'alta', 'critica']:

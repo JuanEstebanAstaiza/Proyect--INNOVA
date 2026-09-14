@@ -2,13 +2,34 @@
 """
 Script para actualizar el plan de desarrollo activo con datos sintéticos realistas
 """
+
+import os
+import sys
+
+# Permite ejecutar este script desde cualquier directorio: anade la raiz del
+# proyecto al sys.path para poder importar el paquete `app`.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# La consola de Windows usa cp1252 y no puede imprimir acentos ni simbolos.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+
 import random
-from datetime import datetime, date
+from datetime import date
+
 from app import create_app
 from app.models import (
-    PlanDesarrollo, LineaEstrategica, Componente, Programa,
-    Proyecto, IndicadorProducto, Actividad, EjecucionTrimestral, User
+    Actividad,
+    Componente,
+    EjecucionTrimestral,
+    IndicadorProducto,
+    LineaEstrategica,
+    PlanDesarrollo,
+    Programa,
+    Proyecto,
 )
+
 
 def update_active_plan_data():
     """REHACER completamente el plan de desarrollo activo con datos realistas"""
@@ -335,13 +356,13 @@ def update_active_plan_data():
             from app import db
             db.session.commit()
             print("✅ Todos los datos del plan han sido actualizados exitosamente!")
-            print(f"📊 Resumen final:")
+            print("📊 Resumen final:")
             print(f"   📋 Líneas estratégicas: {len(plan.lineas_estrategicas)}")
-            print(f"   🏭 Componentes totales: {sum(len(l.componentes) for l in plan.lineas_estrategicas)}")
-            print(f"   📋 Programas totales: {sum(len(c.programas) for l in plan.lineas_estrategicas for c in l.componentes)}")
-            print(f"   🏗️ Proyectos totales: {sum(len(p.proyectos) for l in plan.lineas_estrategicas for c in l.componentes for p in c.programas)}")
-            print(f"   📈 Indicadores totales: {sum(len(p.indicadores) for l in plan.lineas_estrategicas for c in l.componentes for pr in c.programas for p in pr.proyectos)}")
-            print(f"   ⚙️ Actividades totales: {sum(len(p.actividades) for l in plan.lineas_estrategicas for c in l.componentes for pr in c.programas for p in pr.proyectos)}")
+            print(f"   🏭 Componentes totales: {sum(len(linea.componentes) for linea in plan.lineas_estrategicas)}")
+            print(f"   📋 Programas totales: {sum(len(c.programas) for linea in plan.lineas_estrategicas for c in linea.componentes)}")
+            print(f"   🏗️ Proyectos totales: {sum(len(p.proyectos) for linea in plan.lineas_estrategicas for c in linea.componentes for p in c.programas)}")
+            print(f"   📈 Indicadores totales: {sum(len(p.indicadores) for linea in plan.lineas_estrategicas for c in linea.componentes for pr in c.programas for p in pr.proyectos)}")
+            print(f"   ⚙️ Actividades totales: {sum(len(p.actividades) for linea in plan.lineas_estrategicas for c in linea.componentes for pr in c.programas for p in pr.proyectos)}")
             print(f"   💰 Presupuesto total: ${plan.presupuesto_total:,.0f}")
 
         except Exception as e:

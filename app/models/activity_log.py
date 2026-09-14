@@ -1,6 +1,9 @@
-from app import db
-from datetime import datetime
+
 from flask_login import current_user
+
+from app import db
+from app.utils.fechas import ahora_utc
+
 
 class ActivityLog(db.Model):
     __tablename__ = 'activity_logs'
@@ -11,7 +14,7 @@ class ActivityLog(db.Model):
     description = db.Column(db.Text, nullable=False)
     ip_address = db.Column(db.String(45))  # IPv4/IPv6
     user_agent = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    timestamp = db.Column(db.DateTime, default=ahora_utc, index=True)
     session_id = db.Column(db.String(100))
     extra_data = db.Column(db.Text)  # JSON data for additional info
 

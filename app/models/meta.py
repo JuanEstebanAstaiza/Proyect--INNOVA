@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class Meta(db.Model):
     __tablename__ = 'metas'
@@ -31,15 +33,15 @@ class Meta(db.Model):
     # Fechas
     fecha_inicio = db.Column(db.Date)
     fecha_fin = db.Column(db.Date)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Metadatos
     responsable = db.Column(db.String(100))
     costo_estimado = db.Column(db.Float, default=0.0)
 
     def __init__(self, **kwargs):
-        super(Meta, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.tipo_meta not in ['cuantitativa', 'cualitativa', 'temporal']:
             self.tipo_meta = 'cuantitativa'
         if self.estado not in ['pendiente', 'en_progreso', 'completado', 'cancelado']:

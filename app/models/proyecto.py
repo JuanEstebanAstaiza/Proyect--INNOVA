@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class Proyecto(db.Model):
     __tablename__ = 'proyectos'
@@ -14,8 +16,8 @@ class Proyecto(db.Model):
 
     # Estado y timestamps
     estado = db.Column(db.String(20), default='planificado')  # planificado, en_ejecucion, completado, suspendido, cancelado
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Fechas del proyecto
     fecha_inicio = db.Column(db.Date)
@@ -34,7 +36,7 @@ class Proyecto(db.Model):
     responsable_seguimiento = db.Column(db.String(200))
 
     def __init__(self, **kwargs):
-        super(Proyecto, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.estado not in ['planificado', 'en_ejecucion', 'completado', 'suspendido', 'cancelado']:
             self.estado = 'planificado'
 

@@ -3,10 +3,26 @@
 Migración para agregar campos JWT a la tabla active_sessions
 """
 
+import os
+import sys
+
+# Permite ejecutar este script desde cualquier directorio: anade la raiz del
+# proyecto al sys.path para poder importar el paquete `app`.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# La consola de Windows usa cp1252 y no puede imprimir acentos ni simbolos.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+
+
+import os
+
+from sqlalchemy import text
+
 from app import create_app, db
 from app.models.active_session import ActiveSession
-from sqlalchemy import text
-import os
+
 
 def migrate_active_sessions():
     """Agregar campos JWT a la tabla active_sessions"""
@@ -87,7 +103,7 @@ def migrate_active_sessions():
                             try:
                                 import json
                                 device_info = json.loads(device_info_json)
-                            except:
+                            except Exception:
                                 device_info = {}
 
                         jwt_token = JWTUtils.generate_session_token(
@@ -105,12 +121,12 @@ def migrate_active_sessions():
                             if device_info:
                                 fingerprint = JWTUtils.generate_device_fingerprint(device_info)
                                 updates['device_fingerprint'] = fingerprint
-                        except:
+                        except Exception:
                             pass
 
                     # Aplicar actualizaciones
                     if updates:
-                        set_clause = ', '.join([f"{k} = :{k}" for k in updates.keys()])
+                        set_clause = ', '.join([f"{k} = :{k}" for k in updates])
                         db.session.execute(text(f"""
                             UPDATE active_sessions
                             SET {set_clause}

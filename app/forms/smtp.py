@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, IntegerField, BooleanField, SubmitField, SelectField
-from wtforms.validators import DataRequired, Email, NumberRange, Length
+from wtforms import BooleanField, IntegerField, PasswordField, SelectField, StringField, SubmitField
+from wtforms.validators import DataRequired, Email, Length, NumberRange
+
 
 class SMTPConfigForm(FlaskForm):
     """Formulario para configuración SMTP"""

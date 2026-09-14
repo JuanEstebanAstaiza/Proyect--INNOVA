@@ -4,16 +4,18 @@ Generador de PDFs de auditoría con marca de agua profesional
 """
 import os
 from datetime import datetime
+
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.lib.colors import Color
-from app.models import EditJustification, User, PlanDesarrollo
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+from app import db
+from app.models import EditJustification, PlanDesarrollo, User
+
 
 def setup_pdf_styles():
     """Configurar estilos para el PDF"""
@@ -87,8 +89,8 @@ def create_audit_pdf(edit_justification):
     """Crear PDF de auditoría con marca de agua"""
 
     # Obtener información del usuario y plan
-    user = User.query.get(edit_justification.user_id)
-    plan = PlanDesarrollo.query.get(edit_justification.plan_id)
+    user = db.session.get(User, edit_justification.user_id)
+    plan = db.session.get(PlanDesarrollo, edit_justification.plan_id)
 
     # Crear directorio del usuario
     audit_dir = f'audit_files/user_{edit_justification.user_id}'
@@ -206,7 +208,7 @@ def create_audit_pdf(edit_justification):
     # Información del Indicador (si existe)
     if edit_justification.indicador_id:
         from app.models import IndicadorProducto
-        indicador = IndicadorProducto.query.get(edit_justification.indicador_id)
+        indicador = db.session.get(IndicadorProducto, edit_justification.indicador_id)
         if indicador:
             story.append(Paragraph("INFORMACIÓN DEL INDICADOR", styles['CustomHeading']))
 
@@ -248,10 +250,10 @@ def create_audit_pdf(edit_justification):
     # Generar el PDF
     try:
         doc.build(story, onFirstPage=add_watermark, onLaterPages=add_watermark)
-        print(f"✅ PDF de auditoría generado: {filepath}")
+        print(f"[OK] PDF de auditoría generado: {filepath}")
         return filepath
     except Exception as e:
-        print(f"❌ Error generando PDF de auditoría: {e}")
+        print(f"[ERROR] Error generando PDF de auditoría: {e}")
         return None
 
 def create_user_audit_summary_pdf(user_id):
@@ -259,11 +261,11 @@ def create_user_audit_summary_pdf(user_id):
     from app.models import PlanDesarrollo
 
     # Obtener usuario y plan activo
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     active_plan = PlanDesarrollo.query.filter_by(estado='activo').first()
 
     if not user or not active_plan:
-        print("❌ Usuario o plan activo no encontrado")
+        print("[ERROR] Usuario o plan activo no encontrado")
         return None
 
     # Obtener cambios del usuario
@@ -370,15 +372,15 @@ def create_user_audit_summary_pdf(user_id):
     # Generar el PDF
     try:
         doc.build(story, onFirstPage=add_watermark, onLaterPages=add_watermark)
-        print(f"✅ PDF resumen de auditoría generado: {filepath}")
+        print(f"[OK] PDF resumen de auditoría generado: {filepath}")
         return filepath
     except Exception as e:
-        print(f"❌ Error generando PDF resumen de auditoría: {e}")
+        print(f"[ERROR] Error generando PDF resumen de auditoría: {e}")
         return None
 
 def convert_existing_txt_to_pdf():
     """Convertir archivos TXT existentes a PDF"""
-    print("🔄 Convirtiendo archivos TXT existentes a PDF...")
+    print("[...] Convirtiendo archivos TXT existentes a PDF...")
 
     import glob
 
@@ -393,18 +395,18 @@ def convert_existing_txt_to_pdf():
             try:
                 create_user_audit_summary_pdf(int(user_id))
                 converted += 1
-            except:
-                pass
+            except (ValueError, OSError) as exc:
+                print(f'[ERROR] No se pudo convertir el resumen del usuario {user_id}: {exc}')
         else:
             # Para archivos individuales, necesitaríamos más lógica para reconstruir el objeto EditJustification
             # Por ahora, solo procesamos resúmenes
             pass
 
-    print(f"✅ Convertidos {converted} archivos TXT a PDF")
+    print(f"[OK] Convertidos {converted} archivos TXT a PDF")
     return converted
 
 if __name__ == "__main__":
-    print("🎨 Generador de PDFs de Auditoría con Marca de Agua")
+    print("Generador de PDFs de Auditoría con Marca de Agua")
     print("Funciones disponibles:")
     print("- create_audit_pdf(edit_justification): Crea PDF individual")
     print("- create_user_audit_summary_pdf(user_id): Crea resumen en PDF")

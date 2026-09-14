@@ -1,11 +1,27 @@
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
-from flask_login import login_required, current_user
-from sqlalchemy import desc, func
 from datetime import datetime, timedelta
+
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from sqlalchemy import desc
+
 from app import db
-from app.models import (User, ActivityLog, ActiveSession, Role, ColumnPermission, RowPermission, UserRole,
-                       IndicadorProducto, LineaEstrategica, Componente, Programa, Proyecto, PlanDesarrollo,
-                       SMTPConfig, UserTempPassword)
+from app.models import (
+    ActiveSession,
+    ActivityLog,
+    Componente,
+    IndicadorProducto,
+    LineaEstrategica,
+    PlanDesarrollo,
+    Programa,
+    Proyecto,
+    Role,
+    RowPermission,
+    SMTPConfig,
+    User,
+    UserRole,
+    UserTempPassword,
+)
+from app.utils.fechas import ahora_utc
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -23,12 +39,13 @@ def dashboard():
     # Get statistics
     total_users = User.query.count()
     active_users = User.query.filter_by(is_active=True).count()
-    admin_users = User.query.filter_by(role='admin').count()
+    admin_users = User.query.filter_by(legacy_role='admin').count()
 
     # Get plans statistics
     from app.models import PlanDesarrollo
-    total_plans = PlanDesarrollo.query.count()
-    active_plans = PlanDesarrollo.query.filter_by(estado='activo').count()
+    planes_visibles = PlanDesarrollo.visibles_para(current_user)
+    total_plans = planes_visibles.count()
+    active_plans = planes_visibles.filter(PlanDesarrollo.estado == 'activo').count()
 
     recent_activities = ActivityLog.query.order_by(desc(ActivityLog.timestamp)).limit(10).all()
 
@@ -300,7 +317,7 @@ def get_live_stats():
     inactive_sessions = len(ActiveSession.get_inactive_sessions())
 
     # Recent activities (last 5 minutes)
-    recent_time = datetime.utcnow() - timedelta(minutes=5)
+    recent_time = ahora_utc() - timedelta(minutes=5)
     recent_activities = ActivityLog.query.filter(
         ActivityLog.timestamp >= recent_time
     ).order_by(desc(ActivityLog.timestamp)).limit(5).all()
@@ -407,7 +424,7 @@ def create_user():
                       'Si no se envió el email, configura SMTP en el panel de administración.</small>', 'success')
 
             return redirect(url_for('admin.users'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             flash('Error al crear el usuario. Por favor intenta nuevamente.', 'error')
 
@@ -460,7 +477,7 @@ def edit_smtp_config(municipality):
             flash('Configuración SMTP guardada exitosamente.', 'success')
             return redirect(url_for('admin.smtp_config_list'))
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             flash('Error al guardar la configuración.', 'error')
 
@@ -491,7 +508,7 @@ def test_smtp_config(municipality):
                 flash('Error al enviar el email de prueba. Revisa la configuración.', 'error')
 
         except Exception as e:
-            flash(f'Error al probar la configuración: {str(e)}', 'error')
+            flash(f'Error al probar la configuración: {e!s}', 'error')
 
     return render_template('admin/test_smtp_config.html', title=f'Probar SMTP - {municipality}',
                          form=form, smtp_config=smtp_config)
@@ -502,7 +519,7 @@ def test_smtp_config(municipality):
 @login_required
 def view_user_temp_password(user_id):
     """Ver contraseña temporal de un usuario"""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     temp_password_record = UserTempPassword.get_active_for_user(user_id)
 
     return render_template('admin/user_temp_password.html',
@@ -514,7 +531,7 @@ def view_user_temp_password(user_id):
 @login_required
 def send_user_credentials(user_id):
     """Reenviar credenciales por email"""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     temp_password_record = UserTempPassword.get_active_for_user(user_id)
 
     if not temp_password_record:
@@ -538,14 +555,14 @@ def send_user_credentials(user_id):
             flash('Error al enviar las credenciales por email.', 'error')
 
     except Exception as e:
-        flash(f'Error al enviar email: {str(e)}', 'error')
+        flash(f'Error al enviar email: {e!s}', 'error')
 
     return redirect(url_for('admin.view_user_temp_password', user_id=user_id))
 
 @admin_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
 def toggle_user_status(user_id):
     """Toggle user active/inactive status"""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
 
     # Prevent admin from deactivating themselves
     if user.id == current_user.id:
@@ -571,7 +588,7 @@ def toggle_user_status(user_id):
 @admin_bp.route('/users/<int:user_id>/change-role', methods=['POST'])
 def change_user_role(user_id):
     """Change user role"""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     new_role = request.form.get('role')
 
     if new_role not in ['admin', 'editor', 'viewer']:
@@ -626,7 +643,7 @@ def user_heartbeat():
 
         return jsonify({
             'status': 'success',
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': ahora_utc().isoformat()
         })
 
     except Exception as e:
@@ -647,7 +664,8 @@ def handle_page_unload():
 
         return '', 204  # No Content response
 
-    except Exception as e:
+    except Exception:
+        current_app.logger.exception('No se pudo registrar el cierre de página')
         return '', 500
 
 @admin_bp.route('/api/activity/alert/<int:user_id>', methods=['POST'])
@@ -658,7 +676,7 @@ def send_inactivity_alert(user_id):
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
 
     try:
-        user = User.query.get_or_404(user_id)
+        user = db.get_or_404(User, user_id)
 
         # Registrar la alerta en el log
         ActivityLog.log_activity(
@@ -674,7 +692,7 @@ def send_inactivity_alert(user_id):
         return jsonify({
             'status': 'success',
             'message': f'Alert sent to {user.username}',
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': ahora_utc().isoformat()
         })
 
     except Exception as e:
@@ -743,7 +761,7 @@ def create_role():
 @admin_bp.route('/roles/<int:role_id>/edit', methods=['GET', 'POST'])
 def edit_role(role_id):
     """Editar rol existente"""
-    role = Role.query.get_or_404(role_id)
+    role = db.get_or_404(Role, role_id)
 
     if request.method == 'POST':
         # Actualizar información básica
@@ -785,7 +803,7 @@ def edit_role(role_id):
 @admin_bp.route('/roles/<int:role_id>/delete', methods=['POST'])
 def delete_role(role_id):
     """Eliminar rol"""
-    role = Role.query.get_or_404(role_id)
+    role = db.get_or_404(Role, role_id)
 
     if role.is_system_role:
         flash('No se pueden eliminar roles del sistema.', 'error')
@@ -825,7 +843,6 @@ def user_roles():
         active_roles = [ur for ur in user.active_roles if ur.is_active]
 
         # Obtener permisos de fila del usuario con las relaciones cargadas
-        from app.models import RowPermission
         row_permissions = RowPermission.query.filter_by(
             user_id=user.id,
             is_active=True
@@ -865,14 +882,14 @@ def user_roles():
 @admin_bp.route('/users/<int:user_id>/assign-role', methods=['POST'])
 def assign_role_to_user(user_id):
     """Asignar rol a usuario"""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     role_id = request.form.get('role_id', type=int)
 
     if not role_id:
         flash('Debe seleccionar un rol.', 'error')
         return redirect(url_for('admin.user_roles'))
 
-    role = Role.query.get_or_404(role_id)
+    role = db.get_or_404(Role, role_id)
 
     # Verificar si ya tiene este rol asignado
     existing_assignment = UserRole.query.filter_by(
@@ -909,8 +926,8 @@ def assign_role_to_user(user_id):
 @admin_bp.route('/users/<int:user_id>/remove-role/<int:role_id>', methods=['POST'])
 def remove_role_from_user(user_id, role_id):
     """Remover rol de usuario"""
-    user = User.query.get_or_404(user_id)
-    role = Role.query.get_or_404(role_id)
+    user = db.get_or_404(User, user_id)
+    role = db.get_or_404(Role, role_id)
 
     # Buscar asignación activa
     assignment = UserRole.query.filter_by(
@@ -942,7 +959,7 @@ def remove_role_from_user(user_id, role_id):
 def user_row_permissions():
     """Gestión de permisos de fila por usuario"""
     # Obtener usuarios con permisos de fila
-    users_with_permissions = db.session.query(User).join(RowPermission).distinct().all()
+    users_with_permissions = db.session.query(User).join(RowPermission, RowPermission.user_id == User.id).distinct().all()
     all_users = User.query.filter_by(is_active=True).all()
     indicadores = IndicadorProducto.query.order_by(IndicadorProducto.nombre).all()
 
@@ -1011,8 +1028,8 @@ def assign_row_permission():
     if not all([user_id, indicador_id]):
         return jsonify({'status': 'error', 'message': 'Datos incompletos'}), 400
 
-    user = User.query.get_or_404(user_id)
-    indicador = IndicadorProducto.query.get_or_404(indicador_id)
+    user = db.get_or_404(User, user_id)
+    indicador = db.get_or_404(IndicadorProducto, indicador_id)
 
     # Verificar si ya existe el permiso
     existing_permission = RowPermission.query.filter_by(
@@ -1050,7 +1067,7 @@ def assign_row_permission():
 @admin_bp.route('/remove-row-permission/<int:permission_id>', methods=['POST'])
 def remove_row_permission(permission_id):
     """Remover permiso de fila"""
-    permission = RowPermission.query.get_or_404(permission_id)
+    permission = db.get_or_404(RowPermission, permission_id)
 
     # Eliminar permiso
     db.session.delete(permission)
@@ -1078,9 +1095,9 @@ def get_roles_stats():
         total_roles = Role.query.filter_by(is_active=True).count()
 
         # Contar usuarios con roles asignados
-        users_with_roles = db.session.query(User).join(UserRole).filter(
-            UserRole.is_active == True,
-            User.is_active == True
+        users_with_roles = db.session.query(User).join(UserRole, UserRole.user_id == User.id).filter(
+            UserRole.is_active.is_(True),
+            User.is_active.is_(True)
         ).distinct().count()
 
         # Contar permisos de fila
@@ -1117,10 +1134,7 @@ def manage_row_permissions():
     """Página principal de gestión de permisos de fila"""
     # Verificar si hay un plan activo
     from app.models import PlanDesarrollo
-    active_plan = PlanDesarrollo.query.filter_by(
-        municipio=current_user,
-        estado='activo'
-    ).first()
+    active_plan = PlanDesarrollo.visibles_para(current_user).filter(PlanDesarrollo.estado == 'activo').first()
 
     if not active_plan:
         flash('No hay un plan de desarrollo activo. Los permisos de fila solo están disponibles cuando hay un plan activo.', 'warning')
@@ -1148,10 +1162,7 @@ def create_row_permission():
     try:
         # Verificar que hay un plan activo
         from app.models import PlanDesarrollo
-        active_plan = PlanDesarrollo.query.filter_by(
-            municipio=current_user,
-            estado='activo'
-        ).first()
+        active_plan = PlanDesarrollo.visibles_para(current_user).filter(PlanDesarrollo.estado == 'activo').first()
 
         if not active_plan:
             return jsonify({
@@ -1181,7 +1192,7 @@ def create_row_permission():
             }), 400
 
         # Verificar que el usuario existe
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return jsonify({
                 'success': False,
@@ -1254,7 +1265,7 @@ def create_row_permission():
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error asignando permiso de fila: {str(e)}")
+        print(f"Error asignando permiso de fila: {e!s}")
         return jsonify({
             'success': False,
             'message': 'Error interno del servidor. Inténtalo de nuevo.'
@@ -1271,10 +1282,8 @@ def get_entities_for_permission(entity_type):
 
         # Verificar que el plan existe y pertenece al usuario
         from app.models import PlanDesarrollo
-        plan = PlanDesarrollo.query.filter_by(
-            id=plan_id,
-            municipio=current_user
-        ).first()
+        plan = (PlanDesarrollo.visibles_para(current_user)
+                .filter(PlanDesarrollo.id == plan_id).first())
 
         if not plan:
             return jsonify([]), 403
@@ -1362,7 +1371,7 @@ def get_entities_for_permission(entity_type):
         return jsonify(entities)
 
     except Exception as e:
-        print(f"Error obteniendo entidades: {str(e)}")
+        print(f"Error obteniendo entidades: {e!s}")
         return jsonify([]), 500
 
 @admin_bp.route('/api/row-permissions', methods=['POST'])
@@ -1372,10 +1381,7 @@ def create_row_permission_api():
     try:
         # Verificar que hay un plan activo
         from app.models import PlanDesarrollo
-        active_plan = PlanDesarrollo.query.filter_by(
-            municipio=current_user,
-            estado='activo'
-        ).first()
+        active_plan = PlanDesarrollo.visibles_para(current_user).filter(PlanDesarrollo.estado == 'activo').first()
 
         if not active_plan:
             return jsonify({
@@ -1405,7 +1411,7 @@ def create_row_permission_api():
             }), 400
 
         # Verificar que el usuario existe
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return jsonify({
                 'success': False,
@@ -1415,7 +1421,7 @@ def create_row_permission_api():
         # Crear el permiso según el tipo de entidad
         permission = None
         if entity_type == 'indicador':
-            indicador = IndicadorProducto.query.get(entity_id)
+            indicador = db.session.get(IndicadorProducto, entity_id)
             if not indicador:
                 return jsonify({
                     'success': False,
@@ -1431,7 +1437,7 @@ def create_row_permission_api():
                 assigned_by=current_user.id
             )
         elif entity_type == 'proyecto':
-            proyecto = Proyecto.query.get(entity_id)
+            proyecto = db.session.get(Proyecto, entity_id)
             if not proyecto:
                 return jsonify({
                     'success': False,
@@ -1447,7 +1453,7 @@ def create_row_permission_api():
                 assigned_by=current_user.id
             )
         elif entity_type == 'programa':
-            programa = Programa.query.get(entity_id)
+            programa = db.session.get(Programa, entity_id)
             if not programa:
                 return jsonify({
                     'success': False,
@@ -1463,7 +1469,7 @@ def create_row_permission_api():
                 assigned_by=current_user.id
             )
         elif entity_type == 'componente':
-            componente = Componente.query.get(entity_id)
+            componente = db.session.get(Componente, entity_id)
             if not componente:
                 return jsonify({
                     'success': False,
@@ -1479,7 +1485,7 @@ def create_row_permission_api():
                 assigned_by=current_user.id
             )
         elif entity_type == 'linea':
-            linea = LineaEstrategica.query.get(entity_id)
+            linea = db.session.get(LineaEstrategica, entity_id)
             if not linea:
                 return jsonify({
                     'success': False,
@@ -1537,7 +1543,7 @@ def create_row_permission_api():
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error creando permiso de fila: {str(e)}")
+        print(f"Error creando permiso de fila: {e!s}")
         return jsonify({
             'success': False,
             'message': 'Error interno del servidor. Inténtalo de nuevo.'
@@ -1548,7 +1554,7 @@ def create_row_permission_api():
 def get_or_edit_row_permission(permission_id):
     """Obtener o editar un permiso de fila existente"""
     try:
-        permission = RowPermission.query.get(permission_id)
+        permission = db.session.get(RowPermission, permission_id)
         if not permission:
             return jsonify({
                 'success': False,
@@ -1556,10 +1562,8 @@ def get_or_edit_row_permission(permission_id):
             }), 404
 
         # Verificar que el permiso pertenece al plan del usuario actual
-        plan = PlanDesarrollo.query.filter_by(
-            id=permission.plan_id,
-            municipio=current_user
-        ).first()
+        plan = (PlanDesarrollo.visibles_para(current_user)
+                .filter(PlanDesarrollo.id == permission.plan_id).first())
 
         if not plan:
             return jsonify({
@@ -1591,7 +1595,7 @@ def get_or_edit_row_permission(permission_id):
             permission.can_view = request.form.get('can_view') == 'on'
             permission.can_edit = request.form.get('can_edit') == 'on'
             permission.description = request.form.get('description', '')
-            permission.updated_at = datetime.utcnow()
+            permission.updated_at = ahora_utc()
 
             if not permission.can_view and not permission.can_edit:
                 return jsonify({
@@ -1616,7 +1620,7 @@ def get_or_edit_row_permission(permission_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error procesando permiso de fila: {str(e)}")
+        print(f"Error procesando permiso de fila: {e!s}")
         return jsonify({
             'success': False,
             'message': 'Error interno del servidor. Inténtalo de nuevo.'
@@ -1627,7 +1631,7 @@ def get_or_edit_row_permission(permission_id):
 def delete_row_permission(permission_id):
     """Eliminar un permiso de fila"""
     try:
-        permission = RowPermission.query.get(permission_id)
+        permission = db.session.get(RowPermission, permission_id)
         if not permission:
             return jsonify({
                 'success': False,
@@ -1636,10 +1640,8 @@ def delete_row_permission(permission_id):
 
         # Verificar que el permiso pertenece al plan del usuario actual
         from app.models import PlanDesarrollo
-        plan = PlanDesarrollo.query.filter_by(
-            id=permission.plan_id,
-            municipio=current_user
-        ).first()
+        plan = (PlanDesarrollo.visibles_para(current_user)
+                .filter(PlanDesarrollo.id == permission.plan_id).first())
 
         if not plan:
             return jsonify({
@@ -1649,7 +1651,7 @@ def delete_row_permission(permission_id):
 
         # Marcar como inactivo (no eliminar físicamente)
         permission.is_active = False
-        permission.updated_at = datetime.utcnow()
+        permission.updated_at = ahora_utc()
         db.session.commit()
 
         # Registrar en el log de actividad
@@ -1667,7 +1669,7 @@ def delete_row_permission(permission_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error eliminando permiso de fila: {str(e)}")
+        print(f"Error eliminando permiso de fila: {e!s}")
         return jsonify({
             'success': False,
             'message': 'Error interno del servidor. Inténtalo de nuevo.'

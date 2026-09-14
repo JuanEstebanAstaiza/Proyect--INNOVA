@@ -5,8 +5,12 @@ Crea archivos de texto organizados por usuario con información de cambios
 """
 import os
 from datetime import datetime
+
 from flask import current_app
-from app.models import EditJustification, User, PlanDesarrollo, IndicadorProducto
+
+from app import db
+from app.models import EditJustification, IndicadorProducto, PlanDesarrollo, User
+
 
 def create_user_audit_directory(user_id):
     """Crear directorio de auditoría para un usuario"""
@@ -32,7 +36,7 @@ def create_audit_file(edit_justification):
         pdf_path = create_audit_pdf(edit_justification)
         return pdf_path
     except Exception as e:
-        print(f"❌ Error creando PDF de auditoría: {e}")
+        print(f"[ERROR] Error creando PDF de auditoría: {e}")
         # Fallback: crear archivo TXT básico si falla el PDF
         return create_audit_file_txt_fallback(edit_justification)
 
@@ -40,8 +44,8 @@ def create_audit_file_txt_fallback(edit_justification):
     """Fallback: Crear archivo de auditoría en TXT si falla el PDF"""
 
     # Obtener información del usuario
-    user = User.query.get(edit_justification.user_id)
-    plan = PlanDesarrollo.query.get(edit_justification.plan_id)
+    user = db.session.get(User, edit_justification.user_id)
+    plan = db.session.get(PlanDesarrollo, edit_justification.plan_id)
 
     # Crear directorio del usuario
     user_dir = create_user_audit_directory(edit_justification.user_id)
@@ -87,7 +91,7 @@ ARCHIVOS ANEXADOS
 
     # Agregar información adicional si hay indicador
     if edit_justification.indicador_id:
-        indicador = IndicadorProducto.query.get(edit_justification.indicador_id)
+        indicador = db.session.get(IndicadorProducto, edit_justification.indicador_id)
         if indicador:
             content += f"\n\nINFORMACIÓN DEL INDICADOR\n{'='*25}\n"
             content += f"Indicador: {indicador.nombre}\n"
@@ -102,11 +106,11 @@ ARCHIVOS ANEXADOS
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
 
-        print(f"✅ Archivo de auditoría TXT (fallback) creado: {file_path}")
+        print(f"[OK] Archivo de auditoría TXT (fallback) creado: {file_path}")
         return file_path
 
     except Exception as e:
-        print(f"❌ Error creando archivo de auditoría TXT: {e}")
+        print(f"[ERROR] Error creando archivo de auditoría TXT: {e}")
         return None
 
 def create_user_audit_summary(user_id):
@@ -117,7 +121,7 @@ def create_user_audit_summary(user_id):
         pdf_path = create_user_audit_summary_pdf(user_id)
         return pdf_path
     except Exception as e:
-        print(f"❌ Error creando PDF resumen de auditoría: {e}")
+        print(f"[ERROR] Error creando PDF resumen de auditoría: {e}")
         # Fallback: crear archivo TXT básico si falla el PDF
         return create_user_audit_summary_txt_fallback(user_id)
 
@@ -157,11 +161,11 @@ LISTADO DE CAMBIOS
         with open(summary_path, 'w', encoding='utf-8') as f:
             f.write(content)
 
-        print(f"✅ Resumen de auditoría TXT (fallback) creado: {summary_path}")
+        print(f"[OK] Resumen de auditoría TXT (fallback) creado: {summary_path}")
         return summary_path
 
     except Exception as e:
-        print(f"❌ Error creando resumen de auditoría TXT: {e}")
+        print(f"[ERROR] Error creando resumen de auditoría TXT: {e}")
         return None
 
 def get_user_audit_files(user_id):
@@ -199,8 +203,8 @@ def setup_audit_system():
         with open(gitkeep_path, 'w') as f:
             f.write("# Directorio para archivos de auditoría\n")
 
-    print("✅ Sistema de auditoría configurado")
+    print("[OK] Sistema de auditoría configurado")
 
 if __name__ == "__main__":
-    print("🔧 Sistema de Archivos de Auditoría")
+    print("Sistema de Archivos de Auditoría")
     setup_audit_system()

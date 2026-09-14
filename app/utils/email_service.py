@@ -1,7 +1,7 @@
+import logging
+
 from flask import current_app, render_template
 from flask_mail import Mail, Message
-from app.models import SMTPConfig, User
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class EmailService:
                 return False
 
             # Crear mensaje
-            subject = f"Credenciales de Acceso - Sistema de Gestión de Planes de Desarrollo"
+            subject = "Credenciales de Acceso - Sistema de Gestión de Planes de Desarrollo"
             recipients = [user.email]
 
             # Renderizar template HTML
@@ -63,7 +63,7 @@ class EmailService:
             return True
 
         except Exception as e:
-            logger.error(f"Error enviando email de credenciales a {user.email}: {str(e)}")
+            logger.error(f"Error enviando email de credenciales a {user.email}: {e!s}")
             return False
 
     @staticmethod
@@ -119,7 +119,7 @@ class EmailService:
             return True
 
         except Exception as e:
-            logger.error(f"Error enviando email de prueba a {test_email}: {str(e)}")
+            logger.error(f"Error enviando email de prueba a {test_email}: {e!s}")
             return False
 
     @staticmethod
@@ -153,5 +153,5 @@ class EmailService:
             return True
 
         except Exception as e:
-            logger.error(f"Error enviando email de restablecimiento a {user.email}: {str(e)}")
+            logger.error(f"Error enviando email de restablecimiento a {user.email}: {e!s}")
             return False

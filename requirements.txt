@@ -1,32 +1,35 @@
-# Dependencias principales de Flask
-Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
+# Proyecto INNOVA - dependencias
+#
+# Versiones verificadas contra Python 3.11 - 3.14 en septiembre de 2026.
+# Instalación:  pip install -r requirements.txt
+
+# --- Núcleo de la aplicación web ---
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
-Flask-WTF==1.1.1
-Flask-Mail==0.9.1
+Flask-WTF==1.3.0
+Flask-Mail==0.10.0
 
-# Dependencias de seguridad
-Werkzeug==2.3.7
-WTForms==3.0.1
+# --- Seguridad y formularios ---
+Werkzeug==3.1.8
+WTForms==3.2.2
+email-validator==2.3.0
+PyJWT==2.13.0
 
-# Base de datos
-SQLAlchemy==2.0.23
+# --- Base de datos ---
+SQLAlchemy==2.0.52
+Flask-Migrate==4.1.0          # migraciones de esquema (`flask db upgrade`)
 
-# Para deployment en servidor
-#gunicorn==21.2.0
-#gevent==23.9.1
+# --- Configuración ---
+python-dotenv==1.2.3
 
-# Utilidades
-python-dotenv==1.0.0
-email-validator==2.1.0
-PyJWT==2.8.0
+# --- Importación y exportación de Excel (vista tipo hoja de cálculo) ---
+openpyxl==3.1.5
+pandas==3.0.5
 
-# Para desarrollo
-Flask-DebugToolbar==0.13.1
+# --- Generación de PDF de las actas de auditoría ---
+reportlab==5.0.1
 
-# Opcional: Para generar reportes PDF
-reportlab==4.0.7
-
-# Opcional: Para importar datos desde Excel
-openpyxl==3.1.2
-pandas==2.1.3
+# --- Despliegue en producción (descomentar según el servidor) ---
+# gunicorn==23.0.0        # Linux: gunicorn -w 4 -b 127.0.0.1:8000 wsgi:application
+# waitress==3.0.2         # Windows: waitress-serve --port=8000 wsgi:application

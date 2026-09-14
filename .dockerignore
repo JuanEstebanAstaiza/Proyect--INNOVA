@@ -1,0 +1,35 @@
+# Entornos virtuales y cachés
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Datos locales: la imagen no debe llevar la base ni los archivos de nadie
+instance/
+uploads/
+audit_files/
+*.db
+*.sqlite
+*.sqlite3
+
+# Secretos
+.env
+.env.local
+
+# Control de versiones y editores
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Artefactos de desarrollo sin mantenimiento
+scripts/legacy/
+
+# Documentación (no hace falta dentro de la imagen)
+docs/
+*.md
+!README.md

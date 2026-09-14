@@ -1,22 +1,62 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, send_file
-from flask_login import login_required, current_user
-from werkzeug.utils import secure_filename
-import os
 import io
+import os
 from datetime import datetime
 
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
+from flask_login import current_user, login_required
+from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.utils import secure_filename
+
 from app import db
-from app.models import (
-    PlanDesarrollo, LineaEstrategica, Componente, Programa,
-    Proyecto, Actividad, IndicadorProducto, EjecucionTrimestral, Documento,
-    EditJustification
-)
 from app.forms.planes import (
-    PlanForm, LineaEstrategicaForm, ComponenteForm,
-    ProgramaForm, ProyectoForm, ActividadForm, IndicadorForm, DocumentoForm,
-    EditarLineaEstrategicaForm, EditarComponenteForm, EditarProgramaForm,
-    EditarProyectoForm, EditarActividadForm
+    ActividadForm,
+    ComponenteForm,
+    DocumentoForm,
+    EditarActividadForm,
+    EditarComponenteForm,
+    EditarLineaEstrategicaForm,
+    EditarProgramaForm,
+    EditarProyectoForm,
+    LineaEstrategicaForm,
+    PlanForm,
+    ProgramaForm,
+    ProyectoForm,
 )
+from app.models import (
+    Actividad,
+    Componente,
+    Documento,
+    EditJustification,
+    EjecucionTrimestral,
+    IndicadorProducto,
+    LineaEstrategica,
+    PlanDesarrollo,
+    Programa,
+    Proyecto,
+)
+from app.services.edicion_celda import (
+    ValorInvalido,
+    aplicar_valor,
+    puede_editar,
+    valor_actual,
+)
+from app.services.matriz_plan import (
+    fila_para_exportacion,
+    fila_para_vista,
+    recorrer_plan,
+)
+from app.utils.fechas import ahora_utc
+
 
 def get_documentos_asociados(plan_id=None, linea_id=None, componente_id=None,
                            programa_id=None, proyecto_id=None, indicador_id=None):
@@ -44,116 +84,52 @@ def get_documentos_asociados(plan_id=None, linea_id=None, componente_id=None,
 planes_bp = Blueprint('planes', __name__, url_prefix='/planes')
 
 def get_plan_or_404(plan_id, current_user):
-    """Helper function to get a plan with 404 if not found, allowing editors to see global plans"""
-    # Determinar si el usuario puede ver planes de otros municipios
-    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+    """Devuelve el plan si pertenece al municipio del usuario; si no, 404."""
+    return (PlanDesarrollo.visibles_para(current_user)
+            .filter(PlanDesarrollo.id == plan_id)
+            .first_or_404())
 
-    if puede_ver_global:
-        # Para administradores y editores, buscar el plan directamente sin filtro de municipio 
-        plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
-    else:
-        # Para usuarios normales (viewers), filtrar por municipio
-        plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first_or_404()
-
-    return plan
 
 def build_plan_filter(current_user):
-    """Helper function to build plan filter based on user permissions"""
-    puede_ver_global = current_user.is_admin() or current_user.is_editor()
-
-    if puede_ver_global:
-        # Para administradores y editores, no filtrar por municipio
-        return PlanDesarrollo.municipio_id != None  # Siempre verdadero
-    else:
-        # Para usuarios normales (viewers), filtrar por municipio
-        return PlanDesarrollo.municipio_id == current_user.id
+    """Condición para limitar cualquier consulta a los planes del municipio."""
+    return PlanDesarrollo.filtro_visibilidad(current_user)
 
 def get_plan_or_redirect(plan_id, current_user, redirect_endpoint='planes.index'):
-    """Helper function to get a plan or redirect to an available one"""
-    # Determinar si el usuario puede ver planes de otros municipios
-    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+    """Devuelve el plan pedido, o redirige a otro plan del municipio si no existe.
 
-    if puede_ver_global:
-        # Para administradores y editores, buscar el plan directamente sin filtro de municipio
-        plan = PlanDesarrollo.query.filter_by(id=plan_id).first()
-    else:
-        # Para usuarios normales (viewers), filtrar por municipio
-        plan = PlanDesarrollo.query.filter_by(id=plan_id, municipio=current_user).first()
+    A diferencia de `get_plan_or_404`, aquí no se corta con un 404: se lleva al
+    usuario al plan activo de su municipio (o al más reciente) con un aviso.
+    """
+    visibles = PlanDesarrollo.visibles_para(current_user)
 
-    if not plan:
-        if puede_ver_global:
-            # Buscar el plan activo global
-            plan_activo = PlanDesarrollo.query.filter_by(estado='activo').first()
+    plan = visibles.filter(PlanDesarrollo.id == plan_id).first()
+    if plan:
+        return plan
 
-            if plan_activo:
-                flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan activo.', 'info')
-                return redirect(url_for('planes.ver', plan_id=plan_activo.id))
-            else:
-                # Si no hay plan activo global, buscar el más reciente sin filtro de municipio
-                plan_reciente = PlanDesarrollo.query.order_by(
-                    PlanDesarrollo.created_at.desc()
-                ).first()
+    alternativa = (visibles.filter(PlanDesarrollo.estado == 'activo').first()
+                   or visibles.order_by(PlanDesarrollo.created_at.desc()).first())
 
-                if plan_reciente:
-                    flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan más reciente.', 'info')
-                    return redirect(url_for('planes.ver', plan_id=plan_reciente.id))
-                else:
-                    flash('No se encontraron planes disponibles. Por favor cree un plan primero.', 'warning')
-                    return redirect(url_for(redirect_endpoint))
-        else:
-            # Lógica original para usuarios normales (viewers)
-            plan_activo = PlanDesarrollo.query.filter_by(
-                municipio=current_user,
-                estado='activo'
-            ).first()
+    if alternativa:
+        flash('El plan solicitado no fue encontrado. Redirigiendo al plan disponible.', 'info')
+        return redirect(url_for('planes.ver', plan_id=alternativa.id))
 
-            if plan_activo:
-                flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan activo.', 'info')
-                return redirect(url_for('planes.ver', plan_id=plan_activo.id))
-            else:
-                plan_reciente = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
-                    PlanDesarrollo.created_at.desc()
-                ).first()
+    flash('No se encontraron planes disponibles. Por favor cree un plan primero.', 'warning')
+    return redirect(url_for(redirect_endpoint))
 
-                if plan_reciente:
-                    flash(f'El plan solicitado no fue encontrado. Redirigiendo al plan más reciente.', 'info')
-                    return redirect(url_for('planes.ver', plan_id=plan_reciente.id))
-                else:
-                    flash('No se encontraron planes disponibles. Por favor cree un plan primero.', 'warning')
-                    return redirect(url_for(redirect_endpoint))
-
-    return plan
 
 # Lista de planes
 @planes_bp.route('/')
 @login_required
 def index():
-    """Lista todos los planes del usuario actual"""
-    # Determinar si el usuario puede ver planes de otros municipios
-    puede_ver_global = current_user.is_admin() or current_user.is_editor()
+    """Lista los planes de desarrollo del municipio del usuario."""
+    planes = PlanDesarrollo.visibles_para(current_user).order_by(
+        PlanDesarrollo.estado.desc(),        # los activos primero
+        PlanDesarrollo.created_at.desc(),
+    ).all()
 
-    if not puede_ver_global:
-        # Para usuarios normales (viewers), mostrar solo el plan activo de su municipio
-        plan_activo = PlanDesarrollo.get_plan_activo_o_primero(current_user)
-        planes = [plan_activo] if plan_activo else []
-        mostrar_todos = False
-    else:
-        # Para administradores y editores, mostrar el plan activo global primero
-        plan_activo_global = PlanDesarrollo.query.filter_by(estado='activo').first()
-        if plan_activo_global:
-            # Si hay plan activo global, mostrarlo junto con los planes del municipio del usuario
-            planes_municipio = PlanDesarrollo.query.filter_by(municipio=current_user).all()
-            # Evitar duplicados
-            planes = [plan_activo_global] if plan_activo_global not in planes_municipio else []
-            planes.extend(planes_municipio)
-            mostrar_todos = True
-        else:
-            # Si no hay plan activo global, mostrar los del municipio del usuario
-            planes = PlanDesarrollo.query.filter_by(municipio=current_user).order_by(
-                PlanDesarrollo.estado.desc(),  # Activos primero
-                PlanDesarrollo.created_at.desc()  # Luego por fecha de creación
-            ).all()
-            mostrar_todos = True
+    # Los editores y administradores pueden crear y gestionar planes; los
+    # visualizadores solo consultarlos.
+    mostrar_todos = current_user.is_admin() or current_user.is_editor()
 
     return render_template('planes/index.html', title='Mis Planes de Desarrollo',
                          planes=planes, mostrar_todos=mostrar_todos)
@@ -224,7 +200,7 @@ def editar(plan_id):
     form = PlanForm(obj=plan)
     if form.validate_on_submit():
         form.populate_obj(plan)
-        plan.updated_at = datetime.utcnow()
+        plan.updated_at = ahora_utc()
 
         db.session.commit()
         flash('Plan actualizado exitosamente.', 'success')
@@ -248,7 +224,14 @@ def eliminar(plan_id):
         # Eliminar dependencias en orden correcto para evitar errores de integridad
 
         # 1. Eliminar permisos de fila asociados a indicadores de este plan
-        from app.models import RowPermission, IndicadorProducto, Proyecto, Programa, Componente, LineaEstrategica
+        from app.models import (
+            Componente,
+            IndicadorProducto,
+            LineaEstrategica,
+            Programa,
+            Proyecto,
+            RowPermission,
+        )
 
         # Consulta simplificada usando joins
         subquery = db.session.query(IndicadorProducto.id)\
@@ -264,15 +247,12 @@ def eliminar(plan_id):
         ).delete(synchronize_session=False)
 
         # 2. Eliminar permisos de columna (si existen)
-        from app.models import ColumnPermission
         # Nota: ColumnPermission no tiene relación directa con planes, así que no necesitamos eliminarlos
 
         # 3. Eliminar sesiones activas relacionadas (si existen)
-        from app.models import ActiveSession
         # Las sesiones activas no están directamente relacionadas con planes
 
         # 4. Eliminar logs de actividad relacionados (opcional)
-        from app.models import ActivityLog
         # Los logs pueden ser útiles para auditoría, así que los mantenemos
 
         # 5. Ahora sí podemos eliminar el plan de forma segura
@@ -283,7 +263,7 @@ def eliminar(plan_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Error eliminando plan {plan_id}: {str(e)}')
+        current_app.logger.error(f'Error eliminando plan {plan_id}: {e!s}')
         flash('Error al eliminar el plan. Inténtalo de nuevo.', 'danger')
 
     return redirect(url_for('planes.index'))
@@ -318,7 +298,7 @@ def desactivar_plan(plan_id):
 @login_required
 def lineas(plan_id):
     """Ver líneas estratégicas de un plan"""
-    plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
+    plan = get_plan_or_404(plan_id, current_user)
     return render_template('planes/lineas.html', title='Líneas Estratégicas', plan=plan)
 
 @planes_bp.route('/<int:plan_id>/lineas/crear', methods=['GET', 'POST'])
@@ -374,7 +354,7 @@ def editar_linea(linea_id):
             return redirect(url_for('planes.lineas', plan_id=linea.plan_id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar la línea estratégica: {str(e)}', 'danger')
+            flash(f'Error al actualizar la línea estratégica: {e!s}', 'danger')
 
     return render_template('planes/editar_linea.html', title='Editar Línea Estratégica',
                           form=form, linea=linea, plan=linea.plan)
@@ -446,7 +426,7 @@ def editar_componente(componente_id):
     """Editar componente existente"""
     componente = Componente.query.join(LineaEstrategica).join(PlanDesarrollo).filter(
         Componente.id == componente_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     if not current_user.can_edit_column('CÓD COMPONENTE'):
@@ -467,7 +447,7 @@ def editar_componente(componente_id):
             return redirect(url_for('planes.componentes', linea_id=componente.linea_estrategica_id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar el componente: {str(e)}', 'danger')
+            flash(f'Error al actualizar el componente: {e!s}', 'danger')
 
     return render_template('planes/editar_componente.html', title='Editar Componente',
                           form=form, componente=componente, linea=componente.linea_estrategica)
@@ -478,7 +458,7 @@ def detalles_componente(componente_id):
     """Ver detalles completos de un componente"""
     componente = Componente.query.join(LineaEstrategica).join(PlanDesarrollo).filter(
         Componente.id == componente_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     # Calcular estadísticas para el template
@@ -537,7 +517,7 @@ def crear_programa(componente_id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al crear el programa: {str(e)}', 'danger')
+            flash(f'Error al crear el programa: {e!s}', 'danger')
 
     return render_template('planes/crear_programa.html', title='Crear Programa', form=form, componente=componente)
 
@@ -547,7 +527,7 @@ def editar_programa(programa_id):
     """Editar programa existente"""
     programa = Programa.query.join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
         Programa.id == programa_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     if not current_user.can_edit_column('CÓD PROGRAMA'):
@@ -568,7 +548,7 @@ def editar_programa(programa_id):
             return redirect(url_for('planes.programas', componente_id=programa.componente_id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar el programa: {str(e)}', 'danger')
+            flash(f'Error al actualizar el programa: {e!s}', 'danger')
 
     return render_template('planes/editar_programa.html', title='Editar Programa',
                           form=form, programa=programa, componente=programa.componente)
@@ -579,7 +559,7 @@ def detalles_programa(programa_id):
     """Ver detalles completos de un programa"""
     programa = Programa.query.join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
         Programa.id == programa_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     # Calcular estadísticas para el template
@@ -639,7 +619,7 @@ def crear_proyecto(programa_id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al crear el proyecto: {str(e)}', 'danger')
+            flash(f'Error al crear el proyecto: {e!s}', 'danger')
 
     return render_template('planes/crear_proyecto.html', title='Crear Proyecto', form=form, programa=programa)
 
@@ -649,7 +629,7 @@ def editar_proyecto(proyecto_id):
     """Editar proyecto existente"""
     proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
         Proyecto.id == proyecto_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     if not current_user.can_edit_column('CÓD PROYECTO'):
@@ -672,7 +652,7 @@ def editar_proyecto(proyecto_id):
             return redirect(url_for('planes.proyectos', programa_id=proyecto.programa_id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar el proyecto: {str(e)}', 'danger')
+            flash(f'Error al actualizar el proyecto: {e!s}', 'danger')
 
     return render_template('planes/editar_proyecto.html', title='Editar Proyecto',
                           form=form, proyecto=proyecto, programa=proyecto.programa)
@@ -683,7 +663,7 @@ def detalles_proyecto(proyecto_id):
     """Ver detalles completos de un proyecto"""
     proyecto = Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
         Proyecto.id == proyecto_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     # Calcular estadísticas para el template
@@ -772,7 +752,7 @@ def crear_actividad(proyecto_id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al crear la actividad: {str(e)}', 'danger')
+            flash(f'Error al crear la actividad: {e!s}', 'danger')
 
     return render_template('planes/crear_actividad.html', title='Crear Actividad', form=form, proyecto=proyecto)
 
@@ -782,7 +762,7 @@ def editar_actividad(actividad_id):
     """Editar actividad existente"""
     actividad = Actividad.query.join(Proyecto).join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
         Actividad.id == actividad_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     if not current_user.can_edit_column('NOMBRE PROYECTO'):  # Usando el mismo permiso que para crear
@@ -817,7 +797,7 @@ def editar_actividad(actividad_id):
             return redirect(url_for('planes.actividades', proyecto_id=actividad.proyecto_id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar la actividad: {str(e)}', 'danger')
+            flash(f'Error al actualizar la actividad: {e!s}', 'danger')
 
     return render_template('planes/editar_actividad.html', title='Editar Actividad',
                           form=form, actividad=actividad, proyecto=actividad.proyecto)
@@ -828,7 +808,7 @@ def detalles_actividad(actividad_id):
     """Ver detalles completos de una actividad"""
     actividad = Actividad.query.join(Proyecto).join(Programa).join(Componente).join(LineaEstrategica).join(PlanDesarrollo).filter(
         Actividad.id == actividad_id,
-        PlanDesarrollo.municipio_id == current_user.id
+        PlanDesarrollo.filtro_visibilidad(current_user)
     ).first_or_404()
 
     return render_template('planes/detalles_actividad.html', title='Detalles de la Actividad',
@@ -839,157 +819,55 @@ def detalles_actividad(actividad_id):
 @planes_bp.route('/<int:plan_id>/excel')
 @login_required
 def ver_excel(plan_id):
-    """Ver plan en formato tabla Excel editable con permisos aplicados"""
+    """Muestra el plan como la matriz del PDM, con los permisos del usuario."""
     plan = get_plan_or_redirect(plan_id, current_user)
     if hasattr(plan, 'status_code'):
         return plan
 
-    # Obtener permisos del usuario
     user_editable_columns = current_user.get_editable_columns()
     user_viewable_columns = current_user.get_viewable_columns()
 
-    # Preparar datos para la tabla Excel según el diccionario de datos
     excel_data = []
+    for fila in recorrer_plan(plan):
+        registro = fila_para_vista(fila)
 
-    for linea in plan.lineas_estrategicas:
-        for componente in linea.componentes:
-            for programa in componente.programas:
-                for proyecto in programa.proyectos:
-                    # Buscar indicador para este proyecto
-                    indicador = proyecto.indicadores[0] if proyecto.indicadores else None
-
-                    # Verificar si el usuario puede editar esta fila específica
-                    can_edit_row = current_user.can_edit_row(indicador.id if indicador else 0, plan.id) if indicador else False
-
-                    # Obtener ejecuciones trimestrales del 2024
-                    ejecuciones_2024 = []
-                    if indicador:
-                        ejecuciones_2024 = indicador.get_ejecuciones_por_anio(2024)
-
-                    # Crear diccionario con todos los campos del diccionario de datos
-                    row = {
-                        # Información básica de la estructura
-                        'cod_linea': linea.cod_linea,
-                        'lineas_estrategicas': linea.nombre,
-                        'cod_componente': componente.cod_componente,
-                        'componentes': componente.nombre,
-                        'cod_programa': programa.cod_programa,
-                        'programa_pdm': programa.nombre,
-                        'dependencia_responsable': programa.dependencia_responsable or '',
-                        'bpim': programa.bpim or '',
-                        'nombre_proyecto': proyecto.nombre,
-                        'indicadores': indicador.nombre if indicador else '',
-                        'cod_indicador_de_producto': indicador.cod_indicador if indicador else '',
-                        'indicador_de_producto': indicador.nombre if indicador else '',
-                        'tipo_de_indicador': indicador.tipo_indicador if indicador else '',
-                        'linea_base': indicador.linea_base if indicador else 0.0,
-                        'sentido': indicador.sentido if indicador else '',
-                        'tipologia': indicador.tipologia if indicador else '',
-                        'unidad': indicador.unidad if indicador else '',
-                        'meta_cuatrienio': indicador.meta_cuatrienio if indicador else 0.0,
-                        'meta_2024': indicador.meta_2024 if indicador else 0.0,
-                    }
-
-                    # Agregar columnas de ejecución trimestral
-                    for trimestre in range(1, 5):
-                        ejecucion = next((e for e in ejecuciones_2024 if e.trimestre == trimestre), None)
-
-                        row[f'ejecucion_{trimestre}_trimestre'] = ejecucion.ejecucion_trimestral if ejecucion else 0.0
-                        row[f'cumplimiento_{trimestre}_trimestre'] = ejecucion.cumplimiento_trimestral if ejecucion else 0.0
-                        row[f'poblacion_impactada_{trimestre}_trimestre'] = ejecucion.poblacion_impactada_trimestral if ejecucion else 0
-                        row[f'observacion_{trimestre}_trimestre'] = ejecucion.observacion_trimestral if ejecucion else ''
-
-                    # Agregar columnas acumuladas
-                    ejecucion_acumulada = sum(row[f'ejecucion_{i}_trimestre'] for i in range(1, 5))
-                    cumplimiento_acumulado = (ejecucion_acumulada / row['meta_2024'] * 100) if row['meta_2024'] > 0 else 0.0
-                    poblacion_acumulada = sum(row[f'poblacion_impactada_{i}_trimestre'] for i in range(1, 5))
-
-                    row['ejecucion_acumulada'] = ejecucion_acumulada
-                    row['cumplimiento_acumulado'] = cumplimiento_acumulado
-                    row['poblacion_impactada_acumulada'] = poblacion_acumulada
-                    row['observacion_acumulada'] = 'Consolidado anual'
-
-                    # Agregar información de documentos asociados
-                    documentos_linea = get_documentos_asociados(linea_id=linea.id)
-                    documentos_componente = get_documentos_asociados(componente_id=componente.id)
-                    documentos_programa = get_documentos_asociados(programa_id=programa.id)
-                    documentos_proyecto = get_documentos_asociados(proyecto_id=proyecto.id)
-                    documentos_indicador = get_documentos_asociados(indicador_id=indicador.id) if indicador else []
-
-                    row['documentos_linea'] = len(documentos_linea)
-                    row['documentos_componente'] = len(documentos_componente)
-                    row['documentos_programa'] = len(documentos_programa)
-                    row['documentos_proyecto'] = len(documentos_proyecto)
-                    row['documentos_indicador'] = len(documentos_indicador)
-                    row['total_documentos'] = (len(documentos_linea) + len(documentos_componente) +
-                                             len(documentos_programa) + len(documentos_proyecto) +
-                                             len(documentos_indicador))
-
-                    # Agregar información de permisos a la fila
-                    row['_can_edit_row'] = can_edit_row
-                    row['_indicador_id'] = indicador.id if indicador else None
-
-                    excel_data.append(row)
-
-    # Si no hay datos, crear una fila de ejemplo
-    if not excel_data:
-        row_ejemplo = {
-            'cod_linea': 1,
-            'lineas_estrategicas': 'Desarrollo Económico Sostenible',
-            'cod_componente': 1.1,
-            'componentes': 'Fortalecimiento del Sector Productivo',
-            'cod_programa': 'PDM-001',
-            'programa_pdm': 'Programa de Apoyo a Emprendimientos',
-            'dependencia_responsable': 'Dirección de Desarrollo Económico',
-            'bpim': 'BPIM-2024-001',
-            'nombre_proyecto': 'Centro de Emprendimiento Municipal',
-            'indicadores': 'Número de emprendedores capacitados',
-            'cod_indicador_de_producto': 'IP-001',
-            'indicador_de_producto': 'Número de emprendedores capacitados',
-            'tipo_de_indicador': 'Resultado',
-            'linea_base': 50.0,
-            'sentido': 'positivo',
-            'tipologia': 'Cuantitativo',
-            'unidad': 'personas',
-            'meta_cuatrienio': 500.0,
-            'meta_2024': 150.0,
+        documentos = {
+            'documentos_linea': len(get_documentos_asociados(linea_id=fila.linea.id)),
+            'documentos_componente': len(get_documentos_asociados(componente_id=fila.componente.id)),
+            'documentos_programa': len(get_documentos_asociados(programa_id=fila.programa.id)),
+            'documentos_proyecto': len(get_documentos_asociados(proyecto_id=fila.proyecto.id)),
+            'documentos_indicador': (
+                len(get_documentos_asociados(indicador_id=fila.indicador.id))
+                if fila.indicador else 0
+            ),
         }
+        registro.update(documentos)
+        registro['total_documentos'] = sum(documentos.values())
 
-        # Agregar columnas trimestrales vacías
-        for trimestre in range(1, 5):
-            row_ejemplo[f'ejecucion_{trimestre}_trimestre'] = 0.0
-            row_ejemplo[f'cumplimiento_{trimestre}_trimestre'] = 0.0
-            row_ejemplo[f'poblacion_impactada_{trimestre}_trimestre'] = 0
-            row_ejemplo[f'observacion_{trimestre}_trimestre'] = ''
+        # Permisos de fila: se resuelven por indicador.
+        registro['_indicador_id'] = fila.indicador.id if fila.indicador else None
+        registro['_can_edit_row'] = (
+            current_user.can_edit_row(fila.indicador.id, plan.id) if fila.indicador else False
+        )
 
-        row_ejemplo['ejecucion_acumulada'] = 0.0
-        row_ejemplo['cumplimiento_acumulado'] = 0.0
-        row_ejemplo['poblacion_impactada_acumulada'] = 0
-        row_ejemplo['observacion_acumulada'] = ''
+        excel_data.append(registro)
 
-        # Agregar campos de documentos a la fila de ejemplo
-        row_ejemplo['documentos_linea'] = 0
-        row_ejemplo['documentos_componente'] = 0
-        row_ejemplo['documentos_programa'] = 0
-        row_ejemplo['documentos_proyecto'] = 0
-        row_ejemplo['documentos_indicador'] = 0
-        row_ejemplo['total_documentos'] = 0
-
-        excel_data.append(row_ejemplo)
-
+    # Un plan sin indicadores muestra la matriz vacía: inventar una fila de
+    # ejemplo haría pasar datos ficticios por datos reales del plan.
     return render_template('planes/excel_view.html',
-                          title=f'Plan Excel: {plan.titulo}',
-                          plan=plan,
-                          excel_data=excel_data,
-                          user_editable_columns=user_editable_columns,
-                          user_viewable_columns=user_viewable_columns)
+                           title=f'Plan Excel: {plan.titulo}',
+                           plan=plan,
+                           excel_data=excel_data,
+                           user_editable_columns=user_editable_columns,
+                           user_viewable_columns=user_viewable_columns)
+
 
 # ==================== IMPORTAR/EXPORTAR EXCEL ====================
 
 @planes_bp.route('/<int:plan_id>/exportar-excel')
 @login_required
 def exportar_excel(plan_id):
-    """Exportar plan a archivo Excel"""
+    """Descarga el plan completo como archivo .xlsx."""
     try:
         import pandas as pd
     except ImportError:
@@ -998,62 +876,7 @@ def exportar_excel(plan_id):
 
     plan = get_plan_or_404(plan_id, current_user)
 
-    # Preparar datos como en la vista Excel
-    excel_data = []
-
-    for linea in plan.lineas_estrategicas:
-        for componente in linea.componentes:
-            for programa in componente.programas:
-                for proyecto in programa.proyectos:
-                    indicador = proyecto.indicadores[0] if proyecto.indicadores else None
-                    ejecuciones_2024 = []
-                    if indicador:
-                        ejecuciones_2024 = indicador.get_ejecuciones_por_anio(2024)
-
-                    row = {
-                        'CÓD LINEA': linea.cod_linea,
-                        'LINEAS ESTRATEGICAS': linea.nombre,
-                        'CÓD COMPONENTE': componente.cod_componente,
-                        'COMPONENTES': componente.nombre,
-                        'CÓD PROGRAMA': programa.cod_programa,
-                        'PROGRAMA PDM': programa.nombre,
-                        'DEPENDENCIA RESPOSABLE': programa.dependencia_responsable or '',
-                        'BPIM': programa.bpim or '',
-                        'NOMBRE PROYECTO': proyecto.nombre,
-                        'INDICADORES': indicador.nombre if indicador else '',
-                        'CÓD INDICADOR DE PRODUCTO': indicador.cod_indicador if indicador else '',
-                        'INDICADOR DE PRODUCTO': indicador.nombre if indicador else '',
-                        'TIPO DE INDICADOR': indicador.tipo_indicador if indicador else '',
-                        'LINEA BASE': indicador.linea_base if indicador else 0.0,
-                        'SENTIDO': indicador.sentido if indicador else '',
-                        'TIPOLOGÍA': indicador.tipologia if indicador else '',
-                        'UNIDAD': indicador.unidad if indicador else '',
-                        'META CUATRIENIO (2024-2027)': indicador.meta_cuatrienio if indicador else 0.0,
-                        'META 2024': indicador.meta_2024 if indicador else 0.0,
-                    }
-
-                    # Agregar columnas de ejecución trimestral
-                    for trimestre in range(1, 5):
-                        ejecucion = next((e for e in ejecuciones_2024 if e.trimestre == trimestre), None)
-                        row[f'EJECUCIÓN {trimestre} TRIMESTRE'] = ejecucion.ejecucion_trimestral if ejecucion else 0.0
-                        row[f'% CUMPLIMIENTO {trimestre} TRIMESTRE'] = ejecucion.cumplimiento_trimestral if ejecucion else 0.0
-                        row[f'POBLACIÓN IMPACTADA POR SECTOR {trimestre} TRIMESTRE'] = ejecucion.poblacion_impactada_trimestral if ejecucion else 0
-                        row[f'OBSERVACIÓN AL CUMPLIMIENTO {trimestre}TRIMESTRE'] = ejecucion.observacion_trimestral if ejecucion else ''
-
-                    # Agregar columnas acumuladas
-                    ejecucion_acumulada = sum(row[f'EJECUCIÓN {i} TRIMESTRE'] for i in range(1, 5))
-                    cumplimiento_acumulado = (ejecucion_acumulada / row['META 2024'] * 100) if row['META 2024'] > 0 else 0.0
-                    poblacion_acumulada = sum(row[f'POBLACIÓN IMPACTADA POR SECTOR {i} TRIMESTRE'] for i in range(1, 5))
-
-                    row['EJECUCIÓN ACUMULADA'] = ejecucion_acumulada
-                    row['% CUMPLIMIENTO ACUMULADO'] = cumplimiento_acumulado
-                    row['POBLACIÓN IMPACTADA ACUMULADA'] = poblacion_acumulada
-                    row['OBSERVACIÓN ACUMULADA'] = 'Consolidado anual'
-
-                    excel_data.append(row)
-
-    # Crear DataFrame de pandas
-    df = pd.DataFrame(excel_data)
+    df = pd.DataFrame([fila_para_exportacion(fila) for fila in recorrer_plan(plan)])
 
     # Crear archivo Excel en memoria
     output = io.BytesIO()
@@ -1082,7 +905,8 @@ def importar_excel(plan_id):
         flash('La funcionalidad de Excel requiere instalar pandas. Contacte al administrador.', 'error')
         return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
-    plan = PlanDesarrollo.query.filter_by(id=plan_id).first_or_404()
+    # Comprueba que el plan existe y pertenece al municipio del usuario.
+    get_plan_or_404(plan_id, current_user)
 
     if 'excel_file' not in request.files:
         flash('No se encontró el archivo.', 'error')
@@ -1233,7 +1057,7 @@ def importar_excel(plan_id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al procesar el archivo Excel: {str(e)}', 'error')
+        flash(f'Error al procesar el archivo Excel: {e!s}', 'error')
 
     return redirect(url_for('planes.ver_excel', plan_id=plan_id))
 
@@ -1243,7 +1067,8 @@ def guardar_excel(plan_id):
     """Guardar cambios desde la vista Excel"""
     from flask import jsonify
 
-    plan = get_plan_or_404(plan_id, current_user)
+    # Comprueba que el plan existe y pertenece al municipio del usuario.
+    get_plan_or_404(plan_id, current_user)
 
     try:
         data = request.get_json()
@@ -1388,190 +1213,125 @@ def guardar_excel(plan_id):
 @planes_bp.route('/<int:plan_id>/editar-celda-excel', methods=['POST'])
 @login_required
 def editar_celda_excel(plan_id):
-    """Editar una celda individual de Excel con justificación y soporte de archivos"""
-    from flask import jsonify, request
-    from werkzeug.utils import secure_filename
-    import os
-
+    """Guarda el nuevo valor de una celda, con justificación y acta de auditoría."""
     plan = get_plan_or_404(plan_id, current_user)
 
+    column_name = request.form.get('column_name')
+    new_value = request.form.get('new_value')
+    justification = request.form.get('justification')
+    indicator_id = request.form.get('indicator_id')
+
+    if not column_name or not new_value or not justification:
+        return jsonify({
+            'success': False,
+            'error': 'Faltan datos requeridos: columna, valor y justificación son obligatorios',
+        }), 400
+
+    indicador = _indicador_del_plan(indicator_id, plan.id)
+    if indicator_id and indicador is None:
+        return jsonify({
+            'success': False,
+            'error': 'El indicador no existe o no pertenece a este plan de desarrollo',
+        }), 404
+
+    if indicador is not None and not puede_editar(current_user, column_name):
+        return jsonify({
+            'success': False,
+            'error': f"Su rol no tiene permiso para editar la columna '{column_name}'",
+        }), 403
+
     try:
-        # Obtener datos del formulario
-        column_name = request.form.get('column_name')
-        new_value = request.form.get('new_value')
-        justification = request.form.get('justification')
-        indicator_id = request.form.get('indicator_id')
+        old_value = valor_actual(indicador, column_name)
 
-        # Validaciones básicas
-        if not column_name or not new_value or not justification:
-            return jsonify({
-                'success': False,
-                'error': 'Faltan datos requeridos'
-            }), 400
-
-        # Buscar el indicador si existe
-        indicador = None
-        if indicator_id:
-            try:
-                indicador = IndicadorProducto.query.filter_by(
-                    id=int(indicator_id),
-                    proyecto_id=Proyecto.query.join(Programa).join(Componente).join(LineaEstrategica).filter(LineaEstrategica.plan_id == plan_id).subquery().c.id
-                ).first()
-            except:
-                indicador = None
-
-        # Obtener el valor anterior
-        old_value = None
-        if indicador:
-            # Para indicadores, obtener el valor actual del campo correspondiente
-            if hasattr(indicador, column_name):
-                old_value = getattr(indicador, column_name)
-            elif column_name.startswith('ejecucion_') or column_name.startswith('cumplimiento_') or column_name.startswith('poblacion_impactada_') or column_name.startswith('observacion_'):
-                # Para datos trimestrales, buscar en EjecucionTrimestral
-                trimestre = None
-                if '_trimestre' in column_name:
-                    parts = column_name.split('_')
-                    if len(parts) >= 2:
-                        try:
-                            trimestre = int(parts[1])
-                        except:
-                            trimestre = None
-
-                if trimestre:
-                    ejecucion = EjecucionTrimestral.query.filter_by(
-                        indicador_id=indicador.id,
-                        anio=2024,
-                        trimestre=trimestre
-                    ).first()
-
-                    if ejecucion:
-                        if column_name.startswith('ejecucion_'):
-                            old_value = ejecucion.ejecucion_trimestral
-                        elif column_name.startswith('cumplimiento_'):
-                            old_value = ejecucion.cumplimiento_trimestral
-                        elif column_name.startswith('poblacion_impactada_'):
-                            old_value = ejecucion.poblacion_impactada_trimestral
-                        elif column_name.startswith('observacion_'):
-                            old_value = ejecucion.observacion_trimestral
-
-        # Manejar archivo de soporte
-        support_file_path = None
-        if 'support_file' in request.files:
-            file = request.files['support_file']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                # Crear nombre único para el archivo
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                unique_filename = f"{timestamp}_{current_user.id}_{filename}"
-                file_path = os.path.join('uploads', 'justifications', unique_filename)
-
-                # Asegurar que el directorio existe
-                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-                # Guardar el archivo
-                file.save(file_path)
-                support_file_path = file_path
-
-        # Crear registro de justificación
-        edit_justification = EditJustification(
-            plan_id=plan_id,
+        justificacion = EditJustification(
+            plan_id=plan.id,
             indicador_id=indicador.id if indicador else None,
             column_name=column_name,
             old_value=str(old_value) if old_value is not None else None,
             new_value=str(new_value),
             justification=justification,
-            support_file_path=support_file_path,
-            user_id=current_user.id
+            support_file_path=_guardar_archivo_de_soporte(request.files.get('support_file')),
+            user_id=current_user.id,
         )
+        db.session.add(justificacion)
+        db.session.flush()  # necesitamos el id para el acta de auditoría
 
-        db.session.add(edit_justification)
-        db.session.flush()  # Para obtener el ID de la justificación
+        aplicar_valor(indicador, column_name, new_value, current_user.id)
+        if indicador is not None:
+            indicador.updated_at = ahora_utc()
 
-        # Crear archivo de auditoría
-        try:
-            from audit_file_system import create_audit_file
-            audit_file_path = create_audit_file(edit_justification)
-            if audit_file_path:
-                print(f"Archivo de auditoría creado: {audit_file_path}")
-        except Exception as e:
-            print(f"Error creando archivo de auditoría: {e}")
-
-        # Actualizar el valor en la base de datos
-        if indicador:
-            if hasattr(indicador, column_name):
-                # Actualizar campo directo del indicador
-                if column_name in ['linea_base', 'meta_cuatrienio', 'meta_2024']:
-                    try:
-                        setattr(indicador, column_name, float(new_value) if new_value else 0.0)
-                    except:
-                        setattr(indicador, column_name, 0.0)
-                else:
-                    setattr(indicador, column_name, new_value)
-                indicador.updated_at = datetime.utcnow()
-            elif column_name.startswith(('ejecucion_', 'cumplimiento_', 'poblacion_impactada_', 'observacion_')) and '_trimestre' in column_name:
-                # Actualizar datos trimestrales
-                parts = column_name.split('_')
-                if len(parts) >= 2:
-                    try:
-                        trimestre = int(parts[1])
-                    except:
-                        trimestre = None
-
-                    if trimestre:
-                        # Buscar o crear registro de ejecución trimestral
-                        ejecucion = EjecucionTrimestral.query.filter_by(
-                            indicador_id=indicador.id,
-                            anio=2024,
-                            trimestre=trimestre
-                        ).first()
-
-                        if not ejecucion:
-                            ejecucion = EjecucionTrimestral(
-                                indicador_id=indicador.id,
-                                proyecto_id=indicador.proyecto_id,
-                                usuario_id=current_user.id,
-                                anio=2024,
-                                trimestre=trimestre
-                            )
-                            db.session.add(ejecucion)
-
-                        # Actualizar el campo correspondiente
-                        if column_name.startswith('ejecucion_'):
-                            try:
-                                ejecucion.ejecucion_trimestral = float(new_value) if new_value else 0.0
-                                # Recalcular cumplimiento
-                                if indicador.meta_2024 and indicador.meta_2024 > 0:
-                                    ejecucion.cumplimiento_trimestral = (ejecucion.ejecucion_trimestral / indicador.meta_2024) * 100
-                            except:
-                                ejecucion.ejecucion_trimestral = 0.0
-                        elif column_name.startswith('cumplimiento_'):
-                            try:
-                                ejecucion.cumplimiento_trimestral = float(new_value) if new_value else 0.0
-                            except:
-                                ejecucion.cumplimiento_trimestral = 0.0
-                        elif column_name.startswith('poblacion_impactada_'):
-                            try:
-                                ejecucion.poblacion_impactada_trimestral = int(float(new_value)) if new_value else 0
-                            except:
-                                ejecucion.poblacion_impactada_trimestral = 0
-                        elif column_name.startswith('observacion_'):
-                            ejecucion.observacion_trimestral = new_value
+        _registrar_acta_de_auditoria(justificacion)
 
         db.session.commit()
-
-        return jsonify({
-            'success': True,
-            'message': 'Celda editada exitosamente',
-            'edit_id': edit_justification.id
-        })
-
-    except Exception as e:
+    except ValorInvalido as exc:
         db.session.rollback()
-        print(f"Error al editar celda: {str(e)}")
+        return jsonify({'success': False, 'error': str(exc)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Error guardando la celda %s del plan %s',
+                                     column_name, plan_id)
         return jsonify({
             'success': False,
-            'error': f'Error interno del servidor: {str(e)}'
+            'error': 'No se pudo guardar el cambio. Intente de nuevo.',
         }), 500
+
+    return jsonify({
+        'success': True,
+        'message': 'Celda editada exitosamente',
+        'edit_id': justificacion.id,
+    })
+
+
+def _indicador_del_plan(indicator_id, plan_id):
+    """Busca el indicador exigiendo que cuelgue de este plan."""
+    if not indicator_id:
+        return None
+
+    try:
+        identificador = int(indicator_id)
+    except (TypeError, ValueError):
+        return None
+
+    return (IndicadorProducto.query
+            .join(Proyecto, IndicadorProducto.proyecto_id == Proyecto.id)
+            .join(Programa, Proyecto.programa_id == Programa.id)
+            .join(Componente, Programa.componente_id == Componente.id)
+            .join(LineaEstrategica, Componente.linea_estrategica_id == LineaEstrategica.id)
+            .filter(IndicadorProducto.id == identificador,
+                    LineaEstrategica.plan_id == plan_id)
+            .first())
+
+
+def _guardar_archivo_de_soporte(archivo):
+    """Guarda el anexo que respalda la edición y devuelve su ruta, o None."""
+    if not archivo or not archivo.filename:
+        return None
+
+    nombre = secure_filename(archivo.filename)
+    marca = datetime.now().strftime('%Y%m%d_%H%M%S')
+    destino = os.path.join(
+        current_app.config['UPLOAD_FOLDER'], 'justifications',
+        f'{marca}_{current_user.id}_{nombre}',
+    )
+    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    archivo.save(destino)
+    return destino
+
+
+def _registrar_acta_de_auditoria(justificacion):
+    """Genera el acta PDF del cambio. Un fallo aquí no debe perder la edición."""
+    try:
+        from audit_file_system import create_audit_file
+
+        ruta = create_audit_file(justificacion)
+        if ruta:
+            current_app.logger.info('Acta de auditoría creada: %s', ruta)
+        else:
+            current_app.logger.warning('No se pudo crear el acta de auditoría del cambio %s',
+                                       justificacion.id)
+    except Exception:
+        current_app.logger.exception('Error creando el acta de auditoría del cambio %s',
+                                     justificacion.id)
 
 # ==================== FIN EDICIÓN AVANZADA ====================
 
@@ -1602,9 +1362,9 @@ def subir_documento(plan_id):
 
     if request.method == 'POST':
         current_app.logger.info(f"Campos del formulario: {list(form._fields.keys())}")
-        for field_name in form._fields:
-            field = form._fields[field_name]
-            current_app.logger.info(f"Campo {field_name}: {getattr(form, field_name).data} (errores: {getattr(form, field_name).errors})")
+        for field_name, field in form._fields.items():
+            current_app.logger.info('Campo %s: %s (errores: %s)',
+                                    field_name, field.data, field.errors)
 
     if form.validate_on_submit():
         current_app.logger.info("Formulario validado correctamente")
@@ -1623,7 +1383,7 @@ def subir_documento(plan_id):
             file_path = os.path.join(upload_dir, filename)
             current_app.logger.info(f"Guardando archivo en: {file_path}")
             file.save(file_path)
-            current_app.logger.info(f"Archivo guardado exitosamente")
+            current_app.logger.info("Archivo guardado exitosamente")
 
             # Verificar que el archivo existe
             if os.path.exists(file_path):
@@ -1679,7 +1439,8 @@ def subir_documento(plan_id):
 @login_required
 def descargar_documento(plan_id, documento_id):
     """Descargar un documento específico"""
-    plan = get_plan_or_404(plan_id, current_user)
+    # Comprueba que el plan existe y pertenece al municipio del usuario.
+    get_plan_or_404(plan_id, current_user)
     documento = Documento.query.filter_by(id=documento_id, plan_id=plan_id).first_or_404()
 
     # Verificar permisos de descarga
@@ -1712,7 +1473,8 @@ def descargar_documento(plan_id, documento_id):
 @login_required
 def eliminar_documento(plan_id, documento_id):
     """Eliminar un documento"""
-    plan = get_plan_or_404(plan_id, current_user)
+    # Comprueba que el plan existe y pertenece al municipio del usuario.
+    get_plan_or_404(plan_id, current_user)
     documento = Documento.query.filter_by(id=documento_id, plan_id=plan_id).first_or_404()
 
     # Verificar permisos (solo el propietario o admin pueden eliminar)
@@ -1843,8 +1605,9 @@ def test_documento(plan_id):
     plan = get_plan_or_404(plan_id, current_user)
 
     # Crear un documento de prueba sin archivo
-    from app.models import Documento
     import datetime
+
+    from app.models import Documento
 
     documento_test = Documento(
         titulo="Documento de Prueba - " + str(datetime.datetime.now().strftime("%Y%m%d_%H%M%S")),
@@ -1881,7 +1644,6 @@ def debug_plan(plan_id):
     if hasattr(plan, 'status_code'):
         return plan
 
-    from app.models import IndicadorProducto, Proyecto, Programa, Componente, LineaEstrategica, EjecucionTrimestral
 
     debug_info = {
         'plan': {
@@ -1956,12 +1718,11 @@ def debug_plan(plan_id):
 
         debug_info['relaciones'] = lineas
 
-        # Intentar obtener datos usando la función principal
-        datos_plan = obtener_datos_plan_completo(plan, '2024', None)
+        # La generación de reportes se retiró del sistema, así que aquí solo
+        # se reportan los totales que sí se pueden calcular.
         debug_info['datos'] = {
-            'total_registros': len(datos_plan['datos']),
-            'columnas': datos_plan['columnas'],
-            'error': datos_plan.get('error', None)
+            'total_lineas': len(lineas),
+            'total_componentes': sum(len(linea['componentes']) for linea in lineas),
         }
 
     except Exception as e:

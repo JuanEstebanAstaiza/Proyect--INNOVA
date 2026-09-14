@@ -4,8 +4,22 @@ Script para limpiar todas las sesiones activas e inactivas de la base de datos
 Esto es útil para probar el panel de monitoreo de sesiones con un estado limpio
 """
 
+import os
+import sys
+
+# Permite ejecutar este script desde cualquier directorio: anade la raiz del
+# proyecto al sys.path para poder importar el paquete `app`.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# La consola de Windows usa cp1252 y no puede imprimir acentos ni simbolos.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+
+
 from app import create_app, db
 from app.models import ActiveSession, User
+
 
 def clean_all_sessions():
     """Elimina todas las sesiones activas e inactivas"""
@@ -79,7 +93,7 @@ def clean_all_sessions():
                 return False
 
         except Exception as e:
-            print(f"\n❌ Error durante la limpieza: {str(e)}")
+            print(f"\n❌ Error durante la limpieza: {e!s}")
             db.session.rollback()
             import traceback
             traceback.print_exc()
@@ -122,7 +136,7 @@ def clean_old_sessions(days=7):
             return True
 
         except Exception as e:
-            print(f"\n❌ Error durante la limpieza: {str(e)}")
+            print(f"\n❌ Error durante la limpieza: {e!s}")
             db.session.rollback()
             return False
 

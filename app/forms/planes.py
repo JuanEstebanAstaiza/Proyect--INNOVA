@@ -1,7 +1,16 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, IntegerField, FloatField, SelectField, FileField, DateField, SubmitField
+from wtforms import (
+    DateField,
+    FileField,
+    FloatField,
+    IntegerField,
+    SelectField,
+    StringField,
+    SubmitField,
+    TextAreaField,
+)
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, ValidationError
-from app.models import PlanDesarrollo, LineaEstrategica
+
 
 class PlanForm(FlaskForm):
     titulo = StringField('Título del Plan',

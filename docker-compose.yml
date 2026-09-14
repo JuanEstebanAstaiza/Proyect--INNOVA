@@ -1,0 +1,58 @@
+# Proyecto INNOVA
+#
+#   docker compose up -d --build     arranca el sistema en http://localhost:8000
+#   docker compose logs -f            sigue los registros
+#   docker compose down               lo detiene (los datos se conservan)
+#   docker compose down -v            lo detiene y BORRA los datos
+
+services:
+  innova:
+    build: .
+    image: proyecto-innova:latest
+    container_name: innova
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      FLASK_ENV: production
+      FLASK_DEBUG: "False"
+      LOG_LEVEL: INFO
+
+      # El contenedor de demostración se sirve por HTTP plano. Con cookies
+      # `Secure` el navegador no las devolvería y el login sería imposible.
+      # ⚠️  Ponga "true" en cuanto tenga HTTPS delante.
+      SESSION_COOKIE_SECURE: "false"
+
+      # La base vive en el volumen `datos`, montado en /app/instance.
+      DATABASE_URL: sqlite:////app/instance/innova.db
+
+      # ⚠️  Claves de DEMOSTRACIÓN. Cámbielas antes de exponer el sistema:
+      #     python -c "import secrets; print(secrets.token_hex(32))"
+      SECRET_KEY: "cambieme-clave-de-demostracion-no-usar-en-produccion"
+      JWT_SECRET_KEY: "cambieme-clave-jwt-de-demostracion-no-usar-en-produccion"
+
+      # Datos de demostración que se cargan la primera vez:
+      #   completo -> 3 usuarios + plan con ~240 indicadores (recomendado)
+      #   basico   -> 3 usuarios + plan mínimo
+      #   false    -> nada; instalación limpia
+      INNOVA_DEMO_DATA: "completo"
+
+    volumes:
+      # Datos que deben sobrevivir al contenedor.
+      - datos:/app/instance          # base de datos
+      - anexos:/app/uploads          # documentos adjuntos
+      - auditoria:/app/audit_files   # actas de auditoría en PDF
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/auth/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  datos:
+  anexos:
+  auditoria:

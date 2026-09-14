@@ -1,6 +1,8 @@
-from app import db
-from datetime import datetime
 import os
+
+from app import db
+from app.utils.fechas import ahora_utc
+
 
 class EditJustification(db.Model):
     __tablename__ = 'edit_justifications'
@@ -26,7 +28,7 @@ class EditJustification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
 
     # Relaciones
     plan = db.relationship('PlanDesarrollo', backref=db.backref('edit_justifications', lazy=True))
@@ -34,7 +36,7 @@ class EditJustification(db.Model):
     user = db.relationship('User', backref=db.backref('edit_justifications', lazy=True))
 
     def __init__(self, **kwargs):
-        super(EditJustification, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def get_support_file_url(self):
         """Retorna la URL del archivo de soporte si existe"""
@@ -87,4 +89,4 @@ class EditJustification(db.Model):
             return 'N/A'
 
     def __repr__(self):
-        return f'<EditJustification {self.column_name}: {self.old_value} → {self.new_value}>'
+        return f'<EditJustification {self.column_name}: {self.old_value} -> {self.new_value}>'

@@ -1,5 +1,7 @@
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 
 class RowPermission(db.Model):
     __tablename__ = 'row_permissions'
@@ -29,8 +31,8 @@ class RowPermission(db.Model):
 
     # Estado y timestamps
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Usuario que asignó el permiso
     assigned_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -49,7 +51,7 @@ class RowPermission(db.Model):
     assigner = db.relationship('User', foreign_keys=[assigned_by], backref=db.backref('assigned_row_permissions', lazy=True))
 
     def __init__(self, **kwargs):
-        super(RowPermission, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # Validar que se especifique al menos una entidad
         entities = [self.indicador_id, self.proyecto_id, self.programa_id, self.componente_id, self.linea_estrategica_id]
         if not any(entities):
@@ -247,9 +249,9 @@ class RowPermission(db.Model):
         users_with_permissions = []
         for permission in permissions:
             access = permission.can_access_entity(entity_id, entity_type)
-            if access['can_view'] or access['can_edit']:
-                if permission.user not in users_with_permissions:
-                    users_with_permissions.append(permission.user)
+            if ((access['can_view'] or access['can_edit'])
+                    and permission.user not in users_with_permissions):
+                users_with_permissions.append(permission.user)
 
         return users_with_permissions
 

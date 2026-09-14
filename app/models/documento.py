@@ -1,10 +1,10 @@
-import os
+
 from app import db
-from datetime import datetime
+from app.utils.fechas import ahora_utc
+
 try:
     from werkzeug.utils import secure_filename
 except ImportError:
-    from werkzeug.security import safe_join
     def secure_filename(filename):
         # Implementación básica si no está disponible
         return filename.replace('/', '').replace('\\', '').replace('..', '')
@@ -46,8 +46,8 @@ class Documento(db.Model):
     usuario = db.relationship('User', backref=db.backref('documentos_subidos', lazy=True))
 
     # Fechas
-    fecha_subida = db.Column(db.DateTime, default=datetime.utcnow)
-    fecha_modificacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    fecha_subida = db.Column(db.DateTime, default=ahora_utc)
+    fecha_modificacion = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
     fecha_expiracion = db.Column(db.DateTime)  # fecha de expiración si aplica
 
     # Metadatos adicionales
@@ -56,7 +56,7 @@ class Documento(db.Model):
     idioma = db.Column(db.String(10), default='es')  # idioma del documento
 
     def __init__(self, **kwargs):
-        super(Documento, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if self.tipo_documento not in ['plan', 'informe', 'evidencia', 'contrato', 'estudio', 'foto', 'video', 'otro']:
             self.tipo_documento = 'otro'
         if self.confidencialidad not in ['publico', 'interno', 'confidencial']:
@@ -90,12 +90,18 @@ class Documento(db.Model):
             return f"{base_path}/general"
 
     def get_tamano_legible(self):
-        """Retorna el tamaño del archivo en formato legible"""
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if self.tamano < 1024.0:
-                return ".1f"
-            self.tamano /= 1024.0
-        return ".1f"
+        """Retorna el tamaño del archivo en formato legible (por ejemplo '2.4 MB').
+
+        Antes devolvía la cadena literal ".1f" y, peor aún, dividía
+        `self.tamano` en cada vuelta del bucle: consultar el tamaño corrompía
+        el valor guardado del documento.
+        """
+        tamano = float(self.tamano or 0)
+        for unidad in ('B', 'KB', 'MB', 'GB'):
+            if tamano < 1024.0:
+                return f'{tamano:.1f} {unidad}'
+            tamano /= 1024.0
+        return f'{tamano:.1f} TB'
 
     def es_imagen(self):
         """Verifica si el documento es una imagen"""
@@ -138,11 +144,7 @@ class Documento(db.Model):
         ext = self.extension.lower()
         if ext in ['pdf']:
             return 'pdf'
-        elif ext in ['doc', 'docx']:
-            return ext
-        elif ext in ['xls', 'xlsx']:
-            return ext
-        elif ext in ['ppt', 'pptx']:
+        elif ext in ['doc', 'docx'] or ext in ['xls', 'xlsx'] or ext in ['ppt', 'pptx']:
             return ext
         elif ext in ['txt']:
             return 'txt'

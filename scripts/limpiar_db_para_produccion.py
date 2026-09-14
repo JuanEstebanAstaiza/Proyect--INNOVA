@@ -6,18 +6,33 @@ Elimina todos los datos pero mantiene la estructura de las tablas
 
 import os
 import sys
-from datetime import datetime
 
 # Agregar el directorio raíz al path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# La raíz del proyecto es el directorio padre de scripts/.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app, db
 from app.models import (
-    User, Role, ColumnPermission, RowPermission, UserRole,
-    PlanDesarrollo, LineaEstrategica, Componente, Programa,
-    Proyecto, IndicadorProducto, Actividad, EjecucionTrimestral,
-    Documento, EditJustification, ActivityLog, SMTPConfig, UserTempPassword
+    Actividad,
+    ActivityLog,
+    ColumnPermission,
+    Componente,
+    Documento,
+    EditJustification,
+    EjecucionTrimestral,
+    IndicadorProducto,
+    LineaEstrategica,
+    PlanDesarrollo,
+    Programa,
+    Proyecto,
+    Role,
+    RowPermission,
+    SMTPConfig,
+    User,
+    UserRole,
+    UserTempPassword,
 )
+
 
 def limpiar_base_datos():
     """Limpia completamente la base de datos"""

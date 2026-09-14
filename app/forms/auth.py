@@ -1,7 +1,10 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField
+from sqlalchemy.exc import SQLAlchemyError
+from wtforms import BooleanField, PasswordField, SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
+
 from app.models import User
+
 
 class LoginForm(FlaskForm):
     username = StringField('Usuario', validators=[DataRequired(message='El usuario es obligatorio')])
@@ -86,13 +89,13 @@ class ProfileEditForm(FlaskForm):
     submit = SubmitField('Guardar Cambios')
 
     def __init__(self, original_username=None, original_email=None, *args, **kwargs):
-        super(ProfileEditForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.original_username = original_username
         self.original_email = original_email
 
         # Cargar roles dinámicamente desde el sistema avanzado
+
         from app.models import Role
-        from flask import current_app
 
         try:
             # Intentar cargar roles del sistema avanzado
@@ -105,8 +108,8 @@ class ProfileEditForm(FlaskForm):
                 self.role.choices = [('Visualizador', 'Visualizador'),
                                    ('Editor General', 'Editor General'),
                                    ('Administrador', 'Administrador')]
-        except:
-            # Fallback si hay error de conexión a BD
+        except SQLAlchemyError:
+            # La tabla de roles todavía no existe (base recién creada).
             self.role.choices = [('Visualizador', 'Visualizador'),
                                ('Editor General', 'Editor General'),
                                ('Administrador', 'Administrador')]

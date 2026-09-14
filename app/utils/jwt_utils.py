@@ -1,14 +1,17 @@
-import jwt
 import uuid
 from datetime import datetime, timedelta
+
+import jwt
 from flask import current_app
-from typing import Dict, Optional
+
+from app.utils.fechas import ahora_utc
+
 
 class JWTUtils:
     """Utilidades para manejo de tokens JWT en el sistema de sesiones"""
 
     @staticmethod
-    def generate_session_token(user_id: int, session_id: str, device_info: Dict = None) -> str:
+    def generate_session_token(user_id: int, session_id: str, device_info: dict | None = None) -> str:
         """
         Genera un token JWT único para una sesión de usuario
 
@@ -24,8 +27,8 @@ class JWTUtils:
             'user_id': user_id,
             'session_id': session_id,
             'device_fingerprint': str(uuid.uuid4()),  # Fingerprint único por sesión
-            'iat': datetime.utcnow(),
-            'exp': datetime.utcnow() + timedelta(
+            'iat': ahora_utc(),
+            'exp': ahora_utc() + timedelta(
                 minutes=current_app.config['JWT_ACCESS_TOKEN_EXPIRE_MINUTES']
             ),
             'type': 'session'
@@ -51,7 +54,7 @@ class JWTUtils:
         return token
 
     @staticmethod
-    def validate_session_token(token: str) -> Optional[Dict]:
+    def validate_session_token(token: str) -> dict | None:
         """
         Valida un token JWT de sesión
 
@@ -74,7 +77,7 @@ class JWTUtils:
 
             # Verificar que no haya expirado
             exp_timestamp = payload.get('exp')
-            if exp_timestamp and datetime.utcnow().timestamp() > exp_timestamp:
+            if exp_timestamp and ahora_utc().timestamp() > exp_timestamp:
                 return None
 
             return payload
@@ -83,14 +86,11 @@ class JWTUtils:
             # Token expirado
             return None
         except jwt.InvalidTokenError:
-            # Token inválido
-            return None
-        except Exception:
-            # Error general
+            # Token inválido o manipulado
             return None
 
     @staticmethod
-    def decode_token(token: str) -> Optional[Dict]:
+    def decode_token(token: str) -> dict | None:
         """
         Decodifica un token JWT sin validar (útil para debugging)
 
@@ -101,11 +101,9 @@ class JWTUtils:
             Dict: Payload del token sin validar
         """
         try:
-            # Decodificar sin verificar firma (solo para debugging)
-            header = jwt.get_unverified_header(token)
-            payload = jwt.decode(token, options={"verify_signature": False})
-            return payload
-        except Exception:
+            # Decodificar sin verificar la firma (solo para diagnóstico)
+            return jwt.decode(token, options={"verify_signature": False})
+        except jwt.PyJWTError:
             return None
 
     @staticmethod
@@ -127,10 +125,10 @@ class JWTUtils:
         if not exp_timestamp:
             return False
 
-        return datetime.utcnow().timestamp() > exp_timestamp
+        return ahora_utc().timestamp() > exp_timestamp
 
     @staticmethod
-    def get_token_info(token: str) -> Dict:
+    def get_token_info(token: str) -> dict:
         """
         Obtiene información detallada de un token JWT
 
@@ -168,7 +166,7 @@ class JWTUtils:
                 info['issued_at'] = datetime.fromtimestamp(iat)
             if exp:
                 info['expires_at'] = datetime.fromtimestamp(exp)
-                info['expired'] = datetime.utcnow().timestamp() > exp
+                info['expired'] = ahora_utc().timestamp() > exp
 
             # Validar el token
             validation_payload = JWTUtils.validate_session_token(token)
@@ -177,7 +175,7 @@ class JWTUtils:
         return info
 
     @staticmethod
-    def generate_device_fingerprint(device_info: Dict) -> str:
+    def generate_device_fingerprint(device_info: dict) -> str:
         """
         Genera un fingerprint único basado en información del dispositivo
 

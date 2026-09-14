@@ -3,8 +3,22 @@
 Script de migración para agregar el sistema de permisos avanzado a la base de datos existente
 """
 
-import sqlite3
 import os
+import sys
+
+# Permite ejecutar este script desde cualquier directorio: anade la raiz del
+# proyecto al sys.path para poder importar el paquete `app`.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# La consola de Windows usa cp1252 y no puede imprimir acentos ni simbolos.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+
+
+import os
+import sqlite3
+
 
 def migrate_database():
     """Migra la base de datos existente para incluir el sistema de permisos avanzado"""
@@ -274,7 +288,7 @@ def migrate_database():
         return True
 
     except Exception as e:
-        print(f"❌ Error durante la migración: {str(e)}")
+        print(f"❌ Error durante la migración: {e!s}")
         conn.rollback()
         return False
 
@@ -328,7 +342,7 @@ def verify_migration():
         return True
 
     except Exception as e:
-        print(f"❌ Error en verificación: {str(e)}")
+        print(f"❌ Error en verificación: {e!s}")
         return False
 
     finally:
